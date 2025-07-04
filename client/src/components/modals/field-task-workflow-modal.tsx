@@ -339,7 +339,10 @@ export default function FieldTaskWorkflowModal({
                       <FormControl>
                         <Textarea
                           placeholder="Add any additional notes..."
-                          {...field}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
                         />
                       </FormControl>
                       <FormMessage />
@@ -387,7 +390,10 @@ export default function FieldTaskWorkflowModal({
                       <Textarea
                         placeholder="Describe what was completed, any issues resolved, and any follow-up needed..."
                         rows={4}
-                        {...field}
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
                       />
                     </FormControl>
                     <FormMessage />
