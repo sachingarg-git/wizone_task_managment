@@ -139,15 +139,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/tasks/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertTaskSchema.partial().parse(req.body);
+      const userId = req.user.claims.sub;
+      const updateData = insertTaskSchema.partial().parse(req.body);
       
-      const task = await storage.updateTask(id, validatedData);
+      // Get the current task to check status changes
+      const currentTask = await storage.getTask(id);
+      if (!currentTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      // Auto-set timing and resolution fields based on status changes
+      if (updateData.status) {
+        if (updateData.status === 'in_progress' && currentTask.status === 'pending') {
+          updateData.startTime = new Date();
+        }
+        
+        if (updateData.status === 'completed' && currentTask.status !== 'completed') {
+          updateData.completionTime = new Date();
+          updateData.createdBy = userId; // Set who resolved the task
+          
+          // Calculate actual time if start time exists
+          if (currentTask.startTime) {
+            const actualMinutes = Math.round((new Date().getTime() - new Date(currentTask.startTime).getTime()) / (1000 * 60));
+            updateData.actualTime = actualMinutes;
+          }
+        }
+      }
+      
+      const task = await storage.updateTask(id, updateData);
       
       // Update performance metrics if status changed to completed
-      if (validatedData.status === 'completed' && task.assignedTo) {
+      if (updateData.status === 'completed' && task.assignedTo) {
         await storage.calculateUserPerformance(task.assignedTo);
       }
       

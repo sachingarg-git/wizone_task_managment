@@ -116,6 +116,9 @@ TaskFlow is a comprehensive task management and performance tracking system buil
 
 ## Changelog
 - July 04, 2025. Initial setup
+- July 04, 2025. Added Backend Engineer and Field Engineer roles to task management
+- July 04, 2025. Implemented hyperlinked task IDs with inline update modal
+- July 04, 2025. Added task duration tracking, created/resolved timestamps, and comprehensive task details view
 
 ## User Preferences
 

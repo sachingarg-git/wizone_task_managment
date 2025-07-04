@@ -114,6 +114,58 @@ export default function Tasks() {
     setTaskStatus("");
   };
 
+  const calculateDuration = (task: any) => {
+    if (task.completionTime) {
+      const start = new Date(task.createdAt);
+      const end = new Date(task.completionTime);
+      const diffMs = end.getTime() - start.getTime();
+      const diffMins = Math.round(diffMs / (1000 * 60));
+      
+      if (diffMins < 60) return `${diffMins}m`;
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    } else if (task.status === 'completed') {
+      return 'Completed';
+    } else {
+      const start = new Date(task.createdAt);
+      const now = new Date();
+      const diffMs = now.getTime() - start.getTime();
+      const diffMins = Math.round(diffMs / (1000 * 60));
+      
+      if (diffMins < 60) return `${diffMins}m (ongoing)`;
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return mins > 0 ? `${hours}h ${mins}m (ongoing)` : `${hours}h (ongoing)`;
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleViewTask = (taskId: number) => {
+    // For now, we'll use the same update modal for viewing
+    const task = Array.isArray(tasks) ? tasks.find((t: any) => t.id === taskId) : null;
+    if (task) {
+      handleTaskIdClick(task);
+    }
+  };
+
+  const handleEditTask = (taskId: number) => {
+    // For now, we'll use the same update modal for editing
+    const task = Array.isArray(tasks) ? tasks.find((t: any) => t.id === taskId) : null;
+    if (task) {
+      handleTaskIdClick(task);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'high': return 'bg-error/10 text-error';
@@ -273,6 +325,8 @@ export default function Tasks() {
                       <TableHead>Priority</TableHead>
                       <TableHead>Assigned To</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Duration</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -301,28 +355,44 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell>{task.assignedUser?.firstName} {task.assignedUser?.lastName}</TableCell>
                         <TableCell>
-                          <Select 
-                            value={task.status} 
-                            onValueChange={(value) => handleStatusChange(task.id, value)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <Badge className={getStatusColor(task.status)}>
-                                {task.status?.replace('_', ' ')}
-                              </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Badge className={getStatusColor(task.status)}>
+                            {task.status?.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="text-sm font-medium">{formatDateTime(task.createdAt)}</div>
+                            <div className="text-xs text-gray-500">
+                              by {task.createdByUser?.firstName || 'System'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{calculateDuration(task)}</div>
+                            {task.status === 'completed' && task.createdByUser && (
+                              <div className="text-xs text-gray-500">
+                                Resolved by {task.createdByUser.firstName}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewTask(task.id)}
+                              title="View Task"
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditTask(task.id)}
+                              title="Edit Task"
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                           </div>
@@ -349,54 +419,109 @@ export default function Tasks() {
 
       {/* Inline Task Update Modal */}
       <Dialog open={!!selectedTaskId} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <DialogTitle>Update Task #{selectedTaskId ? tasks?.find((t: any) => t.id === selectedTaskId)?.ticketNumber : ''}</DialogTitle>
+              <DialogTitle>
+                Task Details - {selectedTaskId ? Array.isArray(tasks) ? tasks.find((t: any) => t.id === selectedTaskId)?.ticketNumber : '' : ''}
+              </DialogTitle>
               <Button variant="ghost" size="sm" onClick={handleCloseModal}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </DialogHeader>
-          <div className="p-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Status</label>
-              <Select value={taskStatus} onValueChange={setTaskStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Update Notes</label>
-              <Textarea
-                value={updateNotes}
-                onChange={(e) => setUpdateNotes(e.target.value)}
-                placeholder="Add update notes or comments..."
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button variant="outline" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleUpdateTask}
-                disabled={updateTaskMutation.isPending}
-                className="gradient-blue text-white"
-              >
-                {updateTaskMutation.isPending ? "Updating..." : "Update Task"}
-              </Button>
-            </div>
+          <div className="p-4 space-y-6">
+            {selectedTaskId && Array.isArray(tasks) && (() => {
+              const task = tasks.find((t: any) => t.id === selectedTaskId);
+              if (!task) return null;
+              
+              return (
+                <>
+                  {/* Task Info Section */}
+                  <div className="grid grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Customer</label>
+                      <p className="text-sm font-medium">{task.customer?.name || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Priority</label>
+                      <Badge className={`${getPriorityColor(task.priority)} mt-1`}>
+                        {task.priority}
+                      </Badge>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Assigned To</label>
+                      <p className="text-sm">{task.assignedUser?.firstName} {task.assignedUser?.lastName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Issue Type</label>
+                      <p className="text-sm">{task.issueType}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Created</label>
+                      <p className="text-sm">{formatDateTime(task.createdAt)}</p>
+                      <p className="text-xs text-gray-500">by {task.createdByUser?.firstName || 'System'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Duration</label>
+                      <p className="text-sm font-medium">{calculateDuration(task)}</p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {task.description && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-600">Description</label>
+                      <p className="text-sm p-3 bg-gray-50 rounded border">{task.description}</p>
+                    </div>
+                  )}
+
+                  {/* Update Section */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-gray-900">Update Task</h4>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Status</label>
+                      <Select value={taskStatus} onValueChange={setTaskStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Update Notes</label>
+                      <Textarea
+                        value={updateNotes}
+                        onChange={(e) => setUpdateNotes(e.target.value)}
+                        placeholder="Add update notes, resolution details, or progress comments..."
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <Button variant="outline" onClick={handleCloseModal}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleUpdateTask}
+                      disabled={updateTaskMutation.isPending}
+                      className="gradient-blue text-white"
+                    >
+                      {updateTaskMutation.isPending ? "Updating..." : "Update Task"}
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
