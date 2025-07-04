@@ -651,81 +651,117 @@ export default function Tasks() {
                   </TabsContent>
 
                   <TabsContent value="history" className="space-y-4">
-                    <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Complete Task History
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Complete Task History
+                      </h4>
+                      {taskUpdates && Array.isArray(taskUpdates) && taskUpdates.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          {taskUpdates.length} update{taskUpdates.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </div>
                     
                     {taskUpdates && Array.isArray(taskUpdates) && taskUpdates.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-4 space-y-4">
                         {taskUpdates.map((update: any) => (
-                          <div key={update.id} className="border rounded-lg p-4 bg-gray-50">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-2">
-                                {getUpdateTypeIcon(update.updateType)}
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-semibold text-gray-900">
-                                    {getUpdateTypeTitle(update.updateType)}
-                                  </span>
-                                  {update.updatedByUser && (
-                                    <span className="text-xs text-gray-500">
-                                      by {update.updatedByUser.firstName} {update.updatedByUser.lastName}
-                                    </span>
-                                  )}
+                          <div key={update.id} className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                            {/* Header with user info and timestamp */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                  {getUpdateTypeIcon(update.updateType)}
                                 </div>
-                              </div>
-                              <div className="text-xs text-gray-500 flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {formatUpdateTime(update.createdAt)}
+                                <div className="flex-1">
+                                  <h5 className="text-sm font-semibold text-gray-900 mb-1">
+                                    {getUpdateTypeTitle(update.updateType)}
+                                  </h5>
+                                  <div className="text-xs text-gray-600 flex items-center gap-3">
+                                    <span className="flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      {update.updatedByUser 
+                                        ? `${update.updatedByUser.firstName || ''} ${update.updatedByUser.lastName || ''}`.trim() || 'Unknown User'
+                                        : update.updatedBy || 'System'
+                                      }
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {formatUpdateTime(update.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             
-                            <div className="mt-2 space-y-2">
+                            {/* Update details */}
+                            <div className="space-y-3">
+                              {/* Status/Priority Changes */}
                               {update.oldValue && update.newValue && (
-                                <div className="text-sm">
-                                  <span className="text-red-600">From: {update.oldValue}</span>
-                                  <span className="mx-2">→</span>
-                                  <span className="text-green-600">To: {update.newValue}</span>
+                                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r">
+                                  <div className="text-xs font-medium text-blue-800 mb-2">Change Details:</div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50">
+                                      {update.oldValue.replace(/_/g, ' ')}
+                                    </Badge>
+                                    <span className="text-gray-400">→</span>
+                                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                                      {update.newValue.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </div>
                                 </div>
                               )}
                               
+                              {/* Notes/Comments */}
                               {update.notes && (
-                                <div className="text-sm text-gray-700 bg-white p-3 rounded border-l-4 border-blue-500 mt-2">
-                                  <div className="font-medium text-gray-900 mb-1">
-                                    {update.updateType === 'notes_added' || update.updateType === 'note_added' ? 'Note:' : 'Details:'}
-                                  </div>
-                                  <div className="whitespace-pre-wrap">{update.notes}</div>
-                                </div>
-                              )}
-                              
-                              {update.attachments && update.attachments.length > 0 && (
-                                <div className="mt-2">
-                                  <div className="text-xs font-medium text-gray-600 mb-2">
-                                    📎 Attachments ({update.attachments.length}):
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {update.attachments.map((file: string, index: number) => (
-                                      <div key={index} className="flex items-center gap-2 text-xs bg-blue-50 border border-blue-200 px-3 py-2 rounded-md">
-                                        {getFileIcon(file)}
-                                        <span className="text-blue-800 font-medium">
-                                          {file.includes('data:') ? `Document ${index + 1}` : file}
-                                        </span>
+                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r">
+                                  <div className="flex items-start gap-2">
+                                    <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-yellow-800 mb-1">
+                                        {update.updateType === 'notes_added' || update.updateType === 'note_added' ? 'Note Added:' : 'Comment:'}
                                       </div>
-                                    ))}
+                                      <div className="text-sm text-yellow-900 whitespace-pre-wrap">{update.notes}</div>
+                                    </div>
                                   </div>
                                 </div>
                               )}
                               
-                              <div className="flex items-center gap-1 text-xs text-gray-500">
-                                <User className="w-3 h-3" />
-                                Updated by {update.updatedByUser?.firstName} {update.updatedByUser?.lastName}
-                              </div>
+                              {/* File Attachments */}
+                              {update.attachments && update.attachments.length > 0 && (
+                                <div className="bg-purple-50 border-l-4 border-purple-400 p-3 rounded-r">
+                                  <div className="flex items-start gap-2">
+                                    <Upload className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-purple-800 mb-2">
+                                        Files Attached ({update.attachments.length}):
+                                      </div>
+                                      <div className="space-y-1">
+                                        {update.attachments.map((file: string, index: number) => (
+                                          <div key={index} className="flex items-center gap-2 text-xs bg-white border border-purple-200 px-2 py-1 rounded">
+                                            {getFileIcon(file)}
+                                            <span className="text-purple-800 font-medium">
+                                              {file.includes('data:') ? `Document ${index + 1}` : file}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-center py-8">No update history available</p>
+                      <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">No Update History</h4>
+                        <p className="text-gray-500">
+                          This task hasn't been updated yet. Updates will appear here when engineers make changes.
+                        </p>
+                      </div>
                     )}
                   </TabsContent>
 
