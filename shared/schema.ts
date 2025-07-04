@@ -1,0 +1,181 @@
+import {
+  pgTable,
+  text,
+  varchar,
+  timestamp,
+  jsonb,
+  index,
+  serial,
+  integer,
+  decimal,
+  boolean,
+  primaryKey,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table (required for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table (required for Replit Auth)
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").notNull().default("engineer"),
+  department: varchar("department"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  customerId: varchar("customer_id").unique().notNull(),
+  name: varchar("name").notNull(),
+  contactPerson: varchar("contact_person"),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  mobilePhone: varchar("mobile_phone"),
+  email: varchar("email"),
+  servicePlan: varchar("service_plan"),
+  connectedTower: varchar("connected_tower"),
+  wirelessIp: varchar("wireless_ip"),
+  wirelessApIp: varchar("wireless_ap_ip"),
+  port: varchar("port"),
+  plan: varchar("plan"),
+  installationDate: timestamp("installation_date"),
+  status: varchar("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number").unique().notNull(),
+  customerId: integer("customer_id").references(() => customers.id),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  createdBy: varchar("created_by").references(() => users.id),
+  priority: varchar("priority").notNull(), // High, Medium, Low
+  issueType: varchar("issue_type").notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, cancelled
+  description: text("description"),
+  resolution: text("resolution"),
+  startTime: timestamp("start_time"),
+  completionTime: timestamp("completion_time"),
+  estimatedTime: integer("estimated_time"), // in minutes
+  actualTime: integer("actual_time"), // in minutes
+  visitCharges: decimal("visit_charges", { precision: 10, scale: 2 }),
+  contactPerson: varchar("contact_person"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const performanceMetrics = pgTable("performance_metrics", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  totalTasks: integer("total_tasks").notNull().default(0),
+  completedTasks: integer("completed_tasks").notNull().default(0),
+  averageResponseTime: decimal("average_response_time", { precision: 10, scale: 2 }), // in hours
+  performanceScore: decimal("performance_score", { precision: 5, scale: 2 }),
+  customerSatisfactionRating: decimal("customer_satisfaction_rating", { precision: 3, scale: 2 }),
+  firstCallResolutionRate: decimal("first_call_resolution_rate", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userMonthYear: primaryKey({ columns: [table.userId, table.month, table.year] }),
+}));
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  assignedTasks: many(tasks, { relationName: "assignedTasks" }),
+  createdTasks: many(tasks, { relationName: "createdTasks" }),
+  performanceMetrics: many(performanceMetrics),
+}));
+
+export const customersRelations = relations(customers, ({ many }) => ({
+  tasks: many(tasks),
+}));
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  customer: one(customers, {
+    fields: [tasks.customerId],
+    references: [customers.id],
+  }),
+  assignedUser: one(users, {
+    fields: [tasks.assignedTo],
+    references: [users.id],
+    relationName: "assignedTasks",
+  }),
+  createdByUser: one(users, {
+    fields: [tasks.createdBy],
+    references: [users.id],
+    relationName: "createdTasks",
+  }),
+}));
+
+export const performanceMetricsRelations = relations(performanceMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [performanceMetrics.userId],
+    references: [users.id],
+  }),
+}));
+
+// Zod schemas
+export const insertUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomerSchema = createInsertSchema(customers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPerformanceMetricsSchema = createInsertSchema(performanceMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+export type Customer = typeof customers.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
+export type InsertPerformanceMetrics = z.infer<typeof insertPerformanceMetricsSchema>;
+export type PerformanceMetrics = typeof performanceMetrics.$inferSelect;
+
+// Extended types for API responses
+export type TaskWithRelations = Task & {
+  customer?: Customer;
+  assignedUser?: User;
+  createdByUser?: User;
+};
+
+export type UserWithMetrics = User & {
+  performanceMetrics?: PerformanceMetrics[];
+};

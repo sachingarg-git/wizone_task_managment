@@ -1,0 +1,344 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Header from "@/components/layout/header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  UserPlus, 
+  Search, 
+  Shield, 
+  Users, 
+  UserCheck, 
+  UserX,
+  Eye,
+  Edit,
+  Ban
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+
+export default function UsersPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ["/api/users"],
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: string }) => {
+      await apiRequest("PUT", `/api/users/${id}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredUsers = users?.filter((user: any) => {
+    const matchesSearch = !searchQuery || 
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  }) || [];
+
+  const totalUsers = users?.length || 0;
+  const activeUsers = users?.filter((u: any) => u.isActive).length || 0;
+  const adminUsers = users?.filter((u: any) => u.role === 'admin').length || 0;
+  const pendingUsers = Math.floor(totalUsers * 0.05); // Mock calculation
+
+  const getRoleColor = (role: string) => {
+    switch (role?.toLowerCase()) {
+      case 'admin': return 'bg-error/10 text-error';
+      case 'manager': return 'bg-purple-100 text-purple-800';
+      case 'engineer': return 'bg-primary/10 text-primary';
+      case 'support': return 'bg-success/10 text-success';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getPerformanceScore = (user: any) => {
+    const latestMetrics = user.performanceMetrics?.[0];
+    return latestMetrics?.performanceScore ? parseFloat(latestMetrics.performanceScore) : 0;
+  };
+
+  const getLastActive = (user: any) => {
+    // Mock last active calculation
+    const hours = Math.floor(Math.random() * 24);
+    if (hours === 0) return "Online now";
+    if (hours === 1) return "1 hour ago";
+    return `${hours} hours ago`;
+  };
+
+  const handleRoleChange = (userId: string, newRole: string) => {
+    updateRoleMutation.mutate({ id: userId, role: newRole });
+  };
+
+  return (
+    <div className="min-h-screen">
+      <Header 
+        title="User Management"
+        subtitle="Manage system users and their permissions"
+      >
+        <div className="flex space-x-3">
+          <Button variant="outline">
+            <Shield className="w-4 h-4 mr-2" />
+            Manage Roles
+          </Button>
+          <Button>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+        </div>
+      </Header>
+      
+      <div className="p-6 space-y-8">
+        {/* User Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
+                </div>
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active Today</p>
+                  <p className="text-2xl font-bold text-gray-900">{activeUsers}</p>
+                </div>
+                <UserCheck className="w-5 h-5 text-success" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Administrators</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminUsers}</p>
+                </div>
+                <Shield className="w-5 h-5 text-warning" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Approval</p>
+                  <p className="text-2xl font-bold text-gray-900">{pendingUsers}</p>
+                </div>
+                <UserX className="w-5 h-5 text-error" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <CardTitle>System Users</CardTitle>
+              <div className="flex space-x-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="engineer">Engineer</SelectItem>
+                    <SelectItem value="support">Support</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {usersLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredUsers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Last Active</TableHead>
+                      <TableHead>Performance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user: any) => {
+                      const performanceScore = getPerformanceScore(user);
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              {user.profileImageUrl ? (
+                                <img 
+                                  src={user.profileImageUrl} 
+                                  alt={`${user.firstName} ${user.lastName}`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-gray-600">
+                                    {user.firstName?.[0]}{user.lastName?.[0]}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select 
+                              value={user.role} 
+                              onValueChange={(value) => handleRoleChange(user.id, value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <Badge className={getRoleColor(user.role)}>
+                                  {user.role}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Administrator</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="engineer">Engineer</SelectItem>
+                                <SelectItem value="support">Support</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>{user.department || 'Unassigned'}</TableCell>
+                          <TableCell className="text-sm text-gray-500">{getLastActive(user)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-success h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${Math.min(performanceScore, 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-900">{performanceScore.toFixed(1)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={user.isActive ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-error hover:text-error">
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No users found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
