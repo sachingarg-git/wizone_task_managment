@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import TaskFormModal from "@/components/modals/task-form-modal";
+import FieldEngineerAssignmentModal from "@/components/modals/field-engineer-assignment-modal";
+import FieldTaskWorkflowModal from "@/components/modals/field-task-workflow-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +62,9 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadNotes, setUploadNotes] = useState<string>("");
+  const [showFieldAssignment, setShowFieldAssignment] = useState(false);
+  const [showFieldWorkflow, setShowFieldWorkflow] = useState(false);
+  const [selectedTaskForField, setSelectedTaskForField] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -220,6 +225,16 @@ export default function Tasks() {
         notes: uploadNotes.trim() || `Uploaded ${uploadFiles.length} file(s)`
       });
     });
+  };
+
+  const handleMoveToFieldTeam = (task: any) => {
+    setSelectedTaskForField(task);
+    setShowFieldAssignment(true);
+  };
+
+  const handleFieldWorkflow = (task: any) => {
+    setSelectedTaskForField(task);
+    setShowFieldWorkflow(true);
   };
 
   const getFileIcon = (fileName: string) => {
@@ -697,6 +712,37 @@ export default function Tasks() {
                         <p className="text-sm p-3 bg-green-50 rounded border border-green-200">{task.resolution}</p>
                       </div>
                     )}
+
+                    {/* Field Team Actions */}
+                    <div className="flex flex-wrap gap-2 pt-4 border-t">
+                      {!task.fieldEngineerId && task.status !== "completed" && task.status !== "cancelled" && (
+                        <Button 
+                          onClick={() => handleMoveToFieldTeam(task)}
+                          variant="outline"
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        >
+                          <User className="w-4 h-4 mr-2" />
+                          Move to Field Team
+                        </Button>
+                      )}
+                      
+                      {task.fieldEngineerId && task.status !== "completed" && task.status !== "cancelled" && (
+                        <Button 
+                          onClick={() => handleFieldWorkflow(task)}
+                          variant="outline"
+                          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Field Workflow
+                        </Button>
+                      )}
+                      
+                      {task.fieldEngineerId && (
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Field Engineer:</span> {task.fieldEngineer?.firstName} {task.fieldEngineer?.lastName}
+                        </div>
+                      )}
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="history" className="space-y-4">
@@ -1034,6 +1080,29 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Field Engineer Assignment Modal */}
+      <FieldEngineerAssignmentModal
+        isOpen={showFieldAssignment}
+        onClose={() => {
+          setShowFieldAssignment(false);
+          setSelectedTaskForField(null);
+        }}
+        taskId={selectedTaskForField?.id || 0}
+        taskTitle={selectedTaskForField?.ticketNumber || ''}
+      />
+
+      {/* Field Task Workflow Modal */}
+      {selectedTaskForField && (
+        <FieldTaskWorkflowModal
+          isOpen={showFieldWorkflow}
+          onClose={() => {
+            setShowFieldWorkflow(false);
+            setSelectedTaskForField(null);
+          }}
+          task={selectedTaskForField}
+        />
+      )}
     </div>
   );
 }

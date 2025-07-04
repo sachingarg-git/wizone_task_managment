@@ -67,13 +67,18 @@ export const tasks = pgTable("tasks", {
   ticketNumber: varchar("ticket_number").unique().notNull(),
   customerId: integer("customer_id").references(() => customers.id),
   assignedTo: varchar("assigned_to").references(() => users.id),
+  fieldEngineerId: varchar("field_engineer_id").references(() => users.id),
   createdBy: varchar("created_by").references(() => users.id),
   priority: varchar("priority").notNull(), // High, Medium, Low
   issueType: varchar("issue_type").notNull(),
-  status: varchar("status").notNull().default("pending"), // pending, start_task, in_progress, resolved, completed, cancelled
+  status: varchar("status").notNull().default("pending"), // pending, assigned_to_field, start_task, waiting_for_customer, in_progress, resolved, completed, cancelled
   description: text("description"),
   resolution: text("resolution"),
+  completionNote: text("completion_note"),
   resolvedBy: varchar("resolved_by").references(() => users.id),
+  fieldStartTime: timestamp("field_start_time"),
+  fieldWaitingTime: timestamp("field_waiting_time"),
+  fieldWaitingReason: text("field_waiting_reason"),
   startTime: timestamp("start_time"),
   completionTime: timestamp("completion_time"),
   estimatedTime: integer("estimated_time"), // in minutes
@@ -127,6 +132,7 @@ export const domains = pgTable("domains", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks, { relationName: "assignedTasks" }),
+  fieldTasks: many(tasks, { relationName: "fieldTasks" }),
   createdTasks: many(tasks, { relationName: "createdTasks" }),
   performanceMetrics: many(performanceMetrics),
   ownedDomains: many(domains),
@@ -145,6 +151,11 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.assignedTo],
     references: [users.id],
     relationName: "assignedTasks",
+  }),
+  fieldEngineer: one(users, {
+    fields: [tasks.fieldEngineerId],
+    references: [users.id],
+    relationName: "fieldTasks",
   }),
   createdByUser: one(users, {
     fields: [tasks.createdBy],

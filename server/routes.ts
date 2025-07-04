@@ -313,6 +313,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Field engineer routes
+  app.get('/api/field-engineers', isAuthenticated, async (req, res) => {
+    try {
+      const { region, skillSet } = req.query;
+      const engineers = await storage.getAvailableFieldEngineers(
+        region as string, 
+        skillSet as string
+      );
+      res.json(engineers);
+    } catch (error) {
+      console.error("Error fetching field engineers:", error);
+      res.status(500).json({ message: "Failed to fetch field engineers" });
+    }
+  });
+
+  app.post('/api/tasks/:id/assign-field-engineer', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { fieldEngineerId } = req.body;
+
+      if (!fieldEngineerId) {
+        return res.status(400).json({ message: "Field engineer ID is required" });
+      }
+
+      const task = await storage.assignTaskToFieldEngineer(taskId, fieldEngineerId, userId);
+      res.json(task);
+    } catch (error) {
+      console.error("Error assigning field engineer:", error);
+      res.status(500).json({ message: "Failed to assign field engineer" });
+    }
+  });
+
+  app.post('/api/tasks/:id/field-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { status, note } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const task = await storage.updateFieldTaskStatus(taskId, status, userId, note);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating field task status:", error);
+      res.status(500).json({ message: "Failed to update field task status" });
+    }
+  });
+
+  app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { completionNote, files } = req.body;
+
+      if (!completionNote || completionNote.trim() === '') {
+        return res.status(400).json({ message: "Completion note is required" });
+      }
+
+      const task = await storage.completeFieldTask(taskId, userId, completionNote, files);
+      res.json(task);
+    } catch (error) {
+      console.error("Error completing field task:", error);
+      res.status(500).json({ message: "Failed to complete field task" });
+    }
+  });
+
+  app.get('/api/field-engineers/:id/tasks', isAuthenticated, async (req, res) => {
+    try {
+      const fieldEngineerId = req.params.id;
+      const tasks = await storage.getFieldTasksByEngineer(fieldEngineerId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching field engineer tasks:", error);
+      res.status(500).json({ message: "Failed to fetch field engineer tasks" });
+    }
+  });
+
   // Customer routes
   app.get('/api/customers', isAuthenticated, async (req, res) => {
     try {

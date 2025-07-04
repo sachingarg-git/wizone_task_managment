@@ -30,6 +30,8 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<UserWithMetrics[]>;
   updateUserRole(id: string, role: string): Promise<User>;
+  getFieldEngineers(): Promise<User[]>;
+  getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<User[]>;
   
   // Customer operations
   getAllCustomers(): Promise<Customer[]>;
@@ -54,6 +56,12 @@ export interface IStorage {
     inProgress: number;
     completed: number;
   }>;
+  
+  // Field engineer task operations
+  assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy: string): Promise<Task>;
+  updateFieldTaskStatus(taskId: number, status: string, userId: string, note?: string): Promise<Task>;
+  completeFieldTask(taskId: number, userId: string, completionNote: string, files?: string[]): Promise<Task>;
+  getFieldTasksByEngineer(fieldEngineerId: string): Promise<TaskWithRelations[]>;
   
   // Task update operations
   createTaskUpdate(update: InsertTaskUpdate): Promise<TaskUpdate>;
@@ -147,6 +155,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async getFieldEngineers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.role, "field_engineer"),
+        eq(users.isActive, true)
+      ))
+      .orderBy(asc(users.firstName));
+  }
+
+  async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<User[]> {
+    let whereConditions = and(
+      eq(users.role, "field_engineer"),
+      eq(users.isActive, true)
+    );
+
+    if (region) {
+      whereConditions = and(whereConditions, eq(users.department, region));
+    }
+
+    return await db
+      .select()
+      .from(users)
+      .where(whereConditions)
+      .orderBy(asc(users.firstName));
   }
 
   // Customer operations
@@ -346,6 +382,105 @@ export class DatabaseStorage implements IStorage {
       inProgress: Number(stats.inProgress),
       completed: Number(stats.completed),
     };
+  }
+
+  // Field engineer task operations
+  async assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy: string): Promise<Task> {
+    const [task] = await db
+      .update(tasks)
+      .set({
+        fieldEngineerId,
+        status: "assigned_to_field",
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    // Create task update record
+    await this.createTaskUpdate({
+      taskId,
+      updateType: "status_change",
+      notes: `Task assigned to field engineer`,
+      updatedBy: assignedBy,
+    });
+
+    return task;
+  }
+
+  async updateFieldTaskStatus(taskId: number, status: string, userId: string, note?: string): Promise<Task> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    // Set specific timestamps based on status
+    if (status === "start_task") {
+      updateData.fieldStartTime = new Date();
+    } else if (status === "waiting_for_customer") {
+      updateData.fieldWaitingTime = new Date();
+      if (note) updateData.fieldWaitingReason = note;
+    }
+
+    const [task] = await db
+      .update(tasks)
+      .set(updateData)
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    // Create task update record
+    await this.createTaskUpdate({
+      taskId,
+      updateType: "status_change",
+      notes: note || `Status changed to ${status}`,
+      updatedBy: userId,
+    });
+
+    return task;
+  }
+
+  async completeFieldTask(taskId: number, userId: string, completionNote: string, files?: string[]): Promise<Task> {
+    const [task] = await db
+      .update(tasks)
+      .set({
+        status: "completed",
+        completionNote,
+        completionTime: new Date(),
+        resolvedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    // Create task update record
+    await this.createTaskUpdate({
+      taskId,
+      updateType: "completion",
+      notes: completionNote,
+      updatedBy: userId,
+      attachments: files || [],
+    });
+
+    return task;
+  }
+
+  async getFieldTasksByEngineer(fieldEngineerId: string): Promise<TaskWithRelations[]> {
+    const result = await db
+      .select({
+        task: tasks,
+        customer: customers,
+        assignedUser: users,
+      })
+      .from(tasks)
+      .leftJoin(customers, eq(tasks.customerId, customers.id))
+      .leftJoin(users, eq(tasks.assignedTo, users.id))
+      .where(eq(tasks.fieldEngineerId, fieldEngineerId))
+      .orderBy(desc(tasks.createdAt));
+    
+    return result.map(row => ({
+      ...row.task,
+      customer: row.customer || undefined,
+      assignedUser: row.assignedUser || undefined,
+    }));
   }
 
   // Performance operations

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, customers, tasks, performanceMetrics } from "@shared/schema";
+import { users, customers, tasks, performanceMetrics, taskUpdates } from "@shared/schema";
 
 // Auto-run seeding when this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -9,9 +9,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 export async function seedDatabase() {
   console.log("🌱 Starting database seeding...");
 
-  // Clear existing data
-  await db.delete(tasks);
+  // Clear existing data in correct order (respecting foreign key constraints)
+  await db.delete(taskUpdates);
   await db.delete(performanceMetrics);
+  await db.delete(tasks);
   await db.delete(customers);
   
   // Keep existing users but update their roles
@@ -70,7 +71,34 @@ export async function seedDatabase() {
       firstName: "Maria",
       lastName: "Garcia",
       role: "field_engineer",
-      department: "Field Operations",
+      department: "North Region",
+      isActive: true,
+    },
+    {
+      id: "field002",
+      email: "field2@taskflow.com",
+      firstName: "Robert",
+      lastName: "Smith",
+      role: "field_engineer",
+      department: "South Region",
+      isActive: true,
+    },
+    {
+      id: "field003",
+      email: "field3@taskflow.com",
+      firstName: "Jennifer",
+      lastName: "Brown",
+      role: "field_engineer",
+      department: "East Region",
+      isActive: true,
+    },
+    {
+      id: "field004",
+      email: "field4@taskflow.com",
+      firstName: "Carlos",
+      lastName: "Martinez",
+      role: "field_engineer",
+      department: "West Region",
       isActive: true,
     },
     {
