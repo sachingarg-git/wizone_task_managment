@@ -354,7 +354,7 @@ export default function Tasks() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Pending Tasks</p>
-                      <p className="text-2xl font-bold text-gray-900">{taskStats?.pending || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{(taskStats as any)?.pending || 0}</p>
                     </div>
                     <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                       <Clock className="w-5 h-5 text-warning" />
@@ -368,7 +368,7 @@ export default function Tasks() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">In Progress</p>
-                      <p className="text-2xl font-bold text-gray-900">{taskStats?.inProgress || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{(taskStats as any)?.inProgress || 0}</p>
                     </div>
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                       <Loader className="w-5 h-5 text-primary" />
@@ -382,7 +382,7 @@ export default function Tasks() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Completed Today</p>
-                      <p className="text-2xl font-bold text-gray-900">{taskStats?.completed || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{(taskStats as any)?.completed || 0}</p>
                     </div>
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                       <CheckCircle className="w-5 h-5 text-success" />
@@ -441,7 +441,7 @@ export default function Tasks() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
-            ) : tasks && tasks.length > 0 ? (
+            ) : tasks && Array.isArray(tasks) && tasks.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -458,7 +458,7 @@ export default function Tasks() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tasks.map((task: any) => (
+                    {(tasks as any[])?.map((task: any) => (
                       <TableRow key={task.id}>
                         <TableCell className="font-medium">
                           <button
@@ -634,7 +634,7 @@ export default function Tasks() {
                               <div className="flex items-center gap-2">
                                 {getUpdateTypeIcon(update.updateType)}
                                 <span className="text-sm font-medium capitalize">
-                                  {update.updateType.replace('_', ' ')}
+                                  {update.updateType ? update.updateType.replace('_', ' ') : 'Update'}
                                 </span>
                               </div>
                               <div className="text-xs text-gray-500 flex items-center gap-1">
