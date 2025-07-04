@@ -76,6 +76,9 @@ export default function Tasks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      if (selectedTaskId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/tasks/${selectedTaskId}/updates`] });
+      }
       setSelectedTaskId(null);
       setUpdateNotes("");
       setTaskStatus("");
@@ -108,8 +111,9 @@ export default function Tasks() {
     mutationFn: async ({ taskId, files, notes }: { taskId: number; files: string[]; notes: string }) => {
       await apiRequest("POST", `/api/tasks/${taskId}/upload`, { files, notes });
     },
-    onSuccess: () => {
+    onSuccess: (_, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}/updates`] });
       setUploadFiles([]);
       setUploadNotes("");
       toast({
@@ -139,7 +143,7 @@ export default function Tasks() {
 
   // Query for task updates/history
   const { data: taskUpdates } = useQuery({
-    queryKey: ["/api/tasks", selectedTaskId, "updates"],
+    queryKey: [`/api/tasks/${selectedTaskId}/updates`],
     enabled: !!selectedTaskId,
   });
 
