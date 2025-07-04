@@ -24,8 +24,15 @@ import {
   UserX,
   Eye,
   Edit,
-  Ban
+  Ban,
+  X
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -33,24 +40,13 @@ import { apiRequest } from "@/lib/queryClient";
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showRoleManagement, setShowRoleManagement] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   const updateRoleMutation = useMutation({
@@ -84,19 +80,21 @@ export default function UsersPage() {
     },
   });
 
-  const filteredUsers = users?.filter((user: any) => {
+  const usersArray = Array.isArray(users) ? users : [];
+  
+  const filteredUsers = usersArray.filter((user: any) => {
     const matchesSearch = !searchQuery || 
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     
     return matchesSearch && matchesRole;
-  }) || [];
+  });
 
-  const totalUsers = users?.length || 0;
-  const activeUsers = users?.filter((u: any) => u.isActive).length || 0;
-  const adminUsers = users?.filter((u: any) => u.role === 'admin').length || 0;
+  const totalUsers = usersArray.length;
+  const activeUsers = usersArray.filter((u: any) => u.isActive).length;
+  const adminUsers = usersArray.filter((u: any) => u.role === 'admin').length;
   const pendingUsers = Math.floor(totalUsers * 0.05); // Mock calculation
 
   const getRoleColor = (role: string) => {
@@ -133,11 +131,11 @@ export default function UsersPage() {
         subtitle="Manage system users and their permissions"
       >
         <div className="flex space-x-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setShowRoleManagement(true)}>
             <Shield className="w-4 h-4 mr-2" />
             Manage Roles
           </Button>
-          <Button>
+          <Button onClick={() => setShowAddUserModal(true)}>
             <UserPlus className="w-4 h-4 mr-2" />
             Add User
           </Button>
@@ -339,6 +337,103 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add User Modal */}
+      <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Add New User</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowAddUserModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <Shield className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Authentication System
+                  </h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p>New users are automatically added when they first log in through Replit Auth. Simply share the application URL with new team members and ask them to log in.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
+                Got it
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Management Modal */}
+      <Dialog open={showRoleManagement} onOpenChange={setShowRoleManagement}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Role Management</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowRoleManagement(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="p-4">
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">Available Roles</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-red-700">Admin</span>
+                      <p className="text-sm text-gray-600">Full system access, user management</p>
+                    </div>
+                    <Badge className="bg-red-100 text-red-800">Highest</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-purple-700">Manager</span>
+                      <p className="text-sm text-gray-600">Task oversight, performance tracking</p>
+                    </div>
+                    <Badge className="bg-purple-100 text-purple-800">High</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-blue-700">Engineer</span>
+                      <p className="text-sm text-gray-600">Task execution, customer interaction</p>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-800">Standard</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-green-700">Support</span>
+                      <p className="text-sm text-gray-600">Customer support, basic tasks</p>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">Basic</Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> You can change user roles directly from the users table using the dropdown in the "Role" column.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button variant="outline" onClick={() => setShowRoleManagement(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
