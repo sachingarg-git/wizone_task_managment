@@ -224,7 +224,7 @@ export default function Tasks() {
     return <FileText className="w-4 h-4" />;
   };
 
-  const getUpdateTypeIcon = (updateType: string) => {
+  const getUpdateTypeIcon = (updateType: string, oldValue?: string, newValue?: string, notes?: string) => {
     switch (updateType) {
       case 'status_change':
       case 'status_changed':
@@ -240,28 +240,62 @@ export default function Tasks() {
         return <Plus className="w-4 h-4 text-blue-500" />;
       case 'task_assigned':
         return <User className="w-4 h-4 text-indigo-500" />;
+      case 'update':
+        // Determine icon from data
+        if (oldValue && newValue && oldValue !== newValue) {
+          return <CheckCircle className="w-4 h-4 text-blue-500" />;
+        }
+        if (notes) {
+          return <MessageSquare className="w-4 h-4 text-green-500" />;
+        }
+        return <Clock className="w-4 h-4 text-gray-500" />;
       default:
+        // Fallback logic to determine icon
+        if (oldValue && newValue && oldValue !== newValue) {
+          return <CheckCircle className="w-4 h-4 text-blue-500" />;
+        }
+        if (notes) {
+          return <MessageSquare className="w-4 h-4 text-green-500" />;
+        }
         return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getUpdateTypeTitle = (updateType: string) => {
+  const getUpdateTypeTitle = (updateType: string, oldValue?: string, newValue?: string, notes?: string) => {
     switch (updateType) {
       case 'status_change':
       case 'status_changed':
-        return 'Status Updated';
+        return `Status Changed ${oldValue && newValue ? `from ${oldValue.replace(/_/g, ' ')} to ${newValue.replace(/_/g, ' ')}` : ''}`;
       case 'priority_changed':
-        return 'Priority Changed';
+        return `Priority Changed ${oldValue && newValue ? `from ${oldValue} to ${newValue}` : ''}`;
       case 'note_added':
       case 'notes_added':
-        return 'Notes Added';
+        return 'Note Added';
       case 'file_uploaded':
         return 'Files Uploaded';
       case 'task_created':
         return 'Task Created';
       case 'task_assigned':
         return 'Task Assigned';
+      case 'update':
+        // Determine update type from data
+        if (oldValue && newValue) {
+          if (oldValue !== newValue) {
+            return `Status Changed from ${oldValue.replace(/_/g, ' ')} to ${newValue.replace(/_/g, ' ')}`;
+          }
+        }
+        if (notes) {
+          return 'Note Added';
+        }
+        return 'Task Updated';
       default:
+        // Fallback logic to determine update type
+        if (oldValue && newValue && oldValue !== newValue) {
+          return `Status Changed from ${oldValue.replace(/_/g, ' ')} to ${newValue.replace(/_/g, ' ')}`;
+        }
+        if (notes) {
+          return 'Note Added';
+        }
         return 'Task Updated';
     }
   };
@@ -671,18 +705,18 @@ export default function Tasks() {
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                  {getUpdateTypeIcon(update.updateType)}
+                                  {getUpdateTypeIcon(update.updateType, update.oldValue, update.newValue, update.notes)}
                                 </div>
                                 <div className="flex-1">
                                   <h5 className="text-sm font-semibold text-gray-900 mb-1">
-                                    {getUpdateTypeTitle(update.updateType)}
+                                    {getUpdateTypeTitle(update.updateType, update.oldValue, update.newValue, update.notes)}
                                   </h5>
                                   <div className="text-xs text-gray-600 flex items-center gap-3">
                                     <span className="flex items-center gap-1">
                                       <User className="w-3 h-3" />
                                       {update.updatedByUser 
                                         ? `${update.updatedByUser.firstName || ''} ${update.updatedByUser.lastName || ''}`.trim() || 'Unknown User'
-                                        : update.updatedBy || 'System'
+                                        : update.updatedBy || 'System Update'
                                       }
                                     </span>
                                     <span className="flex items-center gap-1">
