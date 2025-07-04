@@ -35,7 +35,8 @@ import {
   MessageSquare,
   Download,
   Paperclip,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from "lucide-react";
 import {
   Dialog,
@@ -233,6 +234,8 @@ export default function Tasks() {
       case 'status_change':
       case 'status_changed':
         return <CheckCircle className="w-4 h-4 text-blue-500" />;
+      case 'status_update':
+        return <RefreshCw className="w-4 h-4 text-purple-500" />;
       case 'priority_changed':
         return <TrendingUp className="w-4 h-4 text-orange-500" />;
       case 'note_added':
@@ -270,6 +273,8 @@ export default function Tasks() {
       case 'status_change':
       case 'status_changed':
         return `Status Changed ${oldValue && newValue ? `from ${oldValue.replace(/_/g, ' ')} to ${newValue.replace(/_/g, ' ')}` : ''}`;
+      case 'status_update':
+        return `Status Updated ${newValue ? `to ${newValue.replace(/_/g, ' ')}` : ''}`;
       case 'priority_changed':
         return `Priority Changed ${oldValue && newValue ? `from ${oldValue} to ${newValue}` : ''}`;
       case 'note_added':
