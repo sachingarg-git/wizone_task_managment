@@ -4,6 +4,7 @@ import {
   tasks,
   taskUpdates,
   performanceMetrics,
+  domains,
   type User,
   type UpsertUser,
   type Customer,
@@ -17,6 +18,8 @@ import {
   type PerformanceMetrics,
   type InsertPerformanceMetrics,
   type UserWithMetrics,
+  type Domain,
+  type InsertDomain,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
@@ -79,6 +82,14 @@ export interface IStorage {
   getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any>;
   getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any>;
   getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any>;
+  
+  // Domain operations
+  getAllDomains(): Promise<Domain[]>;
+  getDomain(id: number): Promise<Domain | undefined>;
+  createDomain(domain: InsertDomain): Promise<Domain>;
+  updateDomain(id: number, domain: Partial<InsertDomain>): Promise<Domain>;
+  deleteDomain(id: number): Promise<void>;
+  getDomainByName(domain: string): Promise<Domain | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -716,6 +727,42 @@ export class DatabaseStorage implements IStorage {
       avgResolutionTime: 180 + Math.random() * 120, // Mock data
       satisfaction: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
     }));
+  }
+
+  // Domain operations
+  async getAllDomains(): Promise<Domain[]> {
+    return await db.select().from(domains).orderBy(domains.createdAt);
+  }
+
+  async getDomain(id: number): Promise<Domain | undefined> {
+    const [domain] = await db.select().from(domains).where(eq(domains.id, id));
+    return domain || undefined;
+  }
+
+  async createDomain(domainData: InsertDomain): Promise<Domain> {
+    const [domain] = await db
+      .insert(domains)
+      .values(domainData)
+      .returning();
+    return domain;
+  }
+
+  async updateDomain(id: number, domainData: Partial<InsertDomain>): Promise<Domain> {
+    const [domain] = await db
+      .update(domains)
+      .set({ ...domainData, updatedAt: new Date() })
+      .where(eq(domains.id, id))
+      .returning();
+    return domain;
+  }
+
+  async deleteDomain(id: number): Promise<void> {
+    await db.delete(domains).where(eq(domains.id, id));
+  }
+
+  async getDomainByName(domain: string): Promise<Domain | undefined> {
+    const [domainRecord] = await db.select().from(domains).where(eq(domains.domain, domain));
+    return domainRecord || undefined;
   }
 }
 

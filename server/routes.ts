@@ -542,6 +542,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Domain management routes
+  app.get('/api/domains', isAuthenticated, async (req, res) => {
+    try {
+      const domains = await storage.getAllDomains();
+      res.json(domains);
+    } catch (error) {
+      console.error("Error fetching domains:", error);
+      res.status(500).json({ message: "Failed to fetch domains" });
+    }
+  });
+
+  app.post('/api/domains', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const domainData = {
+        ...req.body,
+        ownerId: userId,
+      };
+      
+      const domain = await storage.createDomain(domainData);
+      res.json(domain);
+    } catch (error) {
+      console.error("Error creating domain:", error);
+      res.status(500).json({ message: "Failed to create domain" });
+    }
+  });
+
+  app.put('/api/domains/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const domain = await storage.updateDomain(id, req.body);
+      res.json(domain);
+    } catch (error) {
+      console.error("Error updating domain:", error);
+      res.status(500).json({ message: "Failed to update domain" });
+    }
+  });
+
+  app.delete('/api/domains/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDomain(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting domain:", error);
+      res.status(500).json({ message: "Failed to delete domain" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

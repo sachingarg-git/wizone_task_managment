@@ -112,11 +112,24 @@ export const performanceMetrics = pgTable("performance_metrics", {
   userMonthYear: primaryKey({ columns: [table.userId, table.month, table.year] }),
 }));
 
+// Domain management table for custom domain hosting
+export const domains = pgTable("domains", {
+  id: serial("id").primaryKey(),
+  domain: varchar("domain").notNull().unique(),
+  customDomain: varchar("custom_domain"),
+  ssl: boolean("ssl").default(false),
+  status: varchar("status").notNull().default("pending"), // 'active', 'pending', 'inactive'
+  ownerId: varchar("owner_id").references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks, { relationName: "assignedTasks" }),
   createdTasks: many(tasks, { relationName: "createdTasks" }),
   performanceMetrics: many(performanceMetrics),
+  ownedDomains: many(domains),
 }));
 
 export const customersRelations = relations(customers, ({ many }) => ({
@@ -159,6 +172,13 @@ export const performanceMetricsRelations = relations(performanceMetrics, ({ one 
   }),
 }));
 
+export const domainsRelations = relations(domains, ({ one }) => ({
+  owner: one(users, {
+    fields: [domains.ownerId],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -188,6 +208,12 @@ export const insertTaskUpdateSchema = createInsertSchema(taskUpdates).omit({
   createdAt: true,
 });
 
+export const insertDomainSchema = createInsertSchema(domains).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -199,6 +225,8 @@ export type InsertPerformanceMetrics = z.infer<typeof insertPerformanceMetricsSc
 export type PerformanceMetrics = typeof performanceMetrics.$inferSelect;
 export type InsertTaskUpdate = z.infer<typeof insertTaskUpdateSchema>;
 export type TaskUpdate = typeof taskUpdates.$inferSelect;
+export type InsertDomain = z.infer<typeof insertDomainSchema>;
+export type Domain = typeof domains.$inferSelect;
 
 // Extended types for API responses
 export type TaskWithRelations = Task & {

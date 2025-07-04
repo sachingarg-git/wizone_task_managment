@@ -11,6 +11,7 @@ import Customers from "@/pages/customers";
 import Performance from "@/pages/performance";
 import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
+import Domains from "@/pages/domains";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
@@ -32,6 +33,7 @@ function Router() {
               <Route path="/performance" component={Performance} />
               <Route path="/users" component={Users} />
               <Route path="/analytics" component={Analytics} />
+              <Route path="/domains" component={Domains} />
             </div>
           </div>
         </>
