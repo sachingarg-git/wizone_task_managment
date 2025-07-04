@@ -1,0 +1,73 @@
+1. Task Creation Module - Assign Engineer Drop-Down
+Update Drop-down:
+
+Add an “Assign Engineer” drop-down in the task creation module.
+
+The drop-down should fetch the list of available engineers dynamically from your users database.
+
+Include an “Add New Engineer” option at the end of the list for quick addition (optional but useful).
+
+Across App Consistency:
+
+Ensure this improved drop-down (with “Add Option” if applicable) is used throughout the app wherever engineer or user selection is required for consistency.
+
+2. Roles Section - Role-Based Access Control (RBAC)
+Role Creation:
+
+Add a Roles Management section under Admin/Settings.
+
+Allow creation of new roles (e.g., Admin, Engineer, Manager, Viewer).
+
+Permissions:
+
+Each role should have granular permissions for Create, Edit, Delete, and View for each module (Task, User, Project, etc.).
+
+Use toggles or checkboxes for easy permission assignment.
+
+Assign Roles to Users:
+
+During or after user creation, assign a specific role to each user.
+
+Roles should be editable later by admins only.
+
+3. Add User - Form Style
+User Addition Form:
+
+Use a clean modal or dedicated page with clear sections:
+
+Name, Email, Mobile, Role (drop-down), Department, Password, Status (Active/Inactive), etc.
+
+Use drop-downs where relevant (like Role selection).
+
+Add validation (required fields, email format, password rules).
+
+Include a “Save & Add Another” button for quick onboarding.
+
+Consistent Styling:
+
+Follow the same input field style and button placement throughout the app.
+
+4. UI Color Scheme - Blue & White Gradient
+Color Palette:
+
+Primary: Deep blue (#2563eb or similar)
+
+Secondary: Lighter blue (#60a5fa or similar)
+
+Gradient: Top (Deep Blue) → Bottom (White), or subtle left-right
+
+Text: Mostly black or dark grey for readability on light backgrounds, white on deep blue sections.
+
+Component Styling:
+
+Cards, buttons, and headers: Use gradient backgrounds or blue borders with white content areas.
+
+Active states: Slightly darker blue or subtle box-shadow.
+
+Hover effects: Light blue highlights.
+
+Navigation & Sidebar:
+
+Keep the sidebar blue with white icons/text; highlight active module.
+
+Main content area: Mostly white with blue gradients for section headers or call-to-action areas.

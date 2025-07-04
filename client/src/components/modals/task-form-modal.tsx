@@ -301,7 +301,12 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                         <SelectContent>
                           {engineerUsers.map((user: any) => (
                             <SelectItem key={user.id} value={user.id}>
-                              {user.firstName} {user.lastName}
+                              <div className="flex items-center justify-between w-full">
+                                <span>{user.firstName} {user.lastName}</span>
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {user.role}
+                                </Badge>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
