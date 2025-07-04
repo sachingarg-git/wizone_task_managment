@@ -128,7 +128,7 @@ export default function FieldEngineerAssignmentModal({
   // Get unique regions from engineers
   const regions = Array.from(
     new Set(
-      fieldEngineers
+      (fieldEngineers as User[])
         .map((engineer: User) => engineer.department)
         .filter(Boolean)
     )
@@ -151,16 +151,16 @@ export default function FieldEngineerAssignmentModal({
               <label className="text-sm font-medium">Filter by Region</label>
               <Select
                 value={selectedRegion}
-                onValueChange={setSelectedRegion}
+                onValueChange={(value) => setSelectedRegion(value === "all" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All regions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All regions</SelectItem>
-                  {regions.map((region: string) => (
-                    <SelectItem key={region} value={region}>
-                      {region}
+                  <SelectItem value="all">All regions</SelectItem>
+                  {regions.map((region: string | null) => (
+                    <SelectItem key={region || 'no-region'} value={region || 'no-region'}>
+                      {region || 'No Region'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -189,7 +189,7 @@ export default function FieldEngineerAssignmentModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {fieldEngineers.map((engineer: User) => (
+                      {(fieldEngineers as User[]).map((engineer: User) => (
                         <SelectItem key={engineer.id} value={engineer.id}>
                           <div className="flex items-center justify-between w-full">
                             <div className="flex flex-col">
@@ -209,8 +209,8 @@ export default function FieldEngineerAssignmentModal({
                           </div>
                         </SelectItem>
                       ))}
-                      {fieldEngineers.length === 0 && !engineersLoading && (
-                        <SelectItem value="" disabled>
+                      {(fieldEngineers as User[]).length === 0 && !engineersLoading && (
+                        <SelectItem value="no-engineers" disabled>
                           No field engineers available
                         </SelectItem>
                       )}
@@ -225,7 +225,7 @@ export default function FieldEngineerAssignmentModal({
             {form.watch("fieldEngineerId") && (
               <div className="p-3 bg-muted rounded-lg">
                 {(() => {
-                  const selectedEngineer = fieldEngineers.find(
+                  const selectedEngineer = (fieldEngineers as User[]).find(
                     (e: User) => e.id === form.watch("fieldEngineerId")
                   );
                   if (!selectedEngineer) return null;
