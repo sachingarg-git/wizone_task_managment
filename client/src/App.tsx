@@ -10,6 +10,7 @@ import Tasks from "@/pages/tasks";
 import Customers from "@/pages/customers";
 import Performance from "@/pages/performance";
 import Users from "@/pages/users";
+import Analytics from "@/pages/analytics";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
@@ -30,6 +31,7 @@ function Router() {
               <Route path="/customers" component={Customers} />
               <Route path="/performance" component={Performance} />
               <Route path="/users" component={Users} />
+              <Route path="/analytics" component={Analytics} />
             </div>
           </div>
         </>

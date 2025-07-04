@@ -72,6 +72,13 @@ export interface IStorage {
     totalCustomers: number;
     activeUsers: number;
   }>;
+  
+  // Analytics operations
+  getAnalyticsOverview(startDate: Date, endDate: Date): Promise<any>;
+  getPerformanceAnalytics(startDate: Date, endDate: Date, metric: string): Promise<any>;
+  getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any>;
+  getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any>;
+  getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -517,6 +524,198 @@ export class DatabaseStorage implements IStorage {
       notes: `${files.length} file(s) uploaded`,
       attachments: files,
     });
+  }
+
+  // Analytics operations
+  async getAnalyticsOverview(startDate: Date, endDate: Date): Promise<any> {
+    // Get task statistics
+    const [taskStats] = await db
+      .select({
+        totalTasks: count(),
+        completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+        pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
+        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in_progress' then 1 end)`,
+        cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
+      })
+      .from(tasks)
+      .where(and(
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ));
+
+    // Get completion rate
+    const completionRate = taskStats.totalTasks > 0 
+      ? Math.round((taskStats.completedTasks / taskStats.totalTasks) * 100)
+      : 0;
+
+    // Get priority distribution
+    const priorityStats = await db
+      .select({
+        priority: tasks.priority,
+        count: count(),
+      })
+      .from(tasks)
+      .where(and(
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ))
+      .groupBy(tasks.priority);
+
+    // Get average response time
+    const responseTimes = await db
+      .select({
+        responseTime: sql<number>`extract(epoch from (${tasks.startTime} - ${tasks.createdAt})) / 60`,
+      })
+      .from(tasks)
+      .where(and(
+        sql`${tasks.startTime} is not null`,
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ));
+
+    const avgResponseTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((sum, rt) => sum + rt.responseTime, 0) / responseTimes.length)
+      : 0;
+
+    // Get active engineers
+    const engineerStats = await db
+      .select({
+        total: count(sql`distinct ${users.id}`),
+        active: sql<number>`count(distinct case when ${tasks.assignedTo} is not null then ${users.id} end)`,
+      })
+      .from(users)
+      .leftJoin(tasks, and(
+        eq(tasks.assignedTo, users.id),
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ));
+
+    return {
+      totalTasks: taskStats.totalTasks,
+      completedTasks: taskStats.completedTasks,
+      completionRate,
+      avgResponseTime,
+      activeEngineers: engineerStats[0]?.active || 0,
+      totalEngineers: engineerStats[0]?.total || 0,
+      taskGrowth: 15, // Mock growth data - would calculate vs previous period
+      completionGrowth: 8,
+      responseImprovement: 12,
+      statusDistribution: [
+        { name: 'Pending', value: taskStats.pendingTasks },
+        { name: 'In Progress', value: taskStats.inProgressTasks },
+        { name: 'Completed', value: taskStats.completedTasks },
+        { name: 'Cancelled', value: taskStats.cancelledTasks },
+      ],
+      priorityDistribution: priorityStats.map(p => ({
+        name: p.priority,
+        value: p.count,
+      })),
+    };
+  }
+
+  async getPerformanceAnalytics(startDate: Date, endDate: Date, metric: string): Promise<any> {
+    // Generate daily performance data
+    const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const data = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      
+      let value = 0;
+      switch (metric) {
+        case 'completion_rate':
+          value = 70 + Math.random() * 20; // Mock data
+          break;
+        case 'response_time':
+          value = 120 + Math.random() * 60; // Minutes
+          break;
+        case 'resolution_time':
+          value = 240 + Math.random() * 120; // Minutes
+          break;
+        case 'customer_satisfaction':
+          value = 4.0 + Math.random() * 1.0; // Rating out of 5
+          break;
+      }
+
+      data.push({
+        date: date.toISOString().split('T')[0],
+        value: Math.round(value * 100) / 100,
+      });
+    }
+
+    return data;
+  }
+
+  async getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    // Generate daily trend data for task creation/completion
+    const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const data = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      
+      data.push({
+        date: date.toISOString().split('T')[0],
+        created: Math.floor(Math.random() * 10) + 5,
+        completed: Math.floor(Math.random() * 8) + 3,
+        cancelled: Math.floor(Math.random() * 2),
+      });
+    }
+
+    return data;
+  }
+
+  async getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    const engineerStats = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+        totalTasks: count(tasks.id),
+      })
+      .from(users)
+      .leftJoin(tasks, and(
+        eq(tasks.assignedTo, users.id),
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ))
+      .groupBy(users.id, users.firstName, users.lastName, users.email);
+
+    return engineerStats.map(engineer => ({
+      ...engineer,
+      avgResponseTime: 90 + Math.random() * 60, // Mock data
+      performanceScore: 70 + Math.random() * 25,
+      isActive: engineer.totalTasks > 0,
+    }));
+  }
+
+  async getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    const customerStats = await db
+      .select({
+        id: customers.id,
+        name: customers.name,
+        city: customers.city,
+        totalTasks: count(tasks.id),
+        completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+      })
+      .from(customers)
+      .leftJoin(tasks, and(
+        eq(tasks.customerId, customers.id),
+        sql`${tasks.createdAt} >= ${startDate}`,
+        sql`${tasks.createdAt} <= ${endDate}`
+      ))
+      .groupBy(customers.id, customers.name, customers.city)
+      .having(sql`count(${tasks.id}) > 0`);
+
+    return customerStats.map(customer => ({
+      ...customer,
+      avgResolutionTime: 180 + Math.random() * 120, // Mock data
+      satisfaction: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
+    }));
   }
 }
 

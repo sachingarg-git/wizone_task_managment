@@ -422,6 +422,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analytics routes
+  app.get('/api/analytics/overview', isAuthenticated, async (req, res) => {
+    try {
+      const timeRange = parseInt(req.query.timeRange as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - timeRange);
+      
+      const analytics = await storage.getAnalyticsOverview(startDate, endDate);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching analytics overview:", error);
+      res.status(500).json({ message: "Failed to fetch analytics overview" });
+    }
+  });
+
+  app.get('/api/analytics/performance', isAuthenticated, async (req, res) => {
+    try {
+      const timeRange = parseInt(req.query.timeRange as string) || 30;
+      const metric = req.query.metric as string || 'completion_rate';
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - timeRange);
+      
+      const performanceData = await storage.getPerformanceAnalytics(startDate, endDate, metric);
+      res.json(performanceData);
+    } catch (error) {
+      console.error("Error fetching performance analytics:", error);
+      res.status(500).json({ message: "Failed to fetch performance analytics" });
+    }
+  });
+
+  app.get('/api/analytics/trends', isAuthenticated, async (req, res) => {
+    try {
+      const timeRange = parseInt(req.query.timeRange as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - timeRange);
+      
+      const trendsData = await storage.getTrendsAnalytics(startDate, endDate);
+      res.json(trendsData);
+    } catch (error) {
+      console.error("Error fetching trends analytics:", error);
+      res.status(500).json({ message: "Failed to fetch trends analytics" });
+    }
+  });
+
+  app.get('/api/analytics/engineers', isAuthenticated, async (req, res) => {
+    try {
+      const timeRange = parseInt(req.query.timeRange as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - timeRange);
+      
+      const engineerStats = await storage.getEngineerAnalytics(startDate, endDate);
+      res.json(engineerStats);
+    } catch (error) {
+      console.error("Error fetching engineer analytics:", error);
+      res.status(500).json({ message: "Failed to fetch engineer analytics" });
+    }
+  });
+
+  app.get('/api/analytics/customers', isAuthenticated, async (req, res) => {
+    try {
+      const timeRange = parseInt(req.query.timeRange as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - timeRange);
+      
+      const customerStats = await storage.getCustomerAnalytics(startDate, endDate);
+      res.json(customerStats);
+    } catch (error) {
+      console.error("Error fetching customer analytics:", error);
+      res.status(500).json({ message: "Failed to fetch customer analytics" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

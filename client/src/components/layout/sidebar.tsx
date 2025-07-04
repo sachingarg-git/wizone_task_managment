@@ -6,14 +6,16 @@ import {
   BarChart3, 
   Users, 
   UserCog, 
-  LogOut 
+  LogOut,
+  TrendingUp
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3 },
   { name: "Task Management", href: "/tasks", icon: ListTodo },
   { name: "Customer Management", href: "/customers", icon: Users },
-  { name: "Performance", href: "/performance", icon: BarChart3 },
+  { name: "Performance", href: "/performance", icon: TrendingUp },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "User Management", href: "/users", icon: UserCog },
 ];
 
