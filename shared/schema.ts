@@ -83,6 +83,18 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const taskUpdates = pgTable("task_updates", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id).notNull(),
+  updateType: varchar("update_type").notNull(), // status_change, note_added, file_uploaded, description_updated
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  notes: text("notes"),
+  attachments: text("attachments").array(), // Array of file URLs/paths
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const performanceMetrics = pgTable("performance_metrics", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   month: integer("month").notNull(),
@@ -110,7 +122,7 @@ export const customersRelations = relations(customers, ({ many }) => ({
   tasks: many(tasks),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   customer: one(customers, {
     fields: [tasks.customerId],
     references: [customers.id],
@@ -124,6 +136,18 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.createdBy],
     references: [users.id],
     relationName: "createdTasks",
+  }),
+  updates: many(taskUpdates),
+}));
+
+export const taskUpdatesRelations = relations(taskUpdates, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskUpdates.taskId],
+    references: [tasks.id],
+  }),
+  updatedByUser: one(users, {
+    fields: [taskUpdates.updatedBy],
+    references: [users.id],
   }),
 }));
 
@@ -157,6 +181,11 @@ export const insertPerformanceMetricsSchema = createInsertSchema(performanceMetr
   updatedAt: true,
 });
 
+export const insertTaskUpdateSchema = createInsertSchema(taskUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -166,12 +195,19 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertPerformanceMetrics = z.infer<typeof insertPerformanceMetricsSchema>;
 export type PerformanceMetrics = typeof performanceMetrics.$inferSelect;
+export type InsertTaskUpdate = z.infer<typeof insertTaskUpdateSchema>;
+export type TaskUpdate = typeof taskUpdates.$inferSelect;
 
 // Extended types for API responses
 export type TaskWithRelations = Task & {
   customer?: Customer;
   assignedUser?: User;
   createdByUser?: User;
+  updates?: TaskUpdateWithUser[];
+};
+
+export type TaskUpdateWithUser = TaskUpdate & {
+  updatedByUser?: User;
 };
 
 export type UserWithMetrics = User & {

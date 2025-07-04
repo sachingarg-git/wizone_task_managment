@@ -2,6 +2,7 @@ import {
   users,
   customers,
   tasks,
+  taskUpdates,
   performanceMetrics,
   type User,
   type UpsertUser,
@@ -10,6 +11,9 @@ import {
   type Task,
   type InsertTask,
   type TaskWithRelations,
+  type TaskUpdate,
+  type InsertTaskUpdate,
+  type TaskUpdateWithUser,
   type PerformanceMetrics,
   type InsertPerformanceMetrics,
   type UserWithMetrics,
@@ -47,6 +51,11 @@ export interface IStorage {
     inProgress: number;
     completed: number;
   }>;
+  
+  // Task update operations
+  createTaskUpdate(update: InsertTaskUpdate): Promise<TaskUpdate>;
+  getTaskUpdates(taskId: number): Promise<TaskUpdateWithUser[]>;
+  uploadTaskFiles(taskId: number, files: string[]): Promise<void>;
   
   // Performance operations
   getPerformanceMetrics(userId: string, month?: number, year?: number): Promise<PerformanceMetrics[]>;
@@ -199,10 +208,14 @@ export class DatabaseStorage implements IStorage {
     
     if (!result) return undefined;
     
+    // Get task updates with user details
+    const updates = await this.getTaskUpdates(id);
+    
     return {
       ...result.tasks,
       customer: result.customers || undefined,
       assignedUser: result.users || undefined,
+      updates,
     };
   }
 
@@ -467,6 +480,43 @@ export class DatabaseStorage implements IStorage {
       totalCustomers: Number(customerCount.count),
       activeUsers: Number(userCount.count),
     };
+  }
+
+  // Task update operations
+  async createTaskUpdate(update: InsertTaskUpdate): Promise<TaskUpdate> {
+    const [taskUpdate] = await db
+      .insert(taskUpdates)
+      .values(update)
+      .returning();
+    return taskUpdate;
+  }
+
+  async getTaskUpdates(taskId: number): Promise<TaskUpdateWithUser[]> {
+    const result = await db
+      .select({
+        update: taskUpdates,
+        updatedByUser: users,
+      })
+      .from(taskUpdates)
+      .leftJoin(users, eq(taskUpdates.updatedBy, users.id))
+      .where(eq(taskUpdates.taskId, taskId))
+      .orderBy(desc(taskUpdates.createdAt));
+    
+    return result.map(row => ({
+      ...row.update,
+      updatedByUser: row.updatedByUser || undefined,
+    }));
+  }
+
+  async uploadTaskFiles(taskId: number, files: string[]): Promise<void> {
+    // Create a file upload update record
+    await this.createTaskUpdate({
+      taskId,
+      updatedBy: "system", // Will be replaced with actual user ID in routes
+      updateType: "file_uploaded",
+      notes: `${files.length} file(s) uploaded`,
+      attachments: files,
+    });
   }
 }
 

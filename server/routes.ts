@@ -178,6 +178,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const task = await storage.updateTask(id, updateData);
       
+      // Create audit trail for task update
+      const notes = (req.body as any).notes;
+      const oldStatus = currentTask.status;
+      const newStatus = updateData.status;
+      
+      // Log status change
+      if (newStatus && oldStatus !== newStatus) {
+        await storage.createTaskUpdate({
+          taskId: id,
+          updatedBy: userId,
+          updateType: 'status_change',
+          oldValue: oldStatus,
+          newValue: newStatus,
+          notes: notes || `Status changed from ${oldStatus} to ${newStatus}`,
+        });
+      }
+      
+      // Log notes if provided without status change
+      if (notes && !newStatus) {
+        await storage.createTaskUpdate({
+          taskId: id,
+          updatedBy: userId,
+          updateType: 'note_added',
+          notes: notes,
+        });
+      }
+      
       // Update performance metrics if status changed to completed
       if (updateData.status === 'completed' && task.assignedTo) {
         await storage.calculateUserPerformance(task.assignedTo);
@@ -201,6 +228,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  // Task update history routes
+  app.get('/api/tasks/:id/updates', isAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const updates = await storage.getTaskUpdates(taskId);
+      res.json(updates);
+    } catch (error) {
+      console.error("Error fetching task updates:", error);
+      res.status(500).json({ message: "Failed to fetch task updates" });
+    }
+  });
+
+  // File upload route for task attachments
+  app.post('/api/tasks/:id/upload', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { files, notes } = req.body;
+      
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ message: "No files provided" });
+      }
+      
+      // Create file upload audit record
+      await storage.createTaskUpdate({
+        taskId,
+        updatedBy: userId,
+        updateType: 'file_uploaded',
+        notes: notes || `${files.length} file(s) uploaded`,
+        attachments: files,
+      });
+      
+      res.json({ message: "Files uploaded successfully", count: files.length });
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      res.status(500).json({ message: "Failed to upload files" });
     }
   });
 
