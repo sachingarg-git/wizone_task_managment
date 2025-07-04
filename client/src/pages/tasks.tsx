@@ -24,14 +24,25 @@ import {
   Loader, 
   CheckCircle, 
   Eye, 
-  Edit 
+  Edit,
+  X
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Tasks() {
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [updateNotes, setUpdateNotes] = useState("");
+  const [taskStatus, setTaskStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -40,36 +51,10 @@ export default function Tasks() {
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks", { search: searchQuery, priority: priorityFilter, status: statusFilter }],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   const { data: taskStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/tasks/stats"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   const updateTaskMutation = useMutation({
@@ -79,6 +64,9 @@ export default function Tasks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      setSelectedTaskId(null);
+      setUpdateNotes("");
+      setTaskStatus("");
       toast({
         title: "Success",
         description: "Task updated successfully",
@@ -103,6 +91,28 @@ export default function Tasks() {
       });
     },
   });
+
+  const handleTaskIdClick = (task: any) => {
+    setSelectedTaskId(task.id);
+    setTaskStatus(task.status);
+    setUpdateNotes("");
+  };
+
+  const handleUpdateTask = () => {
+    if (!selectedTaskId) return;
+    
+    const updateData: any = {};
+    if (taskStatus) updateData.status = taskStatus;
+    if (updateNotes.trim()) updateData.notes = updateNotes.trim();
+    
+    updateTaskMutation.mutate({ id: selectedTaskId, data: updateData });
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTaskId(null);
+    setUpdateNotes("");
+    setTaskStatus("");
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
@@ -269,7 +279,14 @@ export default function Tasks() {
                   <TableBody>
                     {tasks.map((task: any) => (
                       <TableRow key={task.id}>
-                        <TableCell className="font-medium">{task.ticketNumber}</TableCell>
+                        <TableCell className="font-medium">
+                          <button
+                            onClick={() => handleTaskIdClick(task)}
+                            className="text-primary hover:text-primary/80 underline hover:no-underline font-medium"
+                          >
+                            {task.ticketNumber}
+                          </button>
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{task.customer?.name || 'Unknown Customer'}</div>
@@ -329,6 +346,60 @@ export default function Tasks() {
         isOpen={showTaskForm} 
         onClose={() => setShowTaskForm(false)} 
       />
+
+      {/* Inline Task Update Modal */}
+      <Dialog open={!!selectedTaskId} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Update Task #{selectedTaskId ? tasks?.find((t: any) => t.id === selectedTaskId)?.ticketNumber : ''}</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={handleCloseModal}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Status</label>
+              <Select value={taskStatus} onValueChange={setTaskStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Update Notes</label>
+              <Textarea
+                value={updateNotes}
+                onChange={(e) => setUpdateNotes(e.target.value)}
+                placeholder="Add update notes or comments..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button variant="outline" onClick={handleCloseModal}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdateTask}
+                disabled={updateTaskMutation.isPending}
+                className="gradient-blue text-white"
+              >
+                {updateTaskMutation.isPending ? "Updating..." : "Update Task"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
