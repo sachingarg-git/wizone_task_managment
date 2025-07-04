@@ -159,7 +159,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (updateData.status === 'completed' && currentTask.status !== 'completed') {
           updateData.completionTime = new Date();
-          updateData.createdBy = userId; // Set who resolved the task
+          
+          // Handle notes/resolution from the frontend
+          const notes = (req.body as any).notes;
+          if (notes) {
+            updateData.resolution = `${notes} (Resolved by user ${userId} on ${new Date().toISOString()})`;
+          } else if (!updateData.resolution) {
+            updateData.resolution = `Task completed by user ${userId} on ${new Date().toISOString()}`;
+          }
           
           // Calculate actual time if start time exists
           if (currentTask.startTime) {

@@ -101,11 +101,30 @@ export default function Tasks() {
   const handleUpdateTask = () => {
     if (!selectedTaskId) return;
     
+    // Validation for completed status
+    if (taskStatus === 'completed' && !updateNotes.trim()) {
+      toast({
+        title: "Resolution Required",
+        description: "Please provide resolution notes when marking task as completed",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const updateData: any = {};
     if (taskStatus) updateData.status = taskStatus;
-    if (updateNotes.trim()) updateData.notes = updateNotes.trim();
+    if (updateNotes.trim()) {
+      updateData.notes = updateNotes.trim();
+      // Also update description if it's general notes
+      if (taskStatus !== 'completed') {
+        updateData.description = updateNotes.trim();
+      }
+    }
     
-    updateTaskMutation.mutate({ id: selectedTaskId, data: updateData });
+    updateTaskMutation.mutate({ 
+      id: selectedTaskId, 
+      data: updateData 
+    });
   };
 
   const handleCloseModal = () => {
@@ -476,35 +495,99 @@ export default function Tasks() {
                     </div>
                   )}
 
+                  {/* Resolution */}
+                  {task.resolution && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-600">Resolution Details</label>
+                      <p className="text-sm p-3 bg-green-50 rounded border border-green-200">{task.resolution}</p>
+                    </div>
+                  )}
+
                   {/* Update Section */}
                   <div className="space-y-4 border-t pt-4">
                     <h4 className="font-medium text-gray-900">Update Task</h4>
                     
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Status</label>
-                      <Select value={taskStatus} onValueChange={setTaskStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Status *</label>
+                        <Select value={taskStatus} onValueChange={setTaskStatus}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-yellow-500" />
+                                Pending
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="in_progress">
+                              <div className="flex items-center gap-2">
+                                <Loader className="w-4 h-4 text-blue-500" />
+                                In Progress
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="completed">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                Completed
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="cancelled">
+                              <div className="flex items-center gap-2">
+                                <X className="w-4 h-4 text-red-500" />
+                                Cancelled
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Current Status</label>
+                        <div className="p-2 bg-gray-50 rounded border">
+                          <Badge className={getStatusColor(task.status)}>
+                            {task.status?.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Update Notes</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        {taskStatus === 'completed' ? 'Resolution Notes *' : 'Update Notes'}
+                      </label>
                       <Textarea
                         value={updateNotes}
                         onChange={(e) => setUpdateNotes(e.target.value)}
-                        placeholder="Add update notes, resolution details, or progress comments..."
+                        placeholder={
+                          taskStatus === 'completed' 
+                            ? "Describe how the issue was resolved..." 
+                            : "Add progress updates, findings, or comments..."
+                        }
                         rows={4}
                         className="resize-none"
                       />
+                      {taskStatus === 'completed' && (
+                        <p className="text-xs text-gray-500">
+                          Required when marking task as completed
+                        </p>
+                      )}
                     </div>
+
+                    {/* Status Change Warnings */}
+                    {taskStatus && taskStatus !== task.status && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                        <p className="text-sm text-blue-700">
+                          {taskStatus === 'in_progress' && task.status === 'pending' && 
+                            "⏱️ Start time will be automatically recorded"}
+                          {taskStatus === 'completed' && task.status !== 'completed' && 
+                            "✅ Completion time will be recorded and duration calculated"}
+                          {taskStatus === 'cancelled' && 
+                            "❌ Task will be marked as cancelled"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex justify-end space-x-3 pt-4 border-t">
@@ -513,10 +596,17 @@ export default function Tasks() {
                     </Button>
                     <Button 
                       onClick={handleUpdateTask}
-                      disabled={updateTaskMutation.isPending}
+                      disabled={updateTaskMutation.isPending || (!taskStatus && !updateNotes.trim())}
                       className="gradient-blue text-white"
                     >
-                      {updateTaskMutation.isPending ? "Updating..." : "Update Task"}
+                      {updateTaskMutation.isPending ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin" />
+                          Updating...
+                        </div>
+                      ) : (
+                        taskStatus === 'completed' ? "Complete Task" : "Update Task"
+                      )}
                     </Button>
                   </div>
                 </>
