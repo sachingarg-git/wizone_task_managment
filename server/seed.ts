@@ -56,6 +56,24 @@ export async function seedDatabase() {
       isActive: true,
     },
     {
+      id: "backend001",
+      email: "backend@taskflow.com",
+      firstName: "Alex",
+      lastName: "Kumar",
+      role: "backend_engineer",
+      department: "Backend Systems",
+      isActive: true,
+    },
+    {
+      id: "field001",
+      email: "field@taskflow.com",
+      firstName: "Maria",
+      lastName: "Garcia",
+      role: "field_engineer",
+      department: "Field Operations",
+      isActive: true,
+    },
+    {
       id: "support001",
       email: "support@taskflow.com",
       firstName: "James",
@@ -169,7 +187,7 @@ export async function seedDatabase() {
 
   const priorities = ["high", "medium", "low"];
   const statuses = ["pending", "in_progress", "completed", "cancelled"];
-  const engineers = ["engineer001", "engineer002", "manager001"];
+  const engineers = ["engineer001", "engineer002", "manager001", "backend001", "field001"];
 
   // Generate 100 tasks
   const tasks100 = [];

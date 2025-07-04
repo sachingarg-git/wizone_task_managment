@@ -102,6 +102,8 @@ export default function UsersPage() {
       case 'admin': return 'bg-error/10 text-error';
       case 'manager': return 'bg-purple-100 text-purple-800';
       case 'engineer': return 'bg-primary/10 text-primary';
+      case 'backend_engineer': return 'bg-blue-100 text-blue-800';
+      case 'field_engineer': return 'bg-green-100 text-green-800';
       case 'support': return 'bg-success/10 text-success';
       default: return 'bg-gray-100 text-gray-700';
     }
@@ -280,13 +282,17 @@ export default function UsersPage() {
                             >
                               <SelectTrigger className="w-32">
                                 <Badge className={getRoleColor(user.role)}>
-                                  {user.role}
+                                  {user.role === 'backend_engineer' ? 'Backend Engineer' : 
+                                   user.role === 'field_engineer' ? 'Field Engineer' : 
+                                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                                 </Badge>
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="admin">Administrator</SelectItem>
                                 <SelectItem value="manager">Manager</SelectItem>
                                 <SelectItem value="engineer">Engineer</SelectItem>
+                                <SelectItem value="backend_engineer">Backend Engineer</SelectItem>
+                                <SelectItem value="field_engineer">Field Engineer</SelectItem>
                                 <SelectItem value="support">Support</SelectItem>
                               </SelectContent>
                             </Select>
@@ -410,6 +416,20 @@ export default function UsersPage() {
                       <p className="text-sm text-gray-600">Task execution, customer interaction</p>
                     </div>
                     <Badge className="bg-blue-100 text-blue-800">Standard</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-indigo-700">Backend Engineer</span>
+                      <p className="text-sm text-gray-600">Backend systems, API development</p>
+                    </div>
+                    <Badge className="bg-indigo-100 text-indigo-800">Technical</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-emerald-700">Field Engineer</span>
+                      <p className="text-sm text-gray-600">On-site installations, field work</p>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-800">Field</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <div>

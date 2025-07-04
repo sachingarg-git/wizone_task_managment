@@ -65,38 +65,12 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const { data: customers, isLoading: customersLoading } = useQuery({
     queryKey: ["/api/customers"],
     enabled: isOpen,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   // Fetch users for assignment dropdown
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
     enabled: isOpen,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   // Create task mutation
@@ -158,9 +132,22 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     }
   };
 
-  const engineerUsers = users?.filter((user: any) => 
-    user.role === 'engineer' || user.role === 'manager'
-  ) || [];
+  const engineerUsers = Array.isArray(users) ? users.filter((user: any) => 
+    user.role === 'engineer' || 
+    user.role === 'manager' || 
+    user.role === 'backend_engineer' || 
+    user.role === 'field_engineer'
+  ) : [];
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role?.toLowerCase()) {
+      case 'manager': return 'bg-purple-100 text-purple-800';
+      case 'engineer': return 'bg-primary/10 text-primary';
+      case 'backend_engineer': return 'bg-blue-100 text-blue-800';
+      case 'field_engineer': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -303,8 +290,10 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                             <SelectItem key={user.id} value={user.id}>
                               <div className="flex items-center justify-between w-full">
                                 <span>{user.firstName} {user.lastName}</span>
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  {user.role}
+                                <Badge className={`ml-2 text-xs ${getRoleBadgeColor(user.role)}`}>
+                                  {user.role === 'backend_engineer' ? 'Backend Engineer' : 
+                                   user.role === 'field_engineer' ? 'Field Engineer' : 
+                                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                                 </Badge>
                               </div>
                             </SelectItem>
