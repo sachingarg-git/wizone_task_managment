@@ -53,6 +53,8 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
+      customerId: 0,
+      assignedTo: "",
       priority: "medium",
       description: "",
       issueType: "",
@@ -78,7 +80,9 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     mutationFn: async (data: TaskFormData) => {
       const payload = {
         ...data,
-        visitCharges: data.visitCharges ? parseFloat(data.visitCharges) : undefined,
+        visitCharges: data.visitCharges && data.visitCharges.trim() !== "" ? parseFloat(data.visitCharges) : undefined,
+        customerId: data.customerId || undefined,
+        assignedTo: data.assignedTo || undefined,
       };
       await apiRequest("POST", "/api/tasks", payload);
     },
