@@ -386,6 +386,12 @@ export class DatabaseStorage implements IStorage {
 
   // Field engineer task operations
   async assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy: string): Promise<Task> {
+    // Get field engineer details for better update message
+    const fieldEngineer = await this.getUser(fieldEngineerId);
+    const fieldEngineerName = fieldEngineer 
+      ? `${fieldEngineer.firstName || ''} ${fieldEngineer.lastName || ''}`.trim() || fieldEngineer.email
+      : fieldEngineerId;
+
     const [task] = await db
       .update(tasks)
       .set({
@@ -396,11 +402,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, taskId))
       .returning();
 
-    // Create task update record
+    // Create task update record with detailed information
     await this.createTaskUpdate({
       taskId,
-      updateType: "status_change",
-      notes: `Task assigned to field engineer`,
+      updateType: "assignment",
+      notes: `Task moved to field team and assigned to ${fieldEngineerName} (${fieldEngineer?.email || fieldEngineerId})`,
       updatedBy: assignedBy,
     });
 
