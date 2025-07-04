@@ -725,7 +725,7 @@ export default function Tasks() {
                           <label className="text-sm font-medium text-gray-700">Current Status</label>
                           <div className="p-2 bg-gray-50 rounded border">
                             <Badge className={getStatusColor(task.status)}>
-                              {task.status?.replace('_', ' ')}
+                              {task.status ? task.status.replace('_', ' ') : 'Unknown'}
                             </Badge>
                           </div>
                         </div>
