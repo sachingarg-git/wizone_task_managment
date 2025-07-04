@@ -26,6 +26,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 const customerFormSchema = z.object({
+  customerId: z.string().min(1, "Customer ID is required"),
   name: z.string().min(1, "Customer name is required"),
   contactPerson: z.string().optional(),
   address: z.string().min(1, "Address is required"),
@@ -56,6 +57,7 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
+      customerId: "",
       name: "",
       contactPerson: "",
       address: "",
@@ -130,16 +132,19 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
         <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-1">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer ID
-                </label>
-                <Input 
-                  value="Auto-generated" 
-                  disabled 
-                  className="bg-gray-50"
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="customerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer ID *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter unique customer ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
