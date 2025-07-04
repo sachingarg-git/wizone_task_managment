@@ -84,8 +84,7 @@ export const tasks = pgTable("tasks", {
 });
 
 export const performanceMetrics = pgTable("performance_metrics", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
   totalTasks: integer("total_tasks").notNull().default(0),
@@ -154,7 +153,6 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 });
 
 export const insertPerformanceMetricsSchema = createInsertSchema(performanceMetrics).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });

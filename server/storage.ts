@@ -171,12 +171,22 @@ export class DatabaseStorage implements IStorage {
 
   // Task operations
   async getAllTasks(): Promise<TaskWithRelations[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        task: tasks,
+        customer: customers,
+        assignedUser: users,
+      })
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .orderBy(desc(tasks.createdAt));
+    
+    return result.map(row => ({
+      ...row.task,
+      customer: row.customer || undefined,
+      assignedUser: row.assignedUser || undefined,
+    }));
   }
 
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
@@ -220,28 +230,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        task: tasks,
+        customer: customers,
+        assignedUser: users,
+      })
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .where(eq(tasks.assignedTo, userId))
       .orderBy(desc(tasks.createdAt));
+    
+    return result.map(row => ({
+      ...row.task,
+      customer: row.customer || undefined,
+      assignedUser: row.assignedUser || undefined,
+    }));
   }
 
   async getTasksByCustomer(customerId: number): Promise<TaskWithRelations[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        task: tasks,
+        customer: customers,
+        assignedUser: users,
+      })
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .where(eq(tasks.customerId, customerId))
       .orderBy(desc(tasks.createdAt));
+    
+    return result.map(row => ({
+      ...row.task,
+      customer: row.customer || undefined,
+      assignedUser: row.assignedUser || undefined,
+    }));
   }
 
   async searchTasks(query: string): Promise<TaskWithRelations[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        task: tasks,
+        customer: customers,
+        assignedUser: users,
+      })
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
@@ -252,6 +286,12 @@ export class DatabaseStorage implements IStorage {
           ilike(tasks.description, `%${query}%`)
         )
       );
+    
+    return result.map(row => ({
+      ...row.task,
+      customer: row.customer || undefined,
+      assignedUser: row.assignedUser || undefined,
+    }));
   }
 
   async getTaskStats(): Promise<{
@@ -279,18 +319,16 @@ export class DatabaseStorage implements IStorage {
 
   // Performance operations
   async getPerformanceMetrics(userId: string, month?: number, year?: number): Promise<PerformanceMetrics[]> {
-    let query = db.select().from(performanceMetrics).where(eq(performanceMetrics.userId, userId));
+    let conditions = [eq(performanceMetrics.userId, userId)];
     
     if (month !== undefined && year !== undefined) {
-      query = query.where(
-        and(
-          eq(performanceMetrics.month, month),
-          eq(performanceMetrics.year, year)
-        )
-      );
+      conditions.push(eq(performanceMetrics.month, month));
+      conditions.push(eq(performanceMetrics.year, year));
     }
     
-    return await query.orderBy(desc(performanceMetrics.year), desc(performanceMetrics.month));
+    return await db.select().from(performanceMetrics)
+      .where(and(...conditions))
+      .orderBy(desc(performanceMetrics.year), desc(performanceMetrics.month));
   }
 
   async upsertPerformanceMetrics(metrics: InsertPerformanceMetrics): Promise<PerformanceMetrics> {
