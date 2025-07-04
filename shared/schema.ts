@@ -70,9 +70,10 @@ export const tasks = pgTable("tasks", {
   createdBy: varchar("created_by").references(() => users.id),
   priority: varchar("priority").notNull(), // High, Medium, Low
   issueType: varchar("issue_type").notNull(),
-  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, cancelled
+  status: varchar("status").notNull().default("pending"), // pending, start_task, in_progress, resolved, completed, cancelled
   description: text("description"),
   resolution: text("resolution"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
   startTime: timestamp("start_time"),
   completionTime: timestamp("completion_time"),
   estimatedTime: integer("estimated_time"), // in minutes

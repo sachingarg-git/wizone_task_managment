@@ -178,12 +178,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const task = await storage.updateTask(id, updateData);
-      
       // Create audit trail for task update
       const notes = (req.body as any).notes;
       const oldStatus = currentTask.status;
       const newStatus = updateData.status;
+      
+      // Implement field engineer workflow automation before updating
+      let automatedUpdate = false;
+      const assignedUser = await storage.getUser(currentTask.assignedTo || '');
+      
+      // Check if assigned to field engineer
+      if (assignedUser && assignedUser.role === 'field_engineer') {
+        // Auto-resolve tasks when field engineer marks as resolved
+        if (newStatus === 'resolved' && oldStatus !== 'resolved') {
+          updateData.resolvedBy = userId;
+          updateData.completionTime = new Date();
+          
+          // Auto-close resolved tasks after brief delay
+          setTimeout(async () => {
+            try {
+              await storage.updateTask(id, { 
+                status: 'completed',
+                resolution: updateData.resolution || `Task automatically closed after resolution by field engineer on ${new Date().toISOString()}`
+              });
+              
+              // Log auto-closure
+              await storage.createTaskUpdate({
+                taskId: id,
+                updatedBy: 'system',
+                updateType: 'status_change',
+                oldValue: 'resolved',
+                newValue: 'completed',
+                notes: 'Task automatically closed after resolution by field engineer',
+              });
+            } catch (error) {
+              console.error('Error auto-closing task:', error);
+            }
+          }, 2000); // 2 second delay for auto-closure
+          automatedUpdate = true;
+        }
+      }
+      
+      const task = await storage.updateTask(id, updateData);
       
       // Always log status updates (even if status doesn't change)
       if (newStatus) {

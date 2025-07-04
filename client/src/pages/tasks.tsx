@@ -36,7 +36,8 @@ import {
   Download,
   Paperclip,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Play
 } from "lucide-react";
 import {
   Dialog,
@@ -377,9 +378,12 @@ export default function Tasks() {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'completed': return 'bg-success/10 text-success';
-      case 'in_progress': return 'bg-info/10 text-info';
       case 'pending': return 'bg-warning/10 text-warning';
+      case 'start_task': return 'bg-blue-100 text-blue-700';
+      case 'in_progress': return 'bg-info/10 text-info';
+      case 'resolved': return 'bg-emerald-100 text-emerald-700';
+      case 'completed': return 'bg-success/10 text-success';
+      case 'cancelled': return 'bg-error/10 text-error';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -500,7 +504,9 @@ export default function Tasks() {
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="start_task">Start Task</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
@@ -827,10 +833,22 @@ export default function Tasks() {
                                   Pending
                                 </div>
                               </SelectItem>
+                              <SelectItem value="start_task">
+                                <div className="flex items-center gap-2">
+                                  <Play className="w-4 h-4 text-blue-500" />
+                                  Start Task
+                                </div>
+                              </SelectItem>
                               <SelectItem value="in_progress">
                                 <div className="flex items-center gap-2">
                                   <Loader className="w-4 h-4 text-blue-500" />
                                   In Progress
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="resolved">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                  Resolved
                                 </div>
                               </SelectItem>
                               <SelectItem value="completed">
