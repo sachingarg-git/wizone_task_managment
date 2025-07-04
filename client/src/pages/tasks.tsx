@@ -34,7 +34,8 @@ import {
   User,
   MessageSquare,
   Download,
-  Paperclip
+  Paperclip,
+  TrendingUp
 } from "lucide-react";
 import {
   Dialog,
@@ -226,13 +227,42 @@ export default function Tasks() {
   const getUpdateTypeIcon = (updateType: string) => {
     switch (updateType) {
       case 'status_change':
+      case 'status_changed':
         return <CheckCircle className="w-4 h-4 text-blue-500" />;
+      case 'priority_changed':
+        return <TrendingUp className="w-4 h-4 text-orange-500" />;
       case 'note_added':
+      case 'notes_added':
         return <MessageSquare className="w-4 h-4 text-green-500" />;
       case 'file_uploaded':
         return <Upload className="w-4 h-4 text-purple-500" />;
+      case 'task_created':
+        return <Plus className="w-4 h-4 text-blue-500" />;
+      case 'task_assigned':
+        return <User className="w-4 h-4 text-indigo-500" />;
       default:
         return <Clock className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getUpdateTypeTitle = (updateType: string) => {
+    switch (updateType) {
+      case 'status_change':
+      case 'status_changed':
+        return 'Status Updated';
+      case 'priority_changed':
+        return 'Priority Changed';
+      case 'note_added':
+      case 'notes_added':
+        return 'Notes Added';
+      case 'file_uploaded':
+        return 'Files Uploaded';
+      case 'task_created':
+        return 'Task Created';
+      case 'task_assigned':
+        return 'Task Assigned';
+      default:
+        return 'Task Updated';
     }
   };
 
@@ -633,9 +663,16 @@ export default function Tasks() {
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-2">
                                 {getUpdateTypeIcon(update.updateType)}
-                                <span className="text-sm font-medium capitalize">
-                                  {update.updateType ? update.updateType.replace('_', ' ') : 'Update'}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    {getUpdateTypeTitle(update.updateType)}
+                                  </span>
+                                  {update.updatedByUser && (
+                                    <span className="text-xs text-gray-500">
+                                      by {update.updatedByUser.firstName} {update.updatedByUser.lastName}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <div className="text-xs text-gray-500 flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
@@ -653,17 +690,29 @@ export default function Tasks() {
                               )}
                               
                               {update.notes && (
-                                <p className="text-sm text-gray-700">{update.notes}</p>
+                                <div className="text-sm text-gray-700 bg-white p-3 rounded border-l-4 border-blue-500 mt-2">
+                                  <div className="font-medium text-gray-900 mb-1">
+                                    {update.updateType === 'notes_added' || update.updateType === 'note_added' ? 'Note:' : 'Details:'}
+                                  </div>
+                                  <div className="whitespace-pre-wrap">{update.notes}</div>
+                                </div>
                               )}
                               
                               {update.attachments && update.attachments.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {update.attachments.map((file: string, index: number) => (
-                                    <div key={index} className="flex items-center gap-1 text-xs bg-blue-100 px-2 py-1 rounded">
-                                      <Paperclip className="w-3 h-3" />
-                                      File {index + 1}
-                                    </div>
-                                  ))}
+                                <div className="mt-2">
+                                  <div className="text-xs font-medium text-gray-600 mb-2">
+                                    📎 Attachments ({update.attachments.length}):
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {update.attachments.map((file: string, index: number) => (
+                                      <div key={index} className="flex items-center gap-2 text-xs bg-blue-50 border border-blue-200 px-3 py-2 rounded-md">
+                                        {getFileIcon(file)}
+                                        <span className="text-blue-800 font-medium">
+                                          {file.includes('data:') ? `Document ${index + 1}` : file}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                               
