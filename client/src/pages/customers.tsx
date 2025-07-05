@@ -36,6 +36,8 @@ export default function Customers() {
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -91,10 +93,28 @@ export default function Customers() {
   const activeCustomers = customers?.filter(c => c.status === 'active').length || 0;
   const newThisMonth = Math.floor(totalCustomers * 0.04); // Mock calculation
 
+  const handleViewCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setIsEditing(false);
+    setShowCustomerForm(true);
+  };
+
+  const handleEditCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setIsEditing(true);
+    setShowCustomerForm(true);
+  };
+
   const handleDeleteCustomer = (id: number) => {
     if (confirm("Are you sure you want to delete this customer?")) {
       deleteCustomerMutation.mutate(id);
     }
+  };
+
+  const handleCloseCustomerForm = () => {
+    setShowCustomerForm(false);
+    setSelectedCustomer(null);
+    setIsEditing(false);
   };
 
   return (
@@ -242,10 +262,20 @@ export default function Customers() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewCustomer(customer)}
+                              title="View Customer"
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditCustomer(customer)}
+                              title="Edit Customer"
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
@@ -253,6 +283,7 @@ export default function Customers() {
                               size="sm" 
                               onClick={() => handleDeleteCustomer(customer.id)}
                               className="text-error hover:text-error"
+                              title="Delete Customer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -275,7 +306,9 @@ export default function Customers() {
 
       <CustomerFormModal 
         isOpen={showCustomerForm} 
-        onClose={() => setShowCustomerForm(false)} 
+        onClose={handleCloseCustomerForm}
+        customer={selectedCustomer}
+        isEditing={isEditing}
       />
     </div>
   );

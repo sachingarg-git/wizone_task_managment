@@ -47,30 +47,31 @@ type CustomerFormData = z.infer<typeof customerFormSchema>;
 interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  customerId?: number;
+  customer?: any;
+  isEditing?: boolean;
 }
 
-export default function CustomerFormModal({ isOpen, onClose, customerId }: CustomerFormModalProps) {
+export default function CustomerFormModal({ isOpen, onClose, customer, isEditing = false }: CustomerFormModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
-      customerId: "",
-      name: "",
-      contactPerson: "",
-      address: "",
-      city: "",
-      state: "",
-      mobilePhone: "",
-      email: "",
-      servicePlan: "",
-      connectedTower: "",
-      wirelessIp: "",
-      wirelessApIp: "",
-      port: "",
-      plan: "",
+      customerId: customer?.customerId || "",
+      name: customer?.name || "",
+      contactPerson: customer?.contactPerson || "",
+      address: customer?.address || "",
+      city: customer?.city || "",
+      state: customer?.state || "",
+      mobilePhone: customer?.mobilePhone || "",
+      email: customer?.email || "",
+      servicePlan: customer?.servicePlan || "",
+      connectedTower: customer?.connectedTower || "",
+      wirelessIp: customer?.wirelessIp || "",
+      wirelessApIp: customer?.wirelessApIp || "",
+      port: customer?.port || "",
+      plan: customer?.plan || "",
     },
   });
 
@@ -108,8 +109,46 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
     },
   });
 
+  // Update customer mutation
+  const updateCustomerMutation = useMutation({
+    mutationFn: async (data: CustomerFormData) => {
+      await apiRequest("PUT", `/api/customers/${customer.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Success",
+        description: "Customer updated successfully",
+      });
+      onClose();
+      form.reset();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update customer",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: CustomerFormData) => {
-    createCustomerMutation.mutate(data);
+    if (isEditing && customer) {
+      updateCustomerMutation.mutate(data);
+    } else {
+      createCustomerMutation.mutate(data);
+    }
   };
 
   const handleClose = () => {
@@ -122,7 +161,9 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogTitle>
+              {isEditing ? "Edit Customer" : customer ? "View Customer" : "Add New Customer"}
+            </DialogTitle>
             <Button variant="ghost" size="sm" onClick={handleClose}>
               <X className="w-4 h-4" />
             </Button>
@@ -139,7 +180,11 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
                   <FormItem>
                     <FormLabel>Customer ID *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter unique customer ID" {...field} />
+                      <Input 
+                        placeholder="Enter unique customer ID" 
+                        readOnly={customer && !isEditing}
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -365,15 +410,20 @@ export default function CustomerFormModal({ isOpen, onClose, customerId }: Custo
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancel
+                  {customer && !isEditing ? "Close" : "Cancel"}
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createCustomerMutation.isPending}
-                  className="bg-primary hover:bg-blue-700"
-                >
-                  {createCustomerMutation.isPending ? "Adding..." : "Add Customer"}
-                </Button>
+                {(!customer || isEditing) && (
+                  <Button 
+                    type="submit" 
+                    disabled={createCustomerMutation.isPending || updateCustomerMutation.isPending}
+                    className="bg-primary hover:bg-blue-700"
+                  >
+                    {isEditing 
+                      ? (updateCustomerMutation.isPending ? "Updating..." : "Update Customer")
+                      : (createCustomerMutation.isPending ? "Adding..." : "Add Customer")
+                    }
+                  </Button>
+                )}
               </div>
             </form>
           </Form>
