@@ -31,6 +31,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Customer portal authentication middleware
   const isCustomerAuthenticated = (req: any, res: any, next: any) => {
+    console.log("Customer auth check:", {
+      hasSession: !!(req.session),
+      hasCustomer: !!(req.session as any)?.customer,
+      customerData: (req.session as any)?.customer ? { id: (req.session as any).customer.id, name: (req.session as any).customer.name } : null
+    });
+    
     if (!(req.session as any)?.customer) {
       return res.status(401).json({ message: "Customer not authenticated" });
     }
@@ -98,6 +104,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching customer tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Create new task (customer portal)
+  app.post('/api/customer-portal/tasks', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const { title, description, priority, issueType } = req.body;
+      
+      if (!title || !description) {
+        return res.status(400).json({ message: "Title and description are required" });
+      }
+      
+      const taskData = {
+        title,
+        description,
+        priority: priority || "medium",
+        issueType: issueType || "technical",
+        customerId,
+        status: "pending",
+        assignedTo: null, // Will be assigned by admin later
+        createdBy: `customer_${customerId}` // Track that this was created by customer
+      };
+      
+      console.log("Customer creating task:", { customerId, title, priority, issueType });
+      const task = await storage.createTask(taskData);
+      console.log("Customer task created successfully:", task.id);
+      
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Error creating customer task:", error);
+      res.status(500).json({ message: "Failed to create task" });
     }
   });
 
@@ -1423,9 +1461,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
       
+      // Store customer session
+      (req.session as any).customer = {
+        id: customer.id,
+        customerId: customer.customerId,
+        name: customer.name,
+        username: customer.username,
+        email: customer.email,
+        contactPerson: customer.contactPerson,
+        mobilePhone: customer.mobilePhone,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state
+      };
+      
       // Return customer data (without password)
       const { password: _, ...customerData } = customer;
-      console.log("Customer login successful:", customerData.id);
+      console.log("Customer login successful:", customerData.id, "Session stored");
       res.json(customerData);
     } catch (error) {
       console.error("Customer login error:", error);
