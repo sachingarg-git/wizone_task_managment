@@ -1,27 +1,21 @@
 import {
-  pgTable,
+  sqliteTable as mssqlTable,
   text,
-  varchar,
-  timestamp,
-  jsonb,
-  index,
-  serial,
   integer,
-  decimal,
-  boolean,
-  primaryKey,
-} from "drizzle-orm/pg-core";
+  real,
+  index,
+} from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table (required for Replit Auth)
-export const sessions = pgTable(
+// Session storage table (required for authentication)
+export const sessions = mssqlTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: varchar("sid", { length: 255 }).primaryKey(),
+    sess: text("sess").notNull(), // JSON data stored as TEXT in SQL Server
+    expire: datetime("expire").notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );

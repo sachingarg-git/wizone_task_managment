@@ -1,5 +1,4 @@
-import { db } from "./db";
-import { users, customers, tasks, performanceMetrics, taskUpdates } from "@shared/schema";
+import { query, initializeDb } from "./db";
 
 // Auto-run seeding when this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {

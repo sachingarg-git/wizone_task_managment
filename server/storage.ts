@@ -1,28 +1,22 @@
 import {
-  users,
-  customers,
-  tasks,
-  taskUpdates,
-  performanceMetrics,
-  domains,
-  type User,
-  type UpsertUser,
-  type Customer,
-  type InsertCustomer,
-  type Task,
-  type InsertTask,
-  type TaskWithRelations,
-  type TaskUpdate,
-  type InsertTaskUpdate,
-  type TaskUpdateWithUser,
-  type PerformanceMetrics,
-  type InsertPerformanceMetrics,
-  type UserWithMetrics,
-  type Domain,
-  type InsertDomain,
-} from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
+  User,
+  UpsertUser,
+  Customer,
+  InsertCustomer,
+  Task,
+  InsertTask,
+  TaskWithRelations,
+  TaskUpdate,
+  InsertTaskUpdate,
+  TaskUpdateWithUser,
+  PerformanceMetrics,
+  InsertPerformanceMetrics,
+  UserWithMetrics,
+  Domain,
+  InsertDomain,
+} from "@shared/types";
+import { pool, query, initializeDb } from "./db";
+import sql from 'mssql';
 
 export interface IStorage {
   // User operations
