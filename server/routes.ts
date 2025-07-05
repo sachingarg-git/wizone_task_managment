@@ -159,6 +159,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get task history for customer
+  app.get('/api/customer-portal/tasks/:taskId/history', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const customerId = (req.session as any).customer.id;
+      
+      // Verify task belongs to customer
+      const task = await storage.getTask(taskId);
+      if (!task || task.customerId !== customerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const history = await storage.getTaskUpdates(taskId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching task history:", error);
+      res.status(500).json({ message: "Failed to fetch task history" });
+    }
+  });
+
+  // Customer task update endpoint
+  app.post('/api/customer-portal/tasks/:taskId/update', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const customerId = (req.session as any).customer.id;
+      const { comment, status, priority } = req.body;
+      
+      // Verify task belongs to customer
+      const task = await storage.getTask(taskId);
+      if (!task || task.customerId !== customerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Create update record
+      const updateData: any = {
+        taskId,
+        note: comment || `Customer updated task - Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`,
+        updatedBy: `customer_${customerId}`,
+        changesMade: JSON.stringify({
+          comment: comment || null,
+          priority: priority || null,
+          status: status || null,
+          updatedBy: 'customer'
+        })
+      };
+      
+      // Update task if priority or status changed
+      if (priority && priority !== task.priority) {
+        await storage.updateTask(taskId, { priority });
+      }
+      
+      // Customer can only set status to certain values
+      if (status && ['pending', 'cancelled'].includes(status) && status !== task.status) {
+        await storage.updateTask(taskId, { status });
+      }
+      
+      // Add the update record
+      await storage.createTaskUpdate(updateData);
+      
+      console.log("Customer task update:", { customerId, taskId, comment, priority, status });
+      res.json({ message: "Task updated successfully" });
+    } catch (error) {
+      console.error("Error updating customer task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
   // Add comment to task (customer portal)
   app.post('/api/customer-portal/comments', isCustomerAuthenticated, async (req, res) => {
     try {

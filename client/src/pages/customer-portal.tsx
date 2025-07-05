@@ -76,6 +76,13 @@ export default function CustomerPortal() {
     priority: "medium",
     issueType: "technical"
   });
+  const [showTaskDetails, setShowTaskDetails] = useState(false);
+  const [showUpdateTask, setShowUpdateTask] = useState(false);
+  const [updateTaskForm, setUpdateTaskForm] = useState({
+    comment: "",
+    status: "",
+    priority: ""
+  });
   const { toast } = useToast();
 
   // Check if customer is already logged in
@@ -127,17 +134,50 @@ export default function CustomerPortal() {
     },
   });
 
-  // Fetch customer tasks
+  // Fetch customer tasks with real-time updates (every 5 seconds)
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<CustomerTask[]>({
     queryKey: [`/api/customer-portal/tasks`],
     enabled: !!customerUser,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+  });
+
+  // Fetch task history when a task is selected
+  const { data: taskHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/history`],
+    enabled: !!selectedTask,
+    refetchInterval: 3000, // Real-time history updates every 3 seconds
   });
 
   // Fetch task comments
   const { data: comments = [] } = useQuery<CustomerComment[]>({
     queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/comments`],
     enabled: !!selectedTask,
+  });
+
+  // Customer task update mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: async (updateData: any) => {
+      const response = await fetch(`/api/customer-portal/tasks/${selectedTask?.id}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error("Failed to update task");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/customer-portal/tasks`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/history`] });
+      setShowUpdateTask(false);
+      setUpdateTaskForm({ comment: "", status: "", priority: "" });
+      toast({ title: "Task updated successfully!" });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to update task",
+        variant: "destructive",
+      });
+    },
   });
 
   // Add comment mutation
@@ -436,7 +476,15 @@ export default function CustomerPortal() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="font-semibold text-lg">{task.title}</h3>
-                          <p className="text-sm text-gray-500">Ticket #{task.ticketNumber}</p>
+                          <button 
+                            onClick={() => {
+                              setSelectedTask(task);
+                              setShowTaskDetails(true);
+                            }}
+                            className="text-sm text-cyan-600 hover:text-cyan-800 font-medium underline cursor-pointer"
+                          >
+                            Ticket #{task.ticketNumber}
+                          </button>
                         </div>
                         <div className="flex gap-2">
                           <Badge className={getPriorityColor(task.priority)}>
@@ -650,6 +698,206 @@ export default function CustomerPortal() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Task Details Modal with History and Update */}
+        <Dialog open={showTaskDetails} onOpenChange={setShowTaskDetails}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-cyan-600" />
+                Ticket #{selectedTask?.ticketNumber} - {selectedTask?.title}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedTask && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Task Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Task Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-gray-500">Priority</Label>
+                        <Badge className={getPriorityColor(selectedTask.priority)}>
+                          {selectedTask.priority}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-gray-500">Status</Label>
+                        <Badge className={getStatusColor(selectedTask.status)}>
+                          {selectedTask.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm text-gray-500">Issue Type</Label>
+                      <p className="font-medium">{selectedTask.issueType}</p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm text-gray-500">Assigned Engineer</Label>
+                      <p className="font-medium">
+                        {selectedTask.assignedUser ? 
+                          `${selectedTask.assignedUser.firstName} ${selectedTask.assignedUser.lastName}` : 
+                          "Not assigned yet"
+                        }
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm text-gray-500">Description</Label>
+                      <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                        {selectedTask.description}
+                      </p>
+                    </div>
+                    
+                    {selectedTask.resolution && (
+                      <div>
+                        <Label className="text-sm text-gray-500">Resolution</Label>
+                        <p className="text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800">
+                          {selectedTask.resolution}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <Label className="text-gray-500">Created</Label>
+                        <p>{formatDistanceToNow(new Date(selectedTask.createdAt))} ago</p>
+                      </div>
+                      {selectedTask.completionTime && (
+                        <div>
+                          <Label className="text-gray-500">Completed</Label>
+                          <p>{formatDistanceToNow(new Date(selectedTask.completionTime))} ago</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Task History */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Task History</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-64">
+                      {taskHistory.length === 0 ? (
+                        <p className="text-gray-500 text-center py-4">No history available</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {taskHistory.map((update, index) => (
+                            <div key={index} className="border-l-2 border-cyan-200 pl-4 pb-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium text-sm">{update.note}</p>
+                                  <p className="text-xs text-gray-500">
+                                    by {update.updatedBy} • {formatDistanceToNow(new Date(update.createdAt))} ago
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Customer Update Section */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Update This Ticket
+                  <Button
+                    size="sm"
+                    onClick={() => setShowUpdateTask(!showUpdateTask)}
+                    className="bg-cyan-600 hover:bg-cyan-700"
+                  >
+                    {showUpdateTask ? "Cancel" : "Add Update"}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              
+              {showUpdateTask && (
+                <CardContent>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    updateTaskMutation.mutate(updateTaskForm);
+                  }} className="space-y-4">
+                    <div>
+                      <Label htmlFor="comment">Your Comment</Label>
+                      <Textarea
+                        id="comment"
+                        placeholder="Add your comment or update..."
+                        value={updateTaskForm.comment}
+                        onChange={(e) => setUpdateTaskForm(prev => ({ ...prev, comment: e.target.value }))}
+                        className="min-h-[100px]"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="priority">Change Priority</Label>
+                        <Select
+                          value={updateTaskForm.priority}
+                          onValueChange={(value) => setUpdateTaskForm(prev => ({ ...prev, priority: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Keep current priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="status">Update Status</Label>
+                        <Select
+                          value={updateTaskForm.status}
+                          onValueChange={(value) => setUpdateTaskForm(prev => ({ ...prev, status: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Keep current status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="cancelled">Cancel Request</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowUpdateTask(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="bg-cyan-600 hover:bg-cyan-700"
+                        disabled={updateTaskMutation.isPending}
+                      >
+                        {updateTaskMutation.isPending ? "Updating..." : "Submit Update"}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              )}
+            </Card>
           </DialogContent>
         </Dialog>
       </div>
