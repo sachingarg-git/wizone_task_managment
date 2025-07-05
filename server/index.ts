@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
-import { initializeDb } from "./db";
+import { db } from "./db.js";
 
 const app = express();
 app.use(express.json());
@@ -43,8 +43,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize SQL Server connection first
-  await initializeDb();
+  // Database connection is automatically established via Drizzle ORM
   
   const server = await registerRoutes(app);
 

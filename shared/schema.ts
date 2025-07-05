@@ -1,21 +1,26 @@
 import {
-  sqliteTable as mssqlTable,
+  pgTable,
+  varchar,
   text,
   integer,
-  real,
+  serial,
+  boolean,
+  timestamp,
+  decimal,
+  primaryKey,
   index,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage table (required for authentication)
-export const sessions = mssqlTable(
+export const sessions = pgTable(
   "sessions",
   {
     sid: varchar("sid", { length: 255 }).primaryKey(),
-    sess: text("sess").notNull(), // JSON data stored as TEXT in SQL Server
-    expire: datetime("expire").notNull(),
+    sess: text("sess").notNull(), // JSON data stored as TEXT
+    expire: timestamp("expire").notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
@@ -62,6 +67,7 @@ export const customers = pgTable("customers", {
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   ticketNumber: varchar("ticket_number").unique().notNull(),
+  title: varchar("title").notNull(),
   customerId: integer("customer_id").references(() => customers.id),
   assignedTo: varchar("assigned_to").references(() => users.id),
   fieldEngineerId: varchar("field_engineer_id").references(() => users.id),
@@ -93,7 +99,7 @@ export const taskUpdates = pgTable("task_updates", {
   updateType: varchar("update_type").notNull(), // status_change, note_added, file_uploaded, description_updated
   oldValue: text("old_value"),
   newValue: text("new_value"),
-  notes: text("notes"),
+  note: text("note"),
   attachments: text("attachments").array(), // Array of file URLs/paths
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -241,6 +247,7 @@ export type TaskWithRelations = Task & {
   customer?: Customer;
   assignedUser?: User;
   createdByUser?: User;
+  fieldEngineer?: User;
   updates?: TaskUpdateWithUser[];
 };
 

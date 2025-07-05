@@ -226,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 updateType: 'status_change',
                 oldValue: 'resolved',
                 newValue: 'completed',
-                notes: 'Task automatically closed after resolution by field engineer',
+                note: 'Task automatically closed after resolution by field engineer',
               });
             } catch (error) {
               console.error('Error auto-closing task:', error);
@@ -251,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updateType: updateType,
           oldValue: oldStatus !== newStatus ? oldStatus : undefined,
           newValue: newStatus,
-          notes: updateNotes,
+          note: updateNotes,
         });
       }
       
@@ -261,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           taskId: id,
           updatedBy: userId,
           updateType: 'note_added',
-          notes: notes,
+          note: notes,
         });
       }
       
@@ -319,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskId,
         updatedBy: userId,
         updateType: 'file_uploaded',
-        notes: notes || `${files.length} file(s) uploaded`,
+        note: notes || `${files.length} file(s) uploaded`,
         attachments: files,
       });
       

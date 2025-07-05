@@ -14,9 +14,9 @@ import {
   UserWithMetrics,
   Domain,
   InsertDomain,
-} from "@shared/types";
-import { pool, query, initializeDb } from "./db";
-import sql from 'mssql';
+} from "../shared/schema.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains } from "./db.js";
+import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -431,7 +431,7 @@ export class DatabaseStorage implements IStorage {
     await this.createTaskUpdate({
       taskId,
       updateType: "assignment",
-      notes: `Task moved to field team and assigned to ${fieldEngineerName} (${fieldEngineer?.email || fieldEngineerId})`,
+      note: `Task moved to field team and assigned to ${fieldEngineerName} (${fieldEngineer?.email || fieldEngineerId})`,
       updatedBy: assignedBy,
     });
 
@@ -462,7 +462,7 @@ export class DatabaseStorage implements IStorage {
     await this.createTaskUpdate({
       taskId,
       updateType: "status_change",
-      notes: note || `Status changed to ${status}`,
+      note: note || `Status changed to ${status}`,
       updatedBy: userId,
     });
 
@@ -486,7 +486,7 @@ export class DatabaseStorage implements IStorage {
     await this.createTaskUpdate({
       taskId,
       updateType: "completion",
-      notes: completionNote,
+      note: completionNote,
       updatedBy: userId,
       attachments: files || [],
     });
@@ -698,7 +698,7 @@ export class DatabaseStorage implements IStorage {
       taskId,
       updatedBy: "system", // Will be replaced with actual user ID in routes
       updateType: "file_uploaded",
-      notes: `${files.length} file(s) uploaded`,
+      note: `${files.length} file(s) uploaded`,
       attachments: files,
     });
   }
