@@ -647,6 +647,7 @@ export default function UsersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
+                      <TableHead>User ID</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Last Active</TableHead>
@@ -682,6 +683,11 @@ export default function UsersPage() {
                                 <div className="text-sm text-gray-500">{user.email}</div>
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                              {user.id}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <Select 
