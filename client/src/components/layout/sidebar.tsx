@@ -74,14 +74,14 @@ export default function Sidebar() {
   const navigation = getNavigationForUser(user?.role || 'engineer');
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50">
+    <div className="fixed left-0 top-0 h-full w-64 bg-slate-900 shadow-xl z-50">
       {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-slate-700">
         <div className="flex items-center space-x-3">
           <img 
             src={wizoneLogoPath} 
             alt="Wizone Logo" 
-            className="w-32 h-auto object-contain"
+            className="w-32 h-auto object-contain bg-white/10 p-2 rounded-lg backdrop-blur-sm"
           />
         </div>
       </div>
@@ -96,8 +96,8 @@ export default function Sidebar() {
               variant="ghost"
               className={`w-full justify-start space-x-3 font-medium ${
                 isActive
-                  ? "text-primary bg-blue-50 hover:bg-blue-50"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "text-white bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30"
+                  : "text-gray-300 hover:bg-slate-800 hover:text-white"
               }`}
               onClick={() => setLocation(item.href)}
             >
@@ -109,7 +109,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Profile Section */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
         <div className="flex items-center space-x-3 px-4 py-3">
           {user?.profileImageUrl ? (
             <img 
@@ -118,23 +118,23 @@ export default function Sidebar() {
               className="w-10 h-10 rounded-full object-cover"
             />
           ) : (
-            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-gray-600">
+            <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-white">
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </span>
             </div>
           )}
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-white">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-xs text-gray-500">{user?.role || 'User'}</p>
+            <p className="text-xs text-gray-400">{user?.role || 'User'}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-white hover:bg-slate-800"
           >
             <LogOut className="w-4 h-4" />
           </Button>

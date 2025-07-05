@@ -37,7 +37,7 @@ function Router() {
         </>
       ) : (
         <>
-          <div className="flex min-h-screen bg-gray-50">
+          <div className="flex min-h-screen bg-slate-900">
             <Sidebar />
             <div className="flex-1 ml-64">
               <Route path="/" component={Dashboard} />

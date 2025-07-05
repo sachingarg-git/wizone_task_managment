@@ -77,7 +77,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-900">
       <Header 
         title="Dashboard"
         subtitle="Overview of your performance and tasks"
@@ -88,9 +88,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6">
-                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full bg-slate-700" />
                 </CardContent>
               </Card>
             ))
@@ -100,8 +100,8 @@ export default function Dashboard() {
                 title="Total ListTodo"
                 value={dashboardStats?.totalTasks?.toString() || "0"}
                 icon={ListTodo}
-                iconColor="text-primary"
-                iconBg="bg-blue-100"
+                iconColor="text-blue-400"
+                iconBg="bg-blue-600/20"
                 trend="+12% from last month"
                 trendUp={true}
               />
@@ -110,8 +110,8 @@ export default function Dashboard() {
                 title="Completed"
                 value={dashboardStats?.completedTasks?.toString() || "0"}
                 icon={CheckCircle}
-                iconColor="text-success"
-                iconBg="bg-green-100"
+                iconColor="text-green-400"
+                iconBg="bg-green-600/20"
                 trend={`${completionRate.toFixed(1)}% completion rate`}
                 trendUp={completionRate > 70}
               />
@@ -120,8 +120,8 @@ export default function Dashboard() {
                 title="Performance Score"
                 value={dashboardStats?.avgPerformanceScore?.toFixed(1) || "0.0"}
                 icon={Star}
-                iconColor="text-warning"
-                iconBg="bg-yellow-100"
+                iconColor="text-yellow-400"
+                iconBg="bg-yellow-600/20"
                 trend="+5.2 points this week"
                 trendUp={true}
               />
@@ -130,8 +130,8 @@ export default function Dashboard() {
                 title="Avg Response"
                 value={`${dashboardStats?.avgResponseTime?.toFixed(1) || "0.0"}h`}
                 icon={Clock}
-                iconColor="text-purple-600"
-                iconBg="bg-purple-100"
+                iconColor="text-purple-400"
+                iconBg="bg-purple-600/20"
                 trend="-20min faster than target"
                 trendUp={true}
               />
@@ -142,54 +142,54 @@ export default function Dashboard() {
         {/* Recent ListTodo and Performance Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent ListTodo */}
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
-              <CardTitle>Recent ListTodo</CardTitle>
+              <CardTitle className="text-white">Recent ListTodo</CardTitle>
             </CardHeader>
             <CardContent>
               {tasksLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
+                    <Skeleton key={i} className="h-16 w-full bg-slate-700" />
                   ))}
                 </div>
               ) : recentTasks && recentTasks.length > 0 ? (
                 <div className="space-y-4">
                   {recentTasks.map((task: any) => (
-                    <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div key={task.id} className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-slate-600">
                       <div className="flex items-center space-x-4">
                         <div className={`w-2 h-2 rounded-full ${
-                          task.priority === 'high' ? 'bg-error' :
-                          task.priority === 'medium' ? 'bg-warning' :
-                          'bg-success'
+                          task.priority === 'high' ? 'bg-red-500' :
+                          task.priority === 'medium' ? 'bg-yellow-500' :
+                          'bg-green-500'
                         }`} />
                         <div>
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-white">
                             {task.issueType || 'Task'}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-300">
                             {task.customer?.name || 'Unknown Customer'} - {task.ticketNumber}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge className={getPriorityColor(task.priority)}>
+                        <Badge className="bg-purple-600/20 text-purple-300 border border-purple-500/30">
                           {task.priority}
                         </Badge>
-                        <Badge className={getStatusColor(task.status)}>
+                        <Badge className="bg-blue-600/20 text-blue-300 border border-blue-500/30">
                           {task.status?.replace('_', ' ')}
                         </Badge>
                       </div>
                     </div>
                   ))}
-                  <Button variant="ghost" className="w-full mt-4">
+                  <Button variant="ghost" className="w-full mt-4 text-gray-300 hover:text-white hover:bg-slate-700">
                     View All ListTodo
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ListTodo className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-center py-8 text-gray-400">
+                  <ListTodo className="w-12 h-12 mx-auto mb-4 text-gray-500" />
                   <p>No recent tasks found</p>
                 </div>
               )}
@@ -197,20 +197,20 @@ export default function Dashboard() {
           </Card>
 
           {/* Performance Trend */}
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
-              <CardTitle>Performance Trend</CardTitle>
+              <CardTitle className="text-white">Performance Trend</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Task Completion Rate</span>
-                    <span className="text-sm font-bold text-gray-900">{completionRate.toFixed(1)}%</span>
+                    <span className="text-sm font-medium text-gray-300">Task Completion Rate</span>
+                    <span className="text-sm font-bold text-white">{completionRate.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-slate-600 rounded-full h-2">
                     <div 
-                      className="bg-success h-2 rounded-full transition-all duration-300" 
+                      className="bg-green-500 h-2 rounded-full transition-all duration-300" 
                       style={{ width: `${Math.min(completionRate, 100)}%` }}
                     />
                   </div>
@@ -218,14 +218,14 @@ export default function Dashboard() {
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Average Response Time</span>
-                    <span className="text-sm font-bold text-gray-900">
+                    <span className="text-sm font-medium text-gray-300">Average Response Time</span>
+                    <span className="text-sm font-bold text-white">
                       {dashboardStats?.avgResponseTime?.toFixed(1) || "0.0"} hrs
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-slate-600 rounded-full h-2">
                     <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300" 
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
                       style={{ width: "76%" }}
                     />
                   </div>
@@ -233,21 +233,21 @@ export default function Dashboard() {
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Customer Satisfaction</span>
-                    <span className="text-sm font-bold text-gray-900">4.6/5.0</span>
+                    <span className="text-sm font-medium text-gray-300">Customer Satisfaction</span>
+                    <span className="text-sm font-bold text-white">4.6/5.0</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-warning h-2 rounded-full transition-all duration-300" style={{ width: "92%" }} />
+                  <div className="w-full bg-slate-600 rounded-full h-2">
+                    <div className="bg-yellow-500 h-2 rounded-full transition-all duration-300" style={{ width: "92%" }} />
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">First Call Resolution</span>
-                    <span className="text-sm font-bold text-gray-900">73.2%</span>
+                    <span className="text-sm font-medium text-gray-300">First Call Resolution</span>
+                    <span className="text-sm font-bold text-white">73.2%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-purple-600 h-2 rounded-full transition-all duration-300" style={{ width: "73.2%" }} />
+                  <div className="w-full bg-slate-600 rounded-full h-2">
+                    <div className="bg-purple-500 h-2 rounded-full transition-all duration-300" style={{ width: "73.2%" }} />
                   </div>
                 </div>
               </div>
