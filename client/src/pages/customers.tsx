@@ -134,7 +134,7 @@ export default function Customers() {
 
   const portalAccessMutation = useMutation({
     mutationFn: async ({ customerId, username, password, portalAccess }: { customerId: number, username: string, password: string, portalAccess: boolean }) => {
-      await apiRequest(`/api/customers/${customerId}/portal-access`, "PATCH", {
+      await apiRequest("PATCH", `/api/customers/${customerId}/portal-access`, {
         username,
         password,
         portalAccess

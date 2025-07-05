@@ -1333,16 +1333,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customerId = parseInt(req.params.customerId);
       const { username, password, portalAccess } = req.body;
       
+      console.log("Updating portal access for customer:", customerId, { username, portalAccess });
+      
       const updatedCustomer = await storage.updateCustomerPortalAccess(customerId, {
         username,
         password,
         portalAccess
       });
       
+      console.log("Portal access updated successfully:", updatedCustomer.id);
       res.json(updatedCustomer);
     } catch (error) {
       console.error("Error updating customer portal access:", error);
-      res.status(500).json({ message: "Failed to update portal access" });
+      res.status(500).json({ message: "Failed to update portal access", error: error.message });
     }
   });
 
