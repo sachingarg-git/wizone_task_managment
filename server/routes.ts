@@ -679,7 +679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/domains', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const domainData = {
         ...req.body,
         ownerId: userId,

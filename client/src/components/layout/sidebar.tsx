@@ -17,20 +17,20 @@ const getNavigationForUser = (userRole: string) => {
     { name: "Dashboard", href: "/", icon: BarChart3 },
   ];
 
-  // Role-based navigation
+  // All users get portal access, but different navigation structures
   if (userRole === 'field_engineer') {
     return [
       ...baseNavigation,
-      { name: "My Tasks", href: "/portal", icon: User },
+      { name: "My Portal", href: "/portal", icon: User },
     ];
-  } else if (userRole === 'engineer') {
+  } else if (userRole === 'engineer' || userRole === 'backend_engineer') {
     return [
       ...baseNavigation,
       { name: "Task Management", href: "/tasks", icon: ListTodo },
       { name: "My Portal", href: "/portal", icon: User },
     ];
   } else {
-    // Admin, manager, and other roles get full navigation
+    // Admin, manager, and other roles get full navigation + portal
     return [
       ...baseNavigation,
       { name: "Task Management", href: "/tasks", icon: ListTodo },
@@ -39,7 +39,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Analytics", href: "/analytics", icon: BarChart3 },
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Domain Management", href: "/domains", icon: Globe },
-      { name: "Self Portal", href: "/portal", icon: User },
+      { name: "My Portal", href: "/portal", icon: User },
     ];
   }
 };
