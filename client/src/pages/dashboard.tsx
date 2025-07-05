@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import StatsCard from "@/components/ui/stats-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +13,17 @@ import {
   Star, 
   Clock, 
   TrendingUp,
-  ArrowRight 
+  ArrowRight,
+  XCircle,
+  PlayCircle,
+  PauseCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],
@@ -58,6 +63,15 @@ export default function Dashboard() {
     ? (dashboardStats.completedTasks / dashboardStats.totalTasks) * 100 
     : 0;
 
+  // Navigation function to go to tasks page with status filter
+  const navigateToTasks = (status?: string) => {
+    if (status) {
+      setLocation(`/tasks?status=${status}`);
+    } else {
+      setLocation('/tasks');
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'high': return 'bg-error/10 text-error';
@@ -85,7 +99,7 @@ export default function Dashboard() {
       
       <div className="p-6 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           {statsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="bg-slate-800 border-slate-700">
@@ -97,13 +111,15 @@ export default function Dashboard() {
           ) : (
             <>
               <StatsCard
-                title="Total ListTodo"
+                title="Total Tasks"
                 value={dashboardStats?.totalTasks?.toString() || "0"}
                 icon={ListTodo}
                 iconColor="text-blue-400"
                 iconBg="bg-blue-600/20"
                 trend="+12% from last month"
                 trendUp={true}
+                clickable={true}
+                onClick={() => navigateToTasks()}
               />
               
               <StatsCard
@@ -114,6 +130,56 @@ export default function Dashboard() {
                 iconBg="bg-green-600/20"
                 trend={`${completionRate.toFixed(1)}% completion rate`}
                 trendUp={completionRate > 70}
+                clickable={true}
+                onClick={() => navigateToTasks('completed')}
+              />
+              
+              <StatsCard
+                title="In Progress"
+                value={dashboardStats?.inProgressTasks?.toString() || "0"}
+                icon={PlayCircle}
+                iconColor="text-cyan-400"
+                iconBg="bg-cyan-600/20"
+                trend="Active tasks"
+                trendUp={true}
+                clickable={true}
+                onClick={() => navigateToTasks('in-progress')}
+              />
+              
+              <StatsCard
+                title="Cancelled"
+                value={dashboardStats?.cancelledTasks?.toString() || "0"}
+                icon={XCircle}
+                iconColor="text-red-400"
+                iconBg="bg-red-600/20"
+                trend="Cancelled tasks"
+                trendUp={false}
+                clickable={true}
+                onClick={() => navigateToTasks('cancelled')}
+              />
+              
+              <StatsCard
+                title="Pending"
+                value={dashboardStats?.pendingTasks?.toString() || "0"}
+                icon={Clock}
+                iconColor="text-orange-400"
+                iconBg="bg-orange-600/20"
+                trend="Pending tasks"
+                trendUp={false}
+                clickable={true}
+                onClick={() => navigateToTasks('pending')}
+              />
+              
+              <StatsCard
+                title="Resolved"
+                value={dashboardStats?.resolvedTasks?.toString() || "0"}
+                icon={CheckCircle}
+                iconColor="text-green-400"
+                iconBg="bg-green-600/20"
+                trend="Resolved tasks"
+                trendUp={true}
+                clickable={true}
+                onClick={() => navigateToTasks('resolved')}
               />
               
               <StatsCard

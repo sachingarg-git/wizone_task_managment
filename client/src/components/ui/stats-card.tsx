@@ -9,6 +9,8 @@ interface StatsCardProps {
   iconBg: string;
   trend?: string;
   trendUp?: boolean;
+  onClick?: () => void;
+  clickable?: boolean;
 }
 
 export default function StatsCard({
@@ -18,10 +20,15 @@ export default function StatsCard({
   iconColor,
   iconBg,
   trend,
-  trendUp
+  trendUp,
+  onClick,
+  clickable = false
 }: StatsCardProps) {
   return (
-    <Card className="bg-slate-800 border-slate-700">
+    <Card 
+      className={`bg-slate-800 border-slate-700 ${clickable ? 'cursor-pointer hover:bg-slate-700 transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -38,6 +45,11 @@ export default function StatsCard({
               {trend}
             </span>
           </p>
+        )}
+        {clickable && (
+          <div className="mt-2 text-xs text-cyan-400 font-medium">
+            Click to view details →
+          </div>
         )}
       </CardContent>
     </Card>

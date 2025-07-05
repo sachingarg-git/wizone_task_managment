@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import TaskFormModal from "@/components/modals/task-form-modal";
 import FieldEngineerAssignmentModal from "@/components/modals/field-engineer-assignment-modal";
@@ -53,6 +54,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Tasks() {
+  const [location] = useLocation();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [updateNotes, setUpdateNotes] = useState("");
@@ -67,6 +69,15 @@ export default function Tasks() {
   const [selectedTaskForField, setSelectedTaskForField] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Handle URL parameter filtering
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const statusParam = urlParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+  }, [location]);
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks", { search: searchQuery, priority: priorityFilter, status: statusFilter }],

@@ -102,6 +102,10 @@ export interface IStorage {
   getDashboardStats(): Promise<{
     totalTasks: number;
     completedTasks: number;
+    pendingTasks: number;
+    inProgressTasks: number;
+    resolvedTasks: number;
+    cancelledTasks: number;
     avgPerformanceScore: number;
     avgResponseTime: number;
     totalCustomers: number;
@@ -804,6 +808,10 @@ export class DatabaseStorage implements IStorage {
   async getDashboardStats(): Promise<{
     totalTasks: number;
     completedTasks: number;
+    pendingTasks: number;
+    inProgressTasks: number;
+    resolvedTasks: number;
+    cancelledTasks: number;
     avgPerformanceScore: number;
     avgResponseTime: number;
     totalCustomers: number;
@@ -813,6 +821,10 @@ export class DatabaseStorage implements IStorage {
       .select({
         totalTasks: count(),
         completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+        pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
+        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in-progress' then 1 end)`,
+        resolvedTasks: sql<number>`count(case when ${tasks.status} = 'resolved' then 1 end)`,
+        cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
       })
       .from(tasks);
 
@@ -836,6 +848,10 @@ export class DatabaseStorage implements IStorage {
     return {
       totalTasks: Number(taskStats.totalTasks),
       completedTasks: Number(taskStats.completedTasks),
+      pendingTasks: Number(taskStats.pendingTasks),
+      inProgressTasks: Number(taskStats.inProgressTasks),
+      resolvedTasks: Number(taskStats.resolvedTasks),
+      cancelledTasks: Number(taskStats.cancelledTasks),
       avgPerformanceScore: Number(performanceStats.avgScore) || 0,
       avgResponseTime: Number(performanceStats.avgResponseTime) || 0,
       totalCustomers: Number(customerCount.count),
