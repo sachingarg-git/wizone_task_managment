@@ -1252,22 +1252,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, password } = req.body;
       
+      console.log("Customer login attempt:", { username, passwordLength: password?.length });
+      
       if (!username || !password) {
+        console.log("Missing credentials");
         return res.status(400).json({ message: "Username and password are required" });
       }
       
       const customer = await storage.getCustomerByUsername(username);
+      console.log("Customer found:", customer ? { id: customer.id, username: customer.username, portalAccess: customer.portalAccess } : "No customer found");
+      
       if (!customer || !customer.portalAccess) {
+        console.log("Customer not found or portal access denied");
         return res.status(401).json({ message: "Invalid credentials or portal access denied" });
       }
       
       // Verify password (in production, use proper password hashing)
+      console.log("Password check:", { provided: password, stored: customer.password, match: customer.password === password });
       if (customer.password !== password) {
+        console.log("Password mismatch");
         return res.status(401).json({ message: "Invalid credentials" });
       }
       
       // Return customer data (without password)
       const { password: _, ...customerData } = customer;
+      console.log("Customer login successful:", customerData.id);
       res.json(customerData);
     } catch (error) {
       console.error("Customer login error:", error);
