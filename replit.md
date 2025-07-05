@@ -189,6 +189,14 @@ TaskFlow is a comprehensive task management and performance tracking system buil
   - Implemented automatic sample data seeding with 5 records (admin user, customers, field engineers)
   - Fixed mssql package import issues with proper ConnectionPool destructuring
   - System now production-ready for automatic database provisioning on any SQL Server
+- July 05, 2025. Login authentication and password reset fixes:
+  - Fixed critical password hashing inconsistency between user creation and authentication systems
+  - Resolved "require is not defined" errors in ES module environment by using proper dynamic imports
+  - Updated all password operations to use consistent hashing format (hash.salt)
+  - Cleaned up duplicate admin users with conflicting password formats
+  - Fixed user "manpreet" login credentials to work with password "admin123"
+  - Updated both user creation and password reset endpoints to use unified hashPassword function
+  - Exported hashPassword function from auth module for consistent usage across application
 
 ## User Preferences
 

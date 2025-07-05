@@ -605,8 +605,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash the password using the same function as auth
-      const { hashPassword } = require("./auth");
-      const hashedPassword = await hashPassword(password);
+      const authModule = await import("./auth.js");
+      const hashedPassword = await authModule.hashPassword(password);
       
       const userData = {
         id,
@@ -727,8 +727,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash the new password using the same function as auth
-      const { hashPassword } = require("./auth");
-      const hashedPassword = await hashPassword(newPassword);
+      const authModule = await import("./auth.js");
+      const hashedPassword = await authModule.hashPassword(newPassword);
       
       // Update user password in storage
       const user = await storage.updateUser(id, { 
