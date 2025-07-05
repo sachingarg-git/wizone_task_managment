@@ -81,12 +81,21 @@ export default function CustomerPortal() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
+      console.log('Making API call to:', "/api/customer-portal/auth/login");
+      console.log('With credentials:', credentials);
+      
       const response = await fetch("/api/customer-portal/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response:', errorText);
         throw new Error("Invalid credentials");
       }
       return response.json();
@@ -145,6 +154,8 @@ export default function CustomerPortal() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Customer portal login attempt:', loginForm);
+    console.log('API endpoint: /api/customer-portal/auth/login');
     loginMutation.mutate(loginForm);
   };
 
