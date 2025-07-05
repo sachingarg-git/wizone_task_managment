@@ -93,6 +93,7 @@ export default function FieldTaskWorkflowModal({
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [showCompletion, setShowCompletion] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [completionNote, setCompletionNote] = useState<string>("");
 
   // Early return if no task
   if (!task) {
@@ -186,7 +187,18 @@ export default function FieldTaskWorkflowModal({
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
     statusForm.setValue("status", value);
-    setShowCompletion(value === "completed");
+    if (value === "completed") {
+      setShowCompletion(true);
+      // Reset completion state
+      setCompletionNote("");
+      setUploadedFiles([]);
+      completionForm.reset({
+        completionNote: "",
+        files: [],
+      });
+    } else {
+      setShowCompletion(false);
+    }
   };
 
   const handleClose = () => {
@@ -195,6 +207,7 @@ export default function FieldTaskWorkflowModal({
     setSelectedStatus("");
     setShowCompletion(false);
     setUploadedFiles([]);
+    setCompletionNote("");
     onClose();
   };
 
@@ -206,9 +219,19 @@ export default function FieldTaskWorkflowModal({
     statusMutation.mutate(data);
   };
 
-  const onCompletionSubmit = (data: CompletionFormData) => {
+  const onCompletionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completionNote.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Completion note is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     completionMutation.mutate({
-      ...data,
+      completionNote: completionNote.trim(),
       files: uploadedFiles,
     });
   };
@@ -365,8 +388,7 @@ export default function FieldTaskWorkflowModal({
             </form>
           </Form>
         ) : (
-          <Form {...completionForm}>
-            <form onSubmit={completionForm.handleSubmit(onCompletionSubmit)} className="space-y-4">
+          <form onSubmit={onCompletionSubmit} className="space-y-4">
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -378,28 +400,21 @@ export default function FieldTaskWorkflowModal({
               </div>
 
               {/* Completion Note */}
-              <FormField
-                control={completionForm.control}
-                name="completionNote"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Completion Notes <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Describe what was completed, any issues resolved, and any follow-up needed..."
-                        rows={4}
-                        value={field.value || ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Completion Notes <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  placeholder="Describe what was completed, any issues resolved, and any follow-up needed..."
+                  rows={4}
+                  value={completionNote}
+                  onChange={(e) => setCompletionNote(e.target.value)}
+                  className="w-full"
+                />
+                {!completionNote && (
+                  <p className="text-sm text-red-500">Completion note is required</p>
                 )}
-              />
+              </div>
 
               {/* File Upload */}
               <div className="space-y-2">
@@ -452,7 +467,6 @@ export default function FieldTaskWorkflowModal({
                 </Button>
               </div>
             </form>
-          </Form>
         )}
       </DialogContent>
     </Dialog>
