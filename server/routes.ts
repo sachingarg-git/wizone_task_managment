@@ -24,6 +24,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create default users
   await createDefaultUsers();
 
+  // Customer portal redirect route
+  app.get('/customer-portal', (req, res) => {
+    res.redirect('/#/customer-portal');
+  });
+
   // Authentication middleware
   const isAuthenticated = (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
