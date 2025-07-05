@@ -1775,6 +1775,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tracking/office-locations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can create office locations" });
+      }
+
+      const office = await storage.createOfficeLocation(req.body);
+      res.json(office);
+    } catch (error) {
+      console.error("Error creating office location:", error);
+      res.status(500).json({ message: "Failed to create office location" });
+    }
+  });
+
+  app.patch("/api/tracking/office-locations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can update office locations" });
+      }
+
+      const officeId = parseInt(req.params.id);
+      const office = await storage.updateOfficeLocation(officeId, req.body);
+      res.json(office);
+    } catch (error) {
+      console.error("Error updating office location:", error);
+      res.status(500).json({ message: "Failed to update office location" });
+    }
+  });
+
+  app.delete("/api/tracking/office-locations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can delete office locations" });
+      }
+
+      const officeId = parseInt(req.params.id);
+      await storage.deleteOfficeLocation(officeId);
+      res.json({ message: "Office location deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting office location:", error);
+      res.status(500).json({ message: "Failed to delete office location" });
+    }
+  });
+
   app.get("/api/tracking/main-office", isAuthenticated, async (req, res) => {
     try {
       const mainOffice = await storage.getMainOffice();

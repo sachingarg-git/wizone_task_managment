@@ -1493,7 +1493,7 @@ export class DatabaseStorage implements IStorage {
 
   // Office location operations
   async getOfficeLocations(): Promise<OfficeLocation[]> {
-    return await db.select().from(officeLocations).where(eq(officeLocations.isActive, true));
+    return await db.select().from(officeLocations).orderBy(desc(officeLocations.isMainOffice));
   }
 
   async getMainOffice(): Promise<OfficeLocation | undefined> {
@@ -1510,6 +1510,19 @@ export class DatabaseStorage implements IStorage {
       .values(officeData)
       .returning();
     return office;
+  }
+
+  async updateOfficeLocation(id: number, updateData: Partial<InsertOfficeLocation>): Promise<OfficeLocation> {
+    const [office] = await db
+      .update(officeLocations)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(officeLocations.id, id))
+      .returning();
+    return office;
+  }
+
+  async deleteOfficeLocation(id: number): Promise<void> {
+    await db.delete(officeLocations).where(eq(officeLocations.id, id));
   }
 
   // Engineer tracking history operations
