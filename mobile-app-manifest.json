@@ -1,0 +1,19 @@
+{
+  "name": "Wizone IT Support Portal",
+  "short_name": "Wizone",
+  "description": "Mobile app for IT support professionals",
+  "version": "1.0.0",
+  "package_name": "com.wizone.itsupport",
+  "orientation": "portrait",
+  "theme_color": "#22d3ee",
+  "background_color": "#ffffff",
+  "start_url": "/",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/mobile/assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
