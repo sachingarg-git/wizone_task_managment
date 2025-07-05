@@ -90,8 +90,8 @@ export default function CustomerPortal() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      console.log('Making API call to:', "/api/customer-portal/auth/login");
-      console.log('With credentials:', credentials);
+      console.log('🔵 CUSTOMER PORTAL LOGIN - Making API call to:', "/api/customer-portal/auth/login");
+      console.log('🔵 CUSTOMER PORTAL LOGIN - With credentials:', credentials);
       
       const response = await fetch("/api/customer-portal/auth/login", {
         method: "POST",
@@ -99,15 +99,17 @@ export default function CustomerPortal() {
         body: JSON.stringify(credentials),
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      console.log('🔵 CUSTOMER PORTAL LOGIN - Response status:', response.status);
+      console.log('🔵 CUSTOMER PORTAL LOGIN - Response ok:', response.ok);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('Error response:', errorText);
+        console.log('🔵 CUSTOMER PORTAL LOGIN - Error response:', errorText);
         throw new Error("Invalid credentials");
       }
-      return response.json();
+      const result = await response.json();
+      console.log('🔵 CUSTOMER PORTAL LOGIN - Success result:', result);
+      return result;
     },
     onSuccess: (customer) => {
       setCustomerUser(customer);
@@ -196,8 +198,8 @@ export default function CustomerPortal() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Customer portal login attempt:', loginForm);
-    console.log('API endpoint: /api/customer-portal/auth/login');
+    console.log('🔵 CUSTOMER PORTAL FORM SUBMIT - Login form data:', loginForm);
+    console.log('🔵 CUSTOMER PORTAL FORM SUBMIT - About to call mutation');
     loginMutation.mutate(loginForm);
   };
 
