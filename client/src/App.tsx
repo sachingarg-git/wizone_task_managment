@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -22,6 +22,12 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  // Customer portal should be completely isolated from main app authentication
+  if (location === '/customer-portal') {
+    return <CustomerPortal />;
+  }
 
   return (
     <Switch>
@@ -35,7 +41,6 @@ function Router() {
       ) : !isAuthenticated ? (
         <>
           <Route path="/login" component={LoginPage} />
-          <Route path="/customer-portal" component={CustomerPortal} />
           <Route path="/" component={LoginPage} />
         </>
       ) : (
