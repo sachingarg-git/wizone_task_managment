@@ -1764,6 +1764,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Office locations and tracking endpoints
+  app.get("/api/tracking/office-locations", isAuthenticated, async (req, res) => {
+    try {
+      const offices = await storage.getOfficeLocations();
+      res.json(offices);
+    } catch (error) {
+      console.error("Error fetching office locations:", error);
+      res.status(500).json({ message: "Failed to fetch office locations" });
+    }
+  });
+
+  app.get("/api/tracking/main-office", isAuthenticated, async (req, res) => {
+    try {
+      const mainOffice = await storage.getMainOffice();
+      res.json(mainOffice);
+    } catch (error) {
+      console.error("Error fetching main office:", error);
+      res.status(500).json({ message: "Failed to fetch main office" });
+    }
+  });
+
+  // Engineer tracking history endpoints
+  app.get("/api/tracking/history/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { limit } = req.query;
+      const trackingHistory = await storage.getEngineerTrackingHistory(
+        userId, 
+        limit ? parseInt(limit as string) : 100
+      );
+      res.json(trackingHistory);
+    } catch (error) {
+      console.error("Error fetching tracking history:", error);
+      res.status(500).json({ message: "Failed to fetch tracking history" });
+    }
+  });
+
+  app.post("/api/tracking/location", isAuthenticated, async (req, res) => {
+    try {
+      const trackingData = req.body;
+      
+      // Calculate distance from office if coordinates provided
+      if (trackingData.latitude && trackingData.longitude) {
+        const mainOffice = await storage.getMainOffice();
+        if (mainOffice) {
+          const distance = calculateDistance(
+            parseFloat(trackingData.latitude),
+            parseFloat(trackingData.longitude),
+            parseFloat(mainOffice.latitude),
+            parseFloat(mainOffice.longitude)
+          );
+          trackingData.distanceFromOffice = distance.toFixed(2);
+        }
+      }
+
+      const tracking = await storage.createTrackingHistoryEntry(trackingData);
+      res.json(tracking);
+    } catch (error) {
+      console.error("Error creating tracking entry:", error);
+      res.status(500).json({ message: "Failed to create tracking entry" });
+    }
+  });
+
+  app.get("/api/tracking/task/:taskId", isAuthenticated, async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const trackingHistory = await storage.getTrackingHistoryByTask(parseInt(taskId));
+      res.json(trackingHistory);
+    } catch (error) {
+      console.error("Error fetching task tracking history:", error);
+      res.status(500).json({ message: "Failed to fetch task tracking history" });
+    }
+  });
+
+  app.get("/api/tracking/stats/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const stats = await storage.getTrackingStatsByUser(
+        userId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching tracking stats:", error);
+      res.status(500).json({ message: "Failed to fetch tracking stats" });
+    }
+  });
+
+  // Utility function to calculate distance between two coordinates
+  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
+  }
+
+  function toRadians(degrees: number): number {
+    return degrees * (Math.PI/180);
+  }
+
   const httpServer = createServer(app);
   return httpServer;
 }

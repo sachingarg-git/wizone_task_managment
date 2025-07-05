@@ -515,6 +515,20 @@ export const userLocations = pgTable("user_locations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Office locations for distance calculations
+export const officeLocations = pgTable("office_locations", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  address: text("address"),
+  isMainOffice: boolean("is_main_office").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Geofencing zones (office, customer locations, service areas)
 export const geofenceZones = pgTable("geofence_zones", {
   id: serial("id").primaryKey(),
@@ -548,6 +562,24 @@ export const geofenceEvents = pgTable("geofence_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Engineer tracking history for detailed analysis
+export const engineerTrackingHistory = pgTable("engineer_tracking_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  distanceFromOffice: decimal("distance_from_office", { precision: 8, scale: 2 }),
+  distanceFromCustomer: decimal("distance_from_customer", { precision: 8, scale: 2 }),
+  movementType: varchar("movement_type"), // traveling_to_customer, at_customer_location, returning_to_office, break, other
+  speedKmh: decimal("speed_kmh", { precision: 6, scale: 2 }),
+  accuracy: decimal("accuracy", { precision: 8, scale: 2 }),
+  batteryLevel: integer("battery_level"),
+  networkStatus: varchar("network_status"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Trip tracking for field engineers
 export const tripTracking = pgTable("trip_tracking", {
   id: serial("id").primaryKey(),
@@ -570,13 +602,15 @@ export const tripTracking = pgTable("trip_tracking", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Insert schemas for geofencing
+// Insert schemas for geofencing and tracking
+export const insertOfficeLocationSchema = createInsertSchema(officeLocations);
 export const insertUserLocationSchema = createInsertSchema(userLocations);
 export const insertGeofenceZoneSchema = createInsertSchema(geofenceZones);
 export const insertGeofenceEventSchema = createInsertSchema(geofenceEvents);
+export const insertEngineerTrackingHistorySchema = createInsertSchema(engineerTrackingHistory);
 export const insertTripTrackingSchema = createInsertSchema(tripTracking);
 
-// Types for geofencing
+// Types for geofencing and tracking
 export type UserLocation = typeof userLocations.$inferSelect;
 export type InsertUserLocation = z.infer<typeof insertUserLocationSchema>;
 
@@ -588,6 +622,12 @@ export type InsertGeofenceEvent = z.infer<typeof insertGeofenceEventSchema>;
 
 export type TripTracking = typeof tripTracking.$inferSelect;
 export type InsertTripTracking = z.infer<typeof insertTripTrackingSchema>;
+
+export type OfficeLocation = typeof officeLocations.$inferSelect;
+export type InsertOfficeLocation = z.infer<typeof insertOfficeLocationSchema>;
+
+export type EngineerTrackingHistory = typeof engineerTrackingHistory.$inferSelect;
+export type InsertEngineerTrackingHistory = z.infer<typeof insertEngineerTrackingHistorySchema>;
 
 // Extended types with relations
 export type UserLocationWithRelations = UserLocation & {

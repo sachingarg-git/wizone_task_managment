@@ -42,11 +42,15 @@ import {
   TripTracking,
   InsertTripTracking,
   TripTrackingWithRelations,
+  OfficeLocation,
+  InsertOfficeLocation,
+  EngineerTrackingHistory,
+  InsertEngineerTrackingHistory,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, engineerTrackingHistory } from "./db.js";
 import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
 import postgres from "postgres";
-import { eq, desc, asc, and, or, ilike, sql, count, gte } from "drizzle-orm";
+import { eq, desc, asc, and, or, ilike, sql, count, gte, lte } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
 
 export interface IStorage {
@@ -1485,6 +1489,113 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerComment(id: number): Promise<void> {
     await db.delete(customerComments).where(eq(customerComments.id, id));
+  }
+
+  // Office location operations
+  async getOfficeLocations(): Promise<OfficeLocation[]> {
+    return await db.select().from(officeLocations).where(eq(officeLocations.isActive, true));
+  }
+
+  async getMainOffice(): Promise<OfficeLocation | undefined> {
+    const [office] = await db
+      .select()
+      .from(officeLocations)
+      .where(and(eq(officeLocations.isMainOffice, true), eq(officeLocations.isActive, true)));
+    return office;
+  }
+
+  async createOfficeLocation(officeData: InsertOfficeLocation): Promise<OfficeLocation> {
+    const [office] = await db
+      .insert(officeLocations)
+      .values(officeData)
+      .returning();
+    return office;
+  }
+
+  // Engineer tracking history operations
+  async getEngineerTrackingHistory(userId: string, limit = 100): Promise<EngineerTrackingHistory[]> {
+    return await db
+      .select()
+      .from(engineerTrackingHistory)
+      .where(eq(engineerTrackingHistory.userId, userId))
+      .orderBy(desc(engineerTrackingHistory.timestamp))
+      .limit(limit);
+  }
+
+  async createTrackingHistoryEntry(trackingData: InsertEngineerTrackingHistory): Promise<EngineerTrackingHistory> {
+    const [tracking] = await db
+      .insert(engineerTrackingHistory)
+      .values(trackingData)
+      .returning();
+    return tracking;
+  }
+
+  async getTrackingHistoryByTask(taskId: number): Promise<EngineerTrackingHistory[]> {
+    return await db
+      .select()
+      .from(engineerTrackingHistory)
+      .where(eq(engineerTrackingHistory.taskId, taskId))
+      .orderBy(desc(engineerTrackingHistory.timestamp));
+  }
+
+  async getTrackingStatsByUser(userId: string, startDate?: Date, endDate?: Date): Promise<{
+    totalDistance: number;
+    averageSpeed: number;
+    timeAtCustomerSites: number;
+    timeInTransit: number;
+  }> {
+    let whereConditions = [eq(engineerTrackingHistory.userId, userId)];
+    
+    if (startDate) {
+      whereConditions.push(gte(engineerTrackingHistory.timestamp, startDate));
+    }
+    if (endDate) {
+      whereConditions.push(lte(engineerTrackingHistory.timestamp, endDate));
+    }
+
+    const results = await db
+      .select({
+        distanceFromOffice: engineerTrackingHistory.distanceFromOffice,
+        speedKmh: engineerTrackingHistory.speedKmh,
+        movementType: engineerTrackingHistory.movementType,
+        timestamp: engineerTrackingHistory.timestamp,
+      })
+      .from(engineerTrackingHistory)
+      .where(and(...whereConditions))
+      .orderBy(desc(engineerTrackingHistory.timestamp));
+
+    // Calculate stats from results
+    let totalDistance = 0;
+    let speedSum = 0;
+    let speedCount = 0;
+    let timeAtCustomer = 0;
+    let timeInTransit = 0;
+
+    for (let i = 0; i < results.length; i++) {
+      const current = results[i];
+      
+      if (current.distanceFromOffice) {
+        totalDistance = Math.max(totalDistance, Number(current.distanceFromOffice));
+      }
+      
+      if (current.speedKmh) {
+        speedSum += Number(current.speedKmh);
+        speedCount++;
+      }
+
+      if (current.movementType === 'at_customer_location') {
+        timeAtCustomer += 5; // Approximate 5 minutes per location record
+      } else if (current.movementType === 'traveling_to_customer') {
+        timeInTransit += 5;
+      }
+    }
+
+    return {
+      totalDistance,
+      averageSpeed: speedCount > 0 ? speedSum / speedCount : 0,
+      timeAtCustomerSites: timeAtCustomer,
+      timeInTransit,
+    };
   }
 
   // Customer system details operations
