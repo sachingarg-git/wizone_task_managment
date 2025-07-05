@@ -28,6 +28,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 const taskFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
   customerId: z.number().min(1, "Customer is required"),
   assignedTo: z.string().min(1, "Assigned engineer is required"),
   priority: z.enum(["high", "medium", "low"]),
@@ -53,6 +54,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
+      title: "",
       customerId: 0,
       assignedTo: "",
       priority: "medium",
@@ -179,6 +181,22 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                     className="bg-gray-50"
                   />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Task Title *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter task title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Priority Level *
