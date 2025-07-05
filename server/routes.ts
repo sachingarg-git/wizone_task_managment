@@ -554,6 +554,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID, email, first name, and last name are required" });
       }
       
+      // Check if user with this email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: "A user with this email already exists",
+          error: "DUPLICATE_EMAIL"
+        });
+      }
+      
+      // Check if user with this ID already exists
+      const existingUserById = await storage.getUser(id);
+      if (existingUserById) {
+        return res.status(400).json({ 
+          message: "A user with this ID already exists",
+          error: "DUPLICATE_ID"
+        });
+      }
+      
       const userData = {
         id,
         email,
@@ -568,6 +586,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(user);
     } catch (error) {
       console.error("Error creating user:", error);
+      
+      // Handle specific database constraint errors
+      if ((error as any).code === '23505') {
+        if ((error as any).constraint === 'users_email_unique') {
+          return res.status(400).json({ 
+            message: "A user with this email already exists",
+            error: "DUPLICATE_EMAIL"
+          });
+        } else if ((error as any).constraint === 'users_pkey') {
+          return res.status(400).json({ 
+            message: "A user with this ID already exists",
+            error: "DUPLICATE_ID"
+          });
+        }
+      }
+      
       res.status(500).json({ message: "Failed to create user" });
     }
   });

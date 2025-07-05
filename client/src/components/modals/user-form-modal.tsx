@@ -101,9 +101,28 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
         }, 500);
         return;
       }
+      
+      // Handle specific error messages from the server
+      let errorMessage = "Failed to create user";
+      if (error.message.includes("DUPLICATE_EMAIL") || error.message.includes("email already exists")) {
+        errorMessage = "A user with this email already exists. Please use a different email address.";
+      } else if (error.message.includes("DUPLICATE_ID") || error.message.includes("ID already exists")) {
+        errorMessage = "A user with this ID already exists. Please use a different ID.";
+      } else if (error.message.includes("400")) {
+        // Extract the actual error message from a 400 response
+        try {
+          const match = error.message.match(/{"message":"([^"]+)"/);
+          if (match && match[1]) {
+            errorMessage = match[1];
+          }
+        } catch (e) {
+          // Keep default message if parsing fails
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create user",
+        description: errorMessage,
         variant: "destructive",
       });
     },
