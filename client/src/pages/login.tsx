@@ -60,7 +60,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -68,17 +68,17 @@ export default function LoginPage() {
             <img 
               src={wizoneLogoPath} 
               alt="Wizone Logo" 
-              className="w-40 h-auto object-contain"
+              className="w-40 h-auto object-contain rounded-lg bg-white/10 p-2 backdrop-blur-sm"
             />
           </div>
-          <p className="text-gray-600 mt-2">IT Support Portal</p>
+          <p className="text-gray-300 mt-2 font-medium">IT Support Portal</p>
         </div>
 
         {/* Login Form */}
-        <Card className="bg-white shadow-xl border-0">
+        <Card className="bg-white/10 backdrop-blur-md shadow-2xl border border-white/20">
           <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
+            <CardTitle className="text-2xl text-center text-white">Welcome back</CardTitle>
+            <CardDescription className="text-center text-gray-300">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
@@ -90,13 +90,13 @@ export default function LoginPage() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel className="text-white">Username</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
                           <Input
                             placeholder="Enter your username"
-                            className="pl-10"
+                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus:bg-white/20"
                             {...field}
                           />
                         </div>
@@ -111,14 +111,14 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel className="text-white">Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
-                            className="pl-10 pr-10"
+                            className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus:bg-white/20"
                             {...field}
                           />
                           <Button
@@ -129,9 +129,9 @@ export default function LoginPage() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
+                              <EyeOff className="h-4 w-4 text-gray-300" />
                             ) : (
-                              <Eye className="h-4 w-4 text-gray-400" />
+                              <Eye className="h-4 w-4 text-gray-300" />
                             )}
                           </Button>
                         </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-lg transition-all duration-300"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? "Signing in..." : "Sign in"}
