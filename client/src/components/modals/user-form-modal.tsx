@@ -86,6 +86,8 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Also invalidate field engineers query to auto-populate new field engineers
+      queryClient.invalidateQueries({ queryKey: ["/api/field-engineers"] });
       toast({
         title: "Success",
         description: "User created successfully",

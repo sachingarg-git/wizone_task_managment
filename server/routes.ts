@@ -368,6 +368,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Multiple field engineer assignment with automatic task duplication
+  app.post('/api/tasks/:id/assign-multiple-field-engineers', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { fieldEngineerIds } = req.body;
+
+      if (!fieldEngineerIds || !Array.isArray(fieldEngineerIds) || fieldEngineerIds.length === 0) {
+        return res.status(400).json({ message: "At least one field engineer ID is required" });
+      }
+
+      const result = await storage.assignMultipleFieldEngineers(taskId, fieldEngineerIds, userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error assigning multiple field engineers:", error);
+      res.status(500).json({ message: "Failed to assign multiple field engineers" });
+    }
+  });
+
   app.post('/api/tasks/:id/field-status', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);

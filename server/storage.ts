@@ -59,6 +59,7 @@ export interface IStorage {
   
   // Field engineer task operations
   assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy: string): Promise<Task>;
+  assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy: string): Promise<{ tasks: Task[]; message: string; }>;
   updateFieldTaskStatus(taskId: number, status: string, userId: string, note?: string): Promise<Task>;
   completeFieldTask(taskId: number, userId: string, completionNote: string, files?: string[]): Promise<Task>;
   getFieldTasksByEngineer(fieldEngineerId: string): Promise<TaskWithRelations[]>;
@@ -447,6 +448,78 @@ export class DatabaseStorage implements IStorage {
     });
 
     return task;
+  }
+
+  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy: string): Promise<{ tasks: Task[]; message: string; }> {
+    // Get the original task to duplicate
+    const originalTask = await this.getTask(taskId);
+    if (!originalTask) {
+      throw new Error("Task not found");
+    }
+
+    const createdTasks: Task[] = [];
+    
+    // Assign the first engineer to the original task
+    const firstEngineerId = fieldEngineerIds[0];
+    const firstTask = await this.assignTaskToFieldEngineer(taskId, firstEngineerId, assignedBy);
+    createdTasks.push(firstTask);
+
+    // Create duplicate tasks for remaining engineers
+    if (fieldEngineerIds.length > 1) {
+      for (let i = 1; i < fieldEngineerIds.length; i++) {
+        const engineerId = fieldEngineerIds[i];
+        
+        // Get field engineer details for better naming
+        const fieldEngineer = await this.getUser(engineerId);
+        const fieldEngineerName = fieldEngineer 
+          ? `${fieldEngineer.firstName || ''} ${fieldEngineer.lastName || ''}`.trim() || fieldEngineer.email
+          : engineerId;
+
+        // Create duplicate task with versioned title
+        const duplicateTaskData = {
+          title: `${originalTask.title}_${i + 1}`,
+          ticketNumber: `${originalTask.ticketNumber}_${i + 1}`,
+          customerId: originalTask.customerId,
+          assignedTo: originalTask.assignedTo,
+          priority: originalTask.priority,
+          status: "assigned_to_field" as const,
+          description: originalTask.description,
+          issueType: originalTask.issueType,
+          contactPerson: originalTask.contactPerson,
+          visitCharges: originalTask.visitCharges,
+          fieldEngineerId: engineerId,
+        };
+
+        const duplicateTask = await this.createTask(duplicateTaskData);
+        
+        // Create assignment audit record for the duplicate task
+        await this.createTaskUpdate({
+          taskId: duplicateTask.id,
+          updateType: "assignment",
+          note: `Duplicate task created and assigned to ${fieldEngineerName} (${fieldEngineer?.email || engineerId})`,
+          updatedBy: assignedBy,
+        });
+
+        createdTasks.push(duplicateTask);
+      }
+    }
+
+    // Get engineer names for the success message
+    const engineerNames = await Promise.all(
+      fieldEngineerIds.map(async (id) => {
+        const engineer = await this.getUser(id);
+        return engineer ? `${engineer.firstName} ${engineer.lastName}` : id;
+      })
+    );
+
+    const message = fieldEngineerIds.length === 1 
+      ? `Task assigned to ${engineerNames[0]}`
+      : `Task assigned to ${fieldEngineerIds.length} engineers: ${engineerNames.join(', ')}. ${fieldEngineerIds.length - 1} duplicate task(s) created.`;
+
+    return {
+      tasks: createdTasks,
+      message
+    };
   }
 
   async updateFieldTaskStatus(taskId: number, status: string, userId: string, note?: string): Promise<Task> {

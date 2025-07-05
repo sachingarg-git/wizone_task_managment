@@ -25,15 +25,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { User } from "@shared/schema";
+import { CheckCircle, X } from "lucide-react";
 
 const assignmentSchema = z.object({
-  fieldEngineerId: z.string().min(1, "Field engineer selection is required"),
+  fieldEngineerIds: z.array(z.string()).min(1, "At least one field engineer must be selected"),
   region: z.string().optional(),
 });
 
@@ -54,11 +56,12 @@ export default function FieldEngineerAssignmentModal({
 }: FieldEngineerAssignmentModalProps) {
   const { toast } = useToast();
   const [selectedRegion, setSelectedRegion] = useState<string>("");
+  const [selectedEngineers, setSelectedEngineers] = useState<string[]>([]);
 
   const form = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentSchema),
     defaultValues: {
-      fieldEngineerId: "",
+      fieldEngineerIds: [],
       region: "",
     },
   });
@@ -71,18 +74,19 @@ export default function FieldEngineerAssignmentModal({
   // Assignment mutation
   const assignMutation = useMutation({
     mutationFn: async (data: AssignmentFormData) => {
-      return await apiRequest("POST", `/api/tasks/${taskId}/assign-field-engineer`, { 
-        fieldEngineerId: data.fieldEngineerId 
+      return await apiRequest("POST", `/api/tasks/${taskId}/assign-multiple-field-engineers`, { 
+        fieldEngineerIds: data.fieldEngineerIds 
       });
     },
     onSuccess: () => {
       toast({
         title: "Assignment Successful",
-        description: "Task has been assigned to field engineer",
+        description: `Task has been assigned to ${selectedEngineers.length} field engineer(s)`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       form.reset();
+      setSelectedEngineers([]);
       onClose();
     },
     onError: (error) => {
@@ -99,7 +103,7 @@ export default function FieldEngineerAssignmentModal({
       }
       toast({
         title: "Assignment Failed",
-        description: "Failed to assign task to field engineer",
+        description: "Failed to assign task to field engineer(s)",
         variant: "destructive",
       });
     },
@@ -112,12 +116,24 @@ export default function FieldEngineerAssignmentModal({
   const handleClose = () => {
     form.reset();
     setSelectedRegion("");
+    setSelectedEngineers([]);
     onClose();
   };
 
+  const handleEngineerSelection = (engineerId: string, checked: boolean) => {
+    let newSelection: string[];
+    
+    if (checked) {
+      newSelection = [...selectedEngineers, engineerId];
+    } else {
+      newSelection = selectedEngineers.filter(id => id !== engineerId);
+    }
+    
+    setSelectedEngineers(newSelection);
+    form.setValue("fieldEngineerIds", newSelection);
+  };
+
   const getEngineerAvailabilityStatus = (engineer: User) => {
-    // This would typically come from real availability data
-    // For now, we'll show a simple active/inactive status
     return engineer.isActive ? "Available" : "Busy";
   };
 
@@ -134,86 +150,49 @@ export default function FieldEngineerAssignmentModal({
     )
   );
 
+  // Get selected engineer names for summary
+  const selectedEngineerNames = (fieldEngineers as User[])
+    .filter(engineer => selectedEngineers.includes(engineer.id))
+    .map(engineer => `${engineer.firstName} ${engineer.lastName}`);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-slate-800 border-slate-700">
         <DialogHeader>
-          <DialogTitle>Assign Field Engineer</DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogTitle className="text-white">Assign Field Engineers</DialogTitle>
+          <p className="text-sm text-gray-300">
             Task: {taskTitle}
           </p>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Region Filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Filter by Region</label>
-              <Select
-                value={selectedRegion}
-                onValueChange={(value) => setSelectedRegion(value === "all" ? "" : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All regions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All regions</SelectItem>
-                  {regions.map((region: string | null) => (
-                    <SelectItem key={region || 'no-region'} value={region || 'no-region'}>
-                      {region || 'No Region'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Field Engineer Selection */}
             <FormField
               control={form.control}
-              name="fieldEngineerId"
+              name="region"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Field Engineer</FormLabel>
+                  <FormLabel className="text-gray-300">Filter by Region</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      setSelectedRegion(value);
+                      field.onChange(value);
+                    }}
                     defaultValue={field.value}
-                    disabled={engineersLoading}
                   >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          engineersLoading 
-                            ? "Loading engineers..." 
-                            : "Select a field engineer"
-                        } />
+                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                        <SelectValue placeholder="All Regions" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      {(fieldEngineers as User[]).map((engineer: User) => (
-                        <SelectItem key={engineer.id} value={engineer.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {engineer.firstName} {engineer.lastName}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {engineer.department || "No region"}
-                              </span>
-                            </div>
-                            <Badge 
-                              variant={getEngineerBadgeVariant(engineer)}
-                              className="ml-2"
-                            >
-                              {getEngineerAvailabilityStatus(engineer)}
-                            </Badge>
-                          </div>
+                    <SelectContent className="bg-slate-700 border-slate-600">
+                      <SelectItem value="">All Regions</SelectItem>
+                      {regions.map((region) => (
+                        <SelectItem key={region} value={region || ""}>
+                          {region}
                         </SelectItem>
                       ))}
-                      {(fieldEngineers as User[]).length === 0 && !engineersLoading && (
-                        <SelectItem value="no-engineers" disabled>
-                          No field engineers available
-                        </SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -221,32 +200,91 @@ export default function FieldEngineerAssignmentModal({
               )}
             />
 
-            {/* Engineer Details */}
-            {form.watch("fieldEngineerId") && (
-              <div className="p-3 bg-muted rounded-lg">
-                {(() => {
-                  const selectedEngineer = (fieldEngineers as User[]).find(
-                    (e: User) => e.id === form.watch("fieldEngineerId")
-                  );
-                  if (!selectedEngineer) return null;
-                  
-                  return (
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Selected Engineer Details</h4>
-                      <div className="text-sm space-y-1">
-                        <p><strong>Name:</strong> {selectedEngineer.firstName} {selectedEngineer.lastName}</p>
-                        <p><strong>Email:</strong> {selectedEngineer.email}</p>
-                        <p><strong>Region:</strong> {selectedEngineer.department || "Not specified"}</p>
-                        <p><strong>Status:</strong> 
-                          <Badge variant={getEngineerBadgeVariant(selectedEngineer)} className="ml-1">
-                            {getEngineerAvailabilityStatus(selectedEngineer)}
-                          </Badge>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+            {/* Field Engineers Selection */}
+            <div className="space-y-4">
+              <FormLabel className="text-gray-300">Field Engineers</FormLabel>
+              
+              {engineersLoading ? (
+                <div className="text-center py-4 text-gray-400">
+                  Loading engineers...
+                </div>
+              ) : (fieldEngineers as User[]).length === 0 ? (
+                <div className="text-center py-4 text-gray-400">
+                  No field engineers available
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {(fieldEngineers as User[]).map((engineer: User) => (
+                    <Card key={engineer.id} className="bg-slate-700 border-slate-600">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id={engineer.id}
+                            checked={selectedEngineers.includes(engineer.id)}
+                            onCheckedChange={(checked) =>
+                              handleEngineerSelection(engineer.id, checked as boolean)
+                            }
+                            className="border-slate-500 text-white"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <label
+                                  htmlFor={engineer.id}
+                                  className="text-sm font-medium text-white cursor-pointer"
+                                >
+                                  {engineer.firstName} {engineer.lastName}
+                                </label>
+                                <p className="text-xs text-gray-400">
+                                  {engineer.department || "No region"} • {engineer.email}
+                                </p>
+                              </div>
+                              <Badge 
+                                variant={getEngineerBadgeVariant(engineer)}
+                                className={engineer.isActive ? 
+                                  "bg-green-600/20 text-green-300 border-green-500/30" : 
+                                  "bg-yellow-600/20 text-yellow-300 border-yellow-500/30"
+                                }
+                              >
+                                {getEngineerAvailabilityStatus(engineer)}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Engineers Summary */}
+            {selectedEngineers.length > 0 && (
+              <Card className="bg-purple-600/20 border-purple-500/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-purple-400" />
+                    <span className="text-sm font-medium text-purple-300">
+                      Selected Engineers ({selectedEngineers.length})
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedEngineerNames.map((name, index) => (
+                      <Badge 
+                        key={index}
+                        className="bg-purple-600/30 text-purple-200 border-purple-500/50"
+                      >
+                        {name}
+                      </Badge>
+                    ))}
+                  </div>
+                  {selectedEngineers.length > 1 && (
+                    <p className="text-xs text-purple-300 mt-2">
+                      Multiple tasks will be created automatically (Task_1, Task_2, etc.)
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             <div className="flex justify-end space-x-2 pt-4">
@@ -255,9 +293,10 @@ export default function FieldEngineerAssignmentModal({
               </Button>
               <Button 
                 type="submit" 
-                disabled={assignMutation.isPending || !form.watch("fieldEngineerId")}
+                disabled={assignMutation.isPending || selectedEngineers.length === 0}
+                className="bg-purple-600 hover:bg-purple-700"
               >
-                {assignMutation.isPending ? "Assigning..." : "Assign Task"}
+                {assignMutation.isPending ? "Assigning..." : `Assign to ${selectedEngineers.length} Engineer(s)`}
               </Button>
             </div>
           </form>
