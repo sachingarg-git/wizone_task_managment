@@ -58,20 +58,20 @@ export default function Chat() {
   const { toast } = useToast();
 
   // Fetch chat rooms
-  const { data: rooms = [], isLoading: roomsLoading } = useQuery({
+  const { data: rooms = [], isLoading: roomsLoading } = useQuery<ChatRoom[]>({
     queryKey: ["/api/chat/rooms"],
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
   // Fetch messages for selected room
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
-    queryKey: ["/api/chat/rooms", selectedRoom?.id, "messages"],
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<ChatMessage[]>({
+    queryKey: [`/api/chat/rooms/${selectedRoom?.id}/messages`],
     enabled: !!selectedRoom,
     refetchInterval: 2000, // Refresh every 2 seconds
   });
 
   // Fetch all users for user management
-  const { data: allUsers = [], isLoading: usersLoading } = useQuery({
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: isUsersDialogOpen,
   });
@@ -164,17 +164,44 @@ export default function Chat() {
   };
 
   const handleStartDirectChat = async (user: any) => {
-    // Create a direct chat room with this user
-    const roomName = `${user.firstName} ${user.lastName}`;
-    
-    createRoomMutation.mutate({
-      name: roomName,
-      description: `Direct chat with ${user.firstName} ${user.lastName}`,
-      isPrivate: true,
-    });
+    try {
+      // Create a direct chat room with this user
+      const roomName = `${user.firstName} ${user.lastName}`;
+      
+      const response = await fetch("/api/chat/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: roomName,
+          description: `Direct chat with ${user.firstName} ${user.lastName}`,
+          isPrivate: true,
+        }),
+      });
+      
+      if (response.ok) {
+        const newRoom = await response.json();
+        
+        // Add the target user as a participant
+        await fetch(`/api/chat/rooms/${newRoom.id}/add-participant`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id }),
+        });
+        
+        // Refresh rooms list
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
+        
+        // Select the new room
+        setSelectedRoom(newRoom);
+        
+        toast({ title: `Started chat with ${user.firstName} ${user.lastName}` });
+      }
+    } catch (error) {
+      console.error("Error creating direct chat:", error);
+      toast({ title: "Failed to create chat", variant: "destructive" });
+    }
     
     setIsUsersDialogOpen(false);
-    toast({ title: `Starting chat with ${user.firstName} ${user.lastName}` });
   };
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {

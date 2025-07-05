@@ -1181,6 +1181,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add a specific user to a chat room (for direct chats)
+  app.post('/api/chat/rooms/:roomId/add-participant', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const { userId } = req.body;
+      const currentUserId = (req.user as any)?.id;
+      
+      // Check if current user is participant of this room
+      const isParticipant = await storage.isChatParticipant(roomId, currentUserId);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Access denied. You are not a participant of this room." });
+      }
+      
+      const participantData = {
+        roomId,
+        userId,
+        role: 'member'
+      };
+      
+      const validatedData = insertChatParticipantSchema.parse(participantData);
+      await storage.addChatParticipant(validatedData);
+      
+      res.status(201).json({ message: "Successfully added participant to the room" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid participant data", errors: error.errors });
+      }
+      console.error("Error adding participant:", error);
+      res.status(500).json({ message: "Failed to add participant" });
+    }
+  });
+
   // Leave a chat room
   app.post('/api/chat/rooms/:roomId/leave', isEngineer, async (req, res) => {
     try {
