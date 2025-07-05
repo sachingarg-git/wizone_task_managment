@@ -766,11 +766,11 @@ export default function Tasks() {
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                  {getUpdateTypeIcon(update.updateType, update.oldValue, update.newValue, update.notes)}
+                                  {getUpdateTypeIcon(update.updateType, update.oldValue, update.newValue, update.note)}
                                 </div>
                                 <div className="flex-1">
                                   <h5 className="text-sm font-semibold text-gray-900 mb-1">
-                                    {getUpdateTypeTitle(update.updateType, update.oldValue, update.newValue, update.notes)}
+                                    {getUpdateTypeTitle(update.updateType, update.oldValue, update.newValue, update.note)}
                                   </h5>
                                   <div className="text-xs text-gray-600 flex items-center gap-3">
                                     <span className="flex items-center gap-1">
@@ -808,7 +808,7 @@ export default function Tasks() {
                               )}
                               
                               {/* Notes/Comments */}
-                              {update.notes && (
+                              {update.note && (
                                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r">
                                   <div className="flex items-start gap-2">
                                     <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
@@ -816,7 +816,7 @@ export default function Tasks() {
                                       <div className="text-xs font-medium text-yellow-800 mb-1">
                                         {update.updateType === 'notes_added' || update.updateType === 'note_added' ? 'Note Added:' : 'Comment:'}
                                       </div>
-                                      <div className="text-sm text-yellow-900 whitespace-pre-wrap">{update.notes}</div>
+                                      <div className="text-sm text-yellow-900 whitespace-pre-wrap">{update.note}</div>
                                     </div>
                                   </div>
                                 </div>

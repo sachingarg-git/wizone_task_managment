@@ -333,7 +333,7 @@ export default function Portal() {
                                     <p className="text-sm font-medium">
                                       {update.updatedByUser?.firstName} {update.updatedByUser?.lastName}
                                     </p>
-                                    <p className="text-sm text-gray-600">{update.notes}</p>
+                                    <p className="text-sm text-gray-600">{update.note}</p>
                                     {update.files && update.files.length > 0 && (
                                       <div className="mt-2">
                                         <p className="text-xs text-gray-500">Files: {update.files.join(', ')}</p>
