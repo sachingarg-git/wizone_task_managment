@@ -163,6 +163,20 @@ export default function Chat() {
     });
   };
 
+  const handleStartDirectChat = async (user: any) => {
+    // Create a direct chat room with this user
+    const roomName = `${user.firstName} ${user.lastName}`;
+    
+    createRoomMutation.mutate({
+      name: roomName,
+      description: `Direct chat with ${user.firstName} ${user.lastName}`,
+      isPrivate: true,
+    });
+    
+    setIsUsersDialogOpen(false);
+    toast({ title: `Starting chat with ${user.firstName} ${user.lastName}` });
+  };
+
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const first = firstName?.[0] || "";
     const last = lastName?.[0] || "";
@@ -232,6 +246,14 @@ export default function Chat() {
                                       Active
                                     </Badge>
                                   )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs border-cyan-600 text-cyan-400 hover:bg-cyan-600/20"
+                                    onClick={() => handleStartDirectChat(user)}
+                                  >
+                                    Chat
+                                  </Button>
                                 </div>
                               </div>
                             ))}
