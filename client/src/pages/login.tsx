@@ -153,26 +153,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <h3 className="font-semibold text-blue-900 mb-2">Demo Credentials</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-blue-700">Admin:</span>
-                <span className="font-mono text-blue-800">admin / admin123</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-blue-700">Manager:</span>
-                <span className="font-mono text-blue-800">manager / manager123</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-blue-700">Engineer:</span>
-                <span className="font-mono text-blue-800">engineer / engineer123</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );
