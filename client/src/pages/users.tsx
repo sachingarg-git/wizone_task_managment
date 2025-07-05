@@ -43,6 +43,9 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showRoleManagement, setShowRoleManagement] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -125,6 +128,16 @@ export default function UsersPage() {
 
   const handleRoleChange = (userId: string, newRole: string) => {
     updateRoleMutation.mutate({ id: userId, role: newRole });
+  };
+
+  const handleViewUser = (user: any) => {
+    setSelectedUser(user);
+    setShowUserDetails(true);
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setShowEditUser(true);
   };
 
   return (
@@ -318,13 +331,28 @@ export default function UsersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleViewUser(user)}
+                                title="View User Details"
+                              >
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleEditUser(user)}
+                                title="Edit User"
+                              >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="text-error hover:text-error">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-error hover:text-error"
+                                title="Deactivate User"
+                              >
                                 <Ban className="w-4 h-4" />
                               </Button>
                             </div>
@@ -350,6 +378,141 @@ export default function UsersPage() {
         isOpen={showAddUserModal}
         onClose={() => setShowAddUserModal(false)}
       />
+
+      {/* User Details Modal */}
+      <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>User Details</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowUserDetails(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-6">
+              {/* User Profile */}
+              <div className="flex items-center space-x-4">
+                {selectedUser.profileImageUrl ? (
+                  <img 
+                    src={selectedUser.profileImageUrl} 
+                    alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-lg font-medium text-gray-600">
+                      {selectedUser.firstName?.[0]}{selectedUser.lastName?.[0]}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </h3>
+                  <p className="text-gray-600">{selectedUser.email}</p>
+                  <Badge className={getRoleColor(selectedUser.role)}>
+                    {selectedUser.role === 'backend_engineer' ? 'Backend Engineer' : 
+                     selectedUser.role === 'field_engineer' ? 'Field Engineer' : 
+                     selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* User Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">Contact Information</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Email</span>
+                      <p className="text-gray-900">{selectedUser.email}</p>
+                    </div>
+                    {selectedUser.phone && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Phone</span>
+                        <p className="text-gray-900">{selectedUser.phone}</p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Department</span>
+                      <p className="text-gray-900">{selectedUser.department || 'Not assigned'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">System Information</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">User ID</span>
+                      <p className="text-gray-900 font-mono text-sm">{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Status</span>
+                      <div>
+                        <Badge className={selectedUser.isActive ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}>
+                          {selectedUser.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Last Active</span>
+                      <p className="text-gray-900">{getLastActive(selectedUser)}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Performance Score</span>
+                      <p className="text-gray-900">{getPerformanceScore(selectedUser).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowUserDetails(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  setShowUserDetails(false);
+                  handleEditUser(selectedUser);
+                }}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit User
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Modal */}
+      <Dialog open={showEditUser} onOpenChange={setShowEditUser}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Edit User</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowEditUser(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="p-4">
+              <div className="text-center text-gray-600">
+                <p>User editing functionality will be implemented here.</p>
+                <p className="text-sm mt-2">Currently, you can modify user roles directly from the table dropdown.</p>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button variant="outline" onClick={() => setShowEditUser(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Role Management Modal */}
       <Dialog open={showRoleManagement} onOpenChange={setShowRoleManagement}>
