@@ -81,7 +81,7 @@ export default function CustomerPortal() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      const response = await fetch("/api/customer/login", {
+      const response = await fetch("/api/customer-portal/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
@@ -108,21 +108,21 @@ export default function CustomerPortal() {
 
   // Fetch customer tasks
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<CustomerTask[]>({
-    queryKey: [`/api/customer/${customerUser?.id}/tasks`],
+    queryKey: [`/api/customer-portal/tasks`],
     enabled: !!customerUser,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch task comments
   const { data: comments = [] } = useQuery<CustomerComment[]>({
-    queryKey: [`/api/tasks/${selectedTask?.id}/comments`],
+    queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/comments`],
     enabled: !!selectedTask,
   });
 
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (commentData: { taskId: number; customerId: number; comment: string }) => {
-      const response = await fetch("/api/customer/comments", {
+      const response = await fetch("/api/customer-portal/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(commentData),
@@ -131,7 +131,7 @@ export default function CustomerPortal() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${selectedTask?.id}/comments`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/comments`] });
       setCommentText("");
       toast({ title: "Comment added successfully!" });
     },

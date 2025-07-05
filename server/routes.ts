@@ -29,6 +29,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.redirect('/#/customer-portal');
   });
 
+  // Customer portal authentication middleware
+  const isCustomerAuthenticated = (req: any, res: any, next: any) => {
+    if (!(req.session as any)?.customer) {
+      return res.status(401).json({ message: "Customer not authenticated" });
+    }
+    next();
+  };
+
+  // Customer portal authentication routes
+  app.post('/api/customer-portal/auth/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      const customer = await storage.getCustomerByUsername(username);
+      if (!customer || customer.password !== password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Store customer session
+      (req.session as any).customer = {
+        id: customer.id,
+        customerId: customer.customerId,
+        name: customer.name,
+        username: customer.username,
+        email: customer.email,
+        contactPerson: customer.contactPerson,
+        mobilePhone: customer.mobilePhone,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state
+      };
+
+      res.json({ 
+        id: customer.id,
+        customerId: customer.customerId,
+        name: customer.name,
+        username: customer.username,
+        email: customer.email,
+        contactPerson: customer.contactPerson,
+        mobilePhone: customer.mobilePhone,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state
+      });
+    } catch (error) {
+      console.error("Customer login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Customer portal logout
+  app.post('/api/customer-portal/auth/logout', (req, res) => {
+    (req.session as any).customer = null;
+    res.json({ message: "Logged out successfully" });
+  });
+
+  // Get customer's tasks
+  app.get('/api/customer-portal/tasks', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const tasks = await storage.getTasksByCustomer(customerId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching customer tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Get task comments for customer
+  app.get('/api/customer-portal/tasks/:taskId/comments', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const customerId = (req.session as any).customer.id;
+      
+      // Verify task belongs to customer
+      const task = await storage.getTask(taskId);
+      if (!task || task.customerId !== customerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const comments = await storage.getTaskComments(taskId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching task comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  // Add comment to task (customer portal)
+  app.post('/api/customer-portal/comments', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const { taskId, comment } = req.body;
+      const customerId = (req.session as any).customer.id;
+      
+      // Verify task belongs to customer
+      const task = await storage.getTask(taskId);
+      if (!task || task.customerId !== customerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const commentData = {
+        taskId,
+        customerId,
+        comment,
+        attachments: null,
+        isInternal: false,
+        respondedBy: null
+      };
+      
+      const newComment = await storage.createCustomerComment(commentData);
+      res.json(newComment);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  // Create new task (customer portal)
+  app.post('/api/customer-portal/tasks', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const taskData = {
+        ...req.body,
+        customerId,
+        status: 'open',
+        priority: req.body.priority || 'medium',
+        assignedTo: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const validatedData = insertTaskSchema.parse(taskData);
+      const task = await storage.createTask(validatedData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
   // Authentication middleware
   const isAuthenticated = (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
