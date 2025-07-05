@@ -8,18 +8,41 @@ import {
   UserCog, 
   LogOut,
   TrendingUp,
-  Globe
+  Globe,
+  User
 } from "lucide-react";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: BarChart3 },
-  { name: "Task Management", href: "/tasks", icon: ListTodo },
-  { name: "Customer Management", href: "/customers", icon: Users },
-  { name: "Performance", href: "/performance", icon: TrendingUp },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "User Management", href: "/users", icon: UserCog },
-  { name: "Domain Management", href: "/domains", icon: Globe },
-];
+const getNavigationForUser = (userRole: string) => {
+  const baseNavigation = [
+    { name: "Dashboard", href: "/", icon: BarChart3 },
+  ];
+
+  // Role-based navigation
+  if (userRole === 'field_engineer') {
+    return [
+      ...baseNavigation,
+      { name: "My Tasks", href: "/portal", icon: User },
+    ];
+  } else if (userRole === 'engineer') {
+    return [
+      ...baseNavigation,
+      { name: "Task Management", href: "/tasks", icon: ListTodo },
+      { name: "My Portal", href: "/portal", icon: User },
+    ];
+  } else {
+    // Admin, manager, and other roles get full navigation
+    return [
+      ...baseNavigation,
+      { name: "Task Management", href: "/tasks", icon: ListTodo },
+      { name: "Customer Management", href: "/customers", icon: Users },
+      { name: "Performance", href: "/performance", icon: TrendingUp },
+      { name: "Analytics", href: "/analytics", icon: BarChart3 },
+      { name: "User Management", href: "/users", icon: UserCog },
+      { name: "Domain Management", href: "/domains", icon: Globe },
+      { name: "Self Portal", href: "/portal", icon: User },
+    ];
+  }
+};
 
 export default function Sidebar() {
   const [location, setLocation] = useLocation();
@@ -28,6 +51,8 @@ export default function Sidebar() {
   const handleLogout = () => {
     window.location.href = "/api/logout";
   };
+
+  const navigation = getNavigationForUser(user?.role || 'engineer');
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50">

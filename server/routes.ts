@@ -61,9 +61,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Task routes
-  app.get('/api/tasks', isAuthenticated, async (req, res) => {
+  app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
       const { search, priority, status } = req.query;
+      const userId = req.user.claims.sub;
+      
+      // Get current user to check role
+      const currentUser = await storage.getUser(userId);
       
       let tasks;
       if (search) {
@@ -72,7 +76,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tasks = await storage.getAllTasks();
       }
       
-      // Apply filters
+      // Filter tasks based on user role
+      if (currentUser?.role === 'field_engineer') {
+        // Field engineers only see tasks assigned to them
+        tasks = tasks.filter(task => task.fieldEngineerId === userId);
+      } else if (currentUser?.role === 'engineer') {
+        // Regular engineers see tasks assigned to them or unassigned tasks
+        tasks = tasks.filter(task => 
+          task.assignedTo === userId || 
+          task.fieldEngineerId === userId ||
+          (!task.assignedTo && !task.fieldEngineerId)
+        );
+      }
+      // Admin and manager roles see all tasks (no filtering)
+      
+      // Apply other filters
       if (priority && priority !== 'all') {
         tasks = tasks.filter(task => task.priority === priority);
       }
@@ -525,6 +543,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const { id, email, firstName, lastName, phone, role } = req.body;
+      
+      if (!id || !email || !firstName || !lastName) {
+        return res.status(400).json({ message: "ID, email, first name, and last name are required" });
+      }
+      
+      const userData = {
+        id,
+        email,
+        firstName,
+        lastName,
+        phone,
+        role: role || 'engineer',
+        isActive: true,
+      };
+      
+      const user = await storage.upsertUser(userData);
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 

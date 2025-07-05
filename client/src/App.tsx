@@ -12,6 +12,7 @@ import Performance from "@/pages/performance";
 import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
+import Portal from "@/pages/portal";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
@@ -34,6 +35,7 @@ function Router() {
               <Route path="/users" component={Users} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/domains" component={Domains} />
+              <Route path="/portal" component={Portal} />
             </div>
           </div>
         </>

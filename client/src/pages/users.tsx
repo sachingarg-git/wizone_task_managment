@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
+import UserFormModal from "@/components/modals/user-form-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -345,40 +346,10 @@ export default function UsersPage() {
       </div>
 
       {/* Add User Modal */}
-      <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Add New User</DialogTitle>
-              <Button variant="ghost" size="sm" onClick={() => setShowAddUserModal(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="p-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <Shield className="h-5 w-5 text-blue-400" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">
-                    Authentication System
-                  </h3>
-                  <div className="mt-2 text-sm text-blue-700">
-                    <p>New users are automatically added when they first log in through Replit Auth. Simply share the application URL with new team members and ask them to log in.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
-                Got it
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <UserFormModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+      />
 
       {/* Role Management Modal */}
       <Dialog open={showRoleManagement} onOpenChange={setShowRoleManagement}>
