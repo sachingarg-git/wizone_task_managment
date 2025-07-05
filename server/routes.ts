@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -925,6 +926,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error testing SQL connection:", error);
       res.status(500).json({ message: "Failed to test SQL connection" });
+    }
+  });
+
+  // Migration routes
+  app.post('/api/sql-connections/:id/migrate', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const connection = await storage.getSqlConnection(id);
+      
+      if (!connection) {
+        return res.status(404).json({ message: "SQL connection not found" });
+      }
+      
+      const migrationResult = await createTablesInExternalDatabase({
+        host: connection.host,
+        port: connection.port,
+        database: connection.database,
+        username: connection.username,
+        password: connection.password,
+        connectionType: connection.connectionType,
+        sslEnabled: connection.sslEnabled || false
+      });
+      
+      res.json(migrationResult);
+    } catch (error) {
+      console.error("Error running migration:", error);
+      res.status(500).json({ message: "Failed to run migration" });
+    }
+  });
+
+  app.post('/api/sql-connections/:id/seed', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const connection = await storage.getSqlConnection(id);
+      
+      if (!connection) {
+        return res.status(404).json({ message: "SQL connection not found" });
+      }
+      
+      const seedResult = await seedDefaultData({
+        host: connection.host,
+        port: connection.port,
+        database: connection.database,
+        username: connection.username,
+        password: connection.password,
+        connectionType: connection.connectionType,
+        sslEnabled: connection.sslEnabled || false
+      });
+      
+      res.json(seedResult);
+    } catch (error) {
+      console.error("Error seeding data:", error);
+      res.status(500).json({ message: "Failed to seed data" });
     }
   });
 

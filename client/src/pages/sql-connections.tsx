@@ -27,7 +27,9 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Server
+  Server,
+  Download,
+  Sprout
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -120,6 +122,48 @@ export default function SqlConnectionsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to test SQL connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const migrateDatabaseMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('POST', `/api/sql-connections/${id}/migrate`);
+      return await response.json();
+    },
+    onSuccess: (result) => {
+      toast({
+        title: result.success ? "Migration Success" : "Migration Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to run migration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const seedDatabaseMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('POST', `/api/sql-connections/${id}/seed`);
+      return await response.json();
+    },
+    onSuccess: (result) => {
+      toast({
+        title: result.success ? "Seed Success" : "Seed Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to seed data",
         variant: "destructive",
       });
     },
@@ -564,20 +608,45 @@ export default function SqlConnectionsPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => testConnectionMutation.mutate(connection.id)}
                             disabled={testConnectionMutation.isPending}
+                            title="Test Connection"
                           >
-                            <Play className="w-3 h-3 mr-1" />
-                            Test
+                            <Play className="w-3 h-3" />
                           </Button>
+                          {connection.testStatus === 'success' && connection.connectionType === 'mssql' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => migrateDatabaseMutation.mutate(connection.id)}
+                                disabled={migrateDatabaseMutation.isPending}
+                                title="Create Tables"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => seedDatabaseMutation.mutate(connection.id)}
+                                disabled={seedDatabaseMutation.isPending}
+                                title="Seed Data"
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Sprout className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(connection)}
+                            title="Edit Connection"
                           >
                             <Edit className="w-3 h-3" />
                           </Button>
@@ -586,6 +655,7 @@ export default function SqlConnectionsPage() {
                             variant="outline"
                             onClick={() => handleDelete(connection)}
                             disabled={deleteConnectionMutation.isPending}
+                            title="Delete Connection"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
