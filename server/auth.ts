@@ -33,7 +33,8 @@ export function setupAuth(app: Express) {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
-    createTableIfMissing: false, // Don't try to create table if it exists
+    createTableIfMissing: false,
+    tableName: 'session', // Use the correct table name
     ttl: 7 * 24 * 60 * 60, // 7 days
   });
 
