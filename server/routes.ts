@@ -192,19 +192,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // Create update record
-      const updateData: any = {
-        taskId,
-        note: comment || `Customer updated task - Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`,
-        updatedBy: `customer_${customerId}`,
-        changesMade: JSON.stringify({
-          comment: comment || null,
-          priority: priority || null,
-          status: status || null,
-          updatedBy: 'customer'
-        })
-      };
-      
       // Update task if priority or status changed
       if (priority && priority !== task.priority) {
         await storage.updateTask(taskId, { priority });
@@ -215,8 +202,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateTask(taskId, { status });
       }
       
-      // Add the update record
-      await storage.createTaskUpdate(updateData);
+      // Add the update record using valid system user for customer updates
+      await storage.createTaskUpdate({
+        taskId,
+        updatedBy: 'admin001', // Use system admin for customer updates
+        updateType: 'note_added',
+        note: `[Customer Update] ${comment || `Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`}`
+      });
       
       console.log("Customer task update:", { customerId, taskId, comment, priority, status });
       res.json({ message: "Task updated successfully" });
