@@ -156,8 +156,10 @@ export default function Chat() {
     });
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    const first = firstName?.[0] || "";
+    const last = lastName?.[0] || "";
+    return `${first}${last}`.toUpperCase() || "?";
   };
 
   const formatTime = (dateString: string) => {
@@ -312,13 +314,13 @@ export default function Chat() {
                           <div key={message.id} className="flex gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-cyan-600 text-white text-xs">
-                                {getInitials(message.sender.firstName, message.sender.lastName)}
+                                {getInitials(message.sender?.firstName, message.sender?.lastName)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-medium text-white">
-                                  {message.sender.firstName} {message.sender.lastName}
+                                  {message.sender?.firstName || "Unknown"} {message.sender?.lastName || "User"}
                                 </span>
                                 <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
                                   {message.sender.role}
