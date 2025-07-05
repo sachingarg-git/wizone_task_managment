@@ -661,10 +661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { firstName, lastName, email, phone, role, department } = req.body;
+      const currentUser = req.user;
+      const { firstName, lastName, username, email, phone, role, department } = req.body;
       
       if (!firstName || !lastName || !email) {
         return res.status(400).json({ message: "First name, last name, and email are required" });
@@ -681,6 +682,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Check if username is being changed (only admins can change usernames)
+      if (username && currentUser.role === 'admin') {
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername && existingUsername.id !== id) {
+          return res.status(400).json({ 
+            message: "A user with this username already exists",
+            error: "DUPLICATE_USERNAME"
+          });
+        }
+      }
+      
       const userData = {
         firstName,
         lastName,
@@ -689,6 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role,
         department,
         updatedAt: new Date(),
+        ...(username && currentUser.role === 'admin' && { username })
       };
       
       const user = await storage.updateUser(id, userData);

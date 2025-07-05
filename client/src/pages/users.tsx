@@ -48,6 +48,7 @@ import { useAuth } from "@/hooks/useAuth";
 const editUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
   role: z.string().min(1, "Role is required"),
@@ -203,6 +204,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
     defaultValues: {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
+      username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
       role: user.role || "engineer",
@@ -304,6 +306,30 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
               </FormItem>
             )}
           />
+
+          {/* Username Field - Admin Only and Read-Only for Security */}
+          {isAdmin && (
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username (Login ID)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter username for login" 
+                      {...field}
+                      className="bg-gray-50 border-gray-300"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-xs text-gray-500">
+                    Username used for system login. Only admins can modify usernames.
+                  </p>
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}
