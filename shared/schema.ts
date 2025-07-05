@@ -64,6 +64,10 @@ export const customers = pgTable("customers", {
   username: varchar("username"),
   password: varchar("password"),
   portalAccess: boolean("portal_access").default(false),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  locationNotes: text("location_notes"),
+  locationVerified: boolean("location_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

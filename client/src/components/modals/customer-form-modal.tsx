@@ -40,6 +40,10 @@ const customerFormSchema = z.object({
   wirelessApIp: z.string().optional(),
   port: z.string().optional(),
   plan: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  locationNotes: z.string().optional(),
+  locationVerified: z.boolean().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
@@ -72,6 +76,10 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
       wirelessApIp: customer?.wirelessApIp || "",
       port: customer?.port || "",
       plan: customer?.plan || "",
+      latitude: customer?.latitude || "",
+      longitude: customer?.longitude || "",
+      locationNotes: customer?.locationNotes || "",
+      locationVerified: customer?.locationVerified || false,
     },
   });
 
@@ -403,6 +411,92 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                         <Input placeholder="Port number" {...field} />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Location Management Section */}
+              <div className="space-y-4 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Location Management</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Latitude</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., 28.6139" 
+                            type="number"
+                            step="any"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="longitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Longitude</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., 77.2090" 
+                            type="number"
+                            step="any"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="locationNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          rows={2}
+                          placeholder="Additional location details, landmarks, or navigation instructions"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="locationVerified"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="rounded border-gray-300"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Location Verified</FormLabel>
+                        <p className="text-sm text-gray-500">
+                          Mark this if the customer location has been physically verified
+                        </p>
+                      </div>
                     </FormItem>
                   )}
                 />

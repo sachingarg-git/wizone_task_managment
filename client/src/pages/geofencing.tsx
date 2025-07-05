@@ -77,11 +77,7 @@ export default function GeofencingPage() {
   // Create zone mutation
   const createZoneMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/geofencing/zones", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("/api/geofencing/zones", "POST", data);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Geofencing zone created successfully" });
@@ -101,11 +97,7 @@ export default function GeofencingPage() {
   // Location update mutation
   const locationUpdateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/geofencing/locations", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("/api/geofencing/locations", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/geofencing/locations/live"] });

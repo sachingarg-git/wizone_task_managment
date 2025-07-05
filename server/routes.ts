@@ -327,6 +327,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/geofencing/locations', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
       const locationData = { ...req.body, userId };
       const location = await storage.createUserLocation(locationData);
       

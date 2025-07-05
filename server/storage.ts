@@ -46,7 +46,7 @@ import {
 import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
 import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
 import postgres from "postgres";
-import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
+import { eq, desc, asc, and, or, ilike, sql, count, gte } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
 
 export interface IStorage {
@@ -555,6 +555,28 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(tasks.id, taskId))
       .returning();
+
+    // Capture customer location for geofencing when task is assigned
+    try {
+      const customer = await this.getCustomer(task.customerId);
+      if (customer && customer.latitude && customer.longitude) {
+        // Create a location record for the assigned engineer to navigate to customer
+        await this.createUserLocation({
+          userId: fieldEngineerId,
+          latitude: parseFloat(customer.latitude),
+          longitude: parseFloat(customer.longitude),
+          taskId: taskId,
+          accuracy: 1.0, // Exact customer location
+          isActive: true,
+        });
+        
+        // Check if the customer location triggers any geofence zones
+        await this.checkGeofenceEvents(fieldEngineerId, parseFloat(customer.latitude), parseFloat(customer.longitude));
+      }
+    } catch (error) {
+      console.error("Error capturing customer location for geofencing:", error);
+      // Don't fail the assignment if location capture fails
+    }
 
     // Create task update record with detailed information
     await this.createTaskUpdate({
@@ -1521,15 +1543,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentGeofenceEvents(): Promise<GeofenceEventWithRelations[]> {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
     const events = await db
       .select()
       .from(geofenceEvents)
       .leftJoin(users, eq(geofenceEvents.userId, users.id))
       .leftJoin(geofenceZones, eq(geofenceEvents.zoneId, geofenceZones.id))
       .leftJoin(tasks, eq(geofenceEvents.taskId, tasks.id))
-      .where(sql`${geofenceEvents.eventTime} >= ${oneDayAgo}`)
       .orderBy(desc(geofenceEvents.eventTime))
       .limit(50);
 
@@ -1542,18 +1561,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLiveUserLocations(): Promise<UserLocationWithRelations[]> {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
     const locations = await db
       .select()
       .from(userLocations)
       .leftJoin(users, eq(userLocations.userId, users.id))
       .leftJoin(tasks, eq(userLocations.taskId, tasks.id))
-      .where(and(
-        eq(userLocations.isActive, true),
-        sql`${userLocations.createdAt} >= ${oneHourAgo}`
-      ))
-      .orderBy(desc(userLocations.createdAt));
+      .where(eq(userLocations.isActive, true))
+      .orderBy(desc(userLocations.createdAt))
+      .limit(100);
 
     // Get most recent location per user
     const uniqueLocations = new Map();
