@@ -61,6 +61,7 @@ interface CustomerComment {
 }
 
 export default function CustomerPortal() {
+  console.log('🟢 CustomerPortal component is rendering');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [customerUser, setCustomerUser] = useState<CustomerUser | null>(null);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
