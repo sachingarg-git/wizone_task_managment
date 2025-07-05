@@ -33,7 +33,7 @@ export function setupAuth(app: Express) {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
-    createTableIfMissing: true,
+    createTableIfMissing: false, // Don't try to create table if it exists
     ttl: 7 * 24 * 60 * 60, // 7 days
   });
 
@@ -141,69 +141,27 @@ export function setupAuth(app: Express) {
 
 export async function createDefaultUsers() {
   try {
-    // Create default admin user if it doesn't exist
+    console.log("Setting up default user credentials...");
+    
+    // Update the current user to have admin credentials if no admin exists
     const adminExists = await storage.getUserByUsername("admin");
     if (!adminExists) {
-      // Check if there's already a user with this email and update it
-      const existingUser = await storage.getUserByEmail("admin@taskflow.com");
-      if (existingUser) {
+      // Find the first user and make them admin
+      const users = await storage.getAllUsers();
+      if (users.length > 0) {
+        const firstUser = users[0];
         const hashedPassword = await hashPassword("admin123");
-        await storage.updateUser(existingUser.id, {
+        await storage.updateUser(firstUser.id, {
           username: "admin",
           password: hashedPassword,
           role: "admin",
         });
         console.log("Updated existing user to admin: admin/admin123");
-      } else {
-        const hashedPassword = await hashPassword("admin123");
-        await storage.createUserWithPassword({
-          id: "admin",
-          username: "admin",
-          password: hashedPassword,
-          firstName: "System",
-          lastName: "Administrator",
-          email: "admin@taskflow.com",
-          role: "admin",
-          department: "IT",
-        });
-        console.log("Created default admin user: admin/admin123");
       }
     }
 
-    // Create default manager user
-    const managerExists = await storage.getUserByUsername("manager");
-    if (!managerExists) {
-      const hashedPassword = await hashPassword("manager123");
-      await storage.createUserWithPassword({
-        id: "manager",
-        username: "manager",
-        password: hashedPassword,
-        firstName: "Project",
-        lastName: "Manager",
-        email: "manager@taskflow.com",
-        role: "manager",
-        department: "Operations",
-      });
-      console.log("Created default manager user: manager/manager123");
-    }
-
-    // Create default engineer user
-    const engineerExists = await storage.getUserByUsername("engineer");
-    if (!engineerExists) {
-      const hashedPassword = await hashPassword("engineer123");
-      await storage.createUserWithPassword({
-        id: "engineer",
-        username: "engineer",
-        password: hashedPassword,
-        firstName: "Field",
-        lastName: "Engineer",
-        email: "engineer@taskflow.com",
-        role: "field_engineer",
-        department: "Field Operations",
-      });
-      console.log("Created default engineer user: engineer/engineer123");
-    }
+    console.log("Default user setup complete");
   } catch (error) {
-    console.error("Error creating default users:", error);
+    console.error("Error setting up default users:", error);
   }
 }
