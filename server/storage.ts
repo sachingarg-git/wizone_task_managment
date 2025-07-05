@@ -31,6 +31,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<UserWithMetrics[]>;
   updateUserRole(id: string, role: string): Promise<User>;
+  updateUser(id: string, userData: Partial<UpsertUser>): Promise<User>;
   getFieldEngineers(): Promise<User[]>;
   getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<User[]>;
   
@@ -158,6 +159,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;

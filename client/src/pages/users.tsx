@@ -37,6 +37,197 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+// Edit User Form Schema
+const editUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  role: z.string().min(1, "Role is required"),
+  department: z.string().optional(),
+});
+
+type EditUserFormData = z.infer<typeof editUserSchema>;
+
+interface EditUserFormProps {
+  user: any;
+  onClose: () => void;
+}
+
+function EditUserForm({ user, onClose }: EditUserFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<EditUserFormData>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: {
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || "engineer",
+      department: user.department || "",
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: EditUserFormData) => {
+      await apiRequest("PUT", `/api/users/${user.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: EditUserFormData) => {
+    updateUserMutation.mutate(data);
+  };
+
+  return (
+    <div className="p-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter first name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter last name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address *</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="Enter email address" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter phone number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin - Full system access</SelectItem>
+                      <SelectItem value="manager">Manager - Task oversight, analytics</SelectItem>
+                      <SelectItem value="engineer">Engineer - General engineering tasks</SelectItem>
+                      <SelectItem value="backend_engineer">Backend Engineer - System backend tasks</SelectItem>
+                      <SelectItem value="field_engineer">Field Engineer - Field service tasks</SelectItem>
+                      <SelectItem value="support">Support - Customer support</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter department" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateUserMutation.isPending}>
+              {updateUserMutation.isPending ? "Updating..." : "Update User"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -489,7 +680,7 @@ export default function UsersPage() {
 
       {/* Edit User Modal */}
       <Dialog open={showEditUser} onOpenChange={setShowEditUser}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>Edit User</DialogTitle>
@@ -498,19 +689,7 @@ export default function UsersPage() {
               </Button>
             </div>
           </DialogHeader>
-          {selectedUser && (
-            <div className="p-4">
-              <div className="text-center text-gray-600">
-                <p>User editing functionality will be implemented here.</p>
-                <p className="text-sm mt-2">Currently, you can modify user roles directly from the table dropdown.</p>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <Button variant="outline" onClick={() => setShowEditUser(false)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
+          {selectedUser && <EditUserForm user={selectedUser} onClose={() => setShowEditUser(false)} />}
         </DialogContent>
       </Dialog>
 

@@ -623,6 +623,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { firstName, lastName, email, phone, role, department } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: "First name, last name, and email are required" });
+      }
+      
+      // Check if email is being changed and if it conflicts with another user
+      if (email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== id) {
+          return res.status(400).json({ 
+            message: "A user with this email already exists",
+            error: "DUPLICATE_EMAIL"
+          });
+        }
+      }
+      
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        phone,
+        role,
+        department,
+        updatedAt: new Date(),
+      };
+      
+      const user = await storage.updateUser(id, userData);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      
+      // Handle specific database constraint errors
+      if ((error as any).code === '23505') {
+        if ((error as any).constraint === 'users_email_unique') {
+          return res.status(400).json({ 
+            message: "A user with this email already exists",
+            error: "DUPLICATE_EMAIL"
+          });
+        }
+      }
+      
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // Analytics routes
   app.get('/api/analytics/overview', isAuthenticated, async (req, res) => {
     try {
