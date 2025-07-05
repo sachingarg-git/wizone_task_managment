@@ -25,7 +25,7 @@ function Router() {
   const [location] = useLocation();
 
   // Customer portal should be completely isolated from main app authentication
-  if (location === '/customer-portal') {
+  if (location === '/customer-portal' || location.startsWith('/customer-portal')) {
     return <CustomerPortal />;
   }
 
