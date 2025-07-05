@@ -6,7 +6,8 @@ import { seedDatabase } from "./seed";
 import { 
   insertTaskSchema, 
   insertCustomerSchema, 
-  insertPerformanceMetricsSchema 
+  insertPerformanceMetricsSchema,
+  insertSqlConnectionSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
@@ -815,6 +816,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting domain:", error);
       res.status(500).json({ message: "Failed to delete domain" });
+    }
+  });
+
+  // SQL Connections routes
+  app.get('/api/sql-connections', isAuthenticated, async (req, res) => {
+    try {
+      const connections = await storage.getAllSqlConnections();
+      // Don't send passwords in the response
+      const safeConnections = connections.map(conn => ({
+        ...conn,
+        password: '***hidden***'
+      }));
+      res.json(safeConnections);
+    } catch (error) {
+      console.error("Error fetching SQL connections:", error);
+      res.status(500).json({ message: "Failed to fetch SQL connections" });
+    }
+  });
+
+  app.get('/api/sql-connections/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const connection = await storage.getSqlConnection(id);
+      
+      if (!connection) {
+        return res.status(404).json({ message: "SQL connection not found" });
+      }
+      
+      // Don't send password in the response
+      const safeConnection = {
+        ...connection,
+        password: '***hidden***'
+      };
+      
+      res.json(safeConnection);
+    } catch (error) {
+      console.error("Error fetching SQL connection:", error);
+      res.status(500).json({ message: "Failed to fetch SQL connection" });
+    }
+  });
+
+  app.post('/api/sql-connections', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const connectionData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const validatedData = insertSqlConnectionSchema.parse(connectionData);
+      const connection = await storage.createSqlConnection(validatedData);
+      
+      // Don't send password in the response
+      const safeConnection = {
+        ...connection,
+        password: '***hidden***'
+      };
+      
+      res.status(201).json(safeConnection);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid SQL connection data", errors: error.errors });
+      }
+      console.error("Error creating SQL connection:", error);
+      res.status(500).json({ message: "Failed to create SQL connection" });
+    }
+  });
+
+  app.put('/api/sql-connections/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertSqlConnectionSchema.partial().parse(req.body);
+      const connection = await storage.updateSqlConnection(id, validatedData);
+      
+      // Don't send password in the response
+      const safeConnection = {
+        ...connection,
+        password: '***hidden***'
+      };
+      
+      res.json(safeConnection);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid SQL connection data", errors: error.errors });
+      }
+      console.error("Error updating SQL connection:", error);
+      res.status(500).json({ message: "Failed to update SQL connection" });
+    }
+  });
+
+  app.delete('/api/sql-connections/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSqlConnection(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting SQL connection:", error);
+      res.status(500).json({ message: "Failed to delete SQL connection" });
+    }
+  });
+
+  app.post('/api/sql-connections/:id/test', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const testResult = await storage.testSqlConnection(id);
+      res.json(testResult);
+    } catch (error) {
+      console.error("Error testing SQL connection:", error);
+      res.status(500).json({ message: "Failed to test SQL connection" });
     }
   });
 

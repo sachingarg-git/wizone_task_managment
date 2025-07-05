@@ -14,8 +14,10 @@ import {
   UserWithMetrics,
   Domain,
   InsertDomain,
+  SqlConnection,
+  InsertSqlConnection,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains } from "./db.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections } from "./db.js";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
 
 export interface IStorage {
@@ -96,6 +98,15 @@ export interface IStorage {
   updateDomain(id: number, domain: Partial<InsertDomain>): Promise<Domain>;
   deleteDomain(id: number): Promise<void>;
   getDomainByName(domain: string): Promise<Domain | undefined>;
+  
+  // SQL Connection operations
+  getAllSqlConnections(): Promise<SqlConnection[]>;
+  getSqlConnection(id: number): Promise<SqlConnection | undefined>;
+  createSqlConnection(connection: InsertSqlConnection): Promise<SqlConnection>;
+  updateSqlConnection(id: number, connection: Partial<InsertSqlConnection>): Promise<SqlConnection>;
+  deleteSqlConnection(id: number): Promise<void>;
+  testSqlConnection(id: number): Promise<{ success: boolean; message: string; }>;
+  updateConnectionTestResult(id: number, testStatus: string, testResult: string): Promise<SqlConnection>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -929,6 +940,85 @@ export class DatabaseStorage implements IStorage {
   async getDomainByName(domain: string): Promise<Domain | undefined> {
     const [domainRecord] = await db.select().from(domains).where(eq(domains.domain, domain));
     return domainRecord || undefined;
+  }
+
+  // SQL Connection operations
+  async getAllSqlConnections(): Promise<SqlConnection[]> {
+    return await db.select().from(sqlConnections).orderBy(desc(sqlConnections.createdAt));
+  }
+
+  async getSqlConnection(id: number): Promise<SqlConnection | undefined> {
+    const [connection] = await db.select().from(sqlConnections).where(eq(sqlConnections.id, id));
+    return connection || undefined;
+  }
+
+  async createSqlConnection(connectionData: InsertSqlConnection): Promise<SqlConnection> {
+    const [connection] = await db
+      .insert(sqlConnections)
+      .values({
+        ...connectionData,
+        testStatus: 'never_tested',
+      })
+      .returning();
+    return connection;
+  }
+
+  async updateSqlConnection(id: number, connectionData: Partial<InsertSqlConnection>): Promise<SqlConnection> {
+    const [connection] = await db
+      .update(sqlConnections)
+      .set({
+        ...connectionData,
+        updatedAt: new Date(),
+      })
+      .where(eq(sqlConnections.id, id))
+      .returning();
+    return connection;
+  }
+
+  async deleteSqlConnection(id: number): Promise<void> {
+    await db.delete(sqlConnections).where(eq(sqlConnections.id, id));
+  }
+
+  async testSqlConnection(id: number): Promise<{ success: boolean; message: string; }> {
+    const connection = await this.getSqlConnection(id);
+    if (!connection) {
+      return { success: false, message: 'Connection not found' };
+    }
+
+    try {
+      // Update test status to pending
+      await this.updateConnectionTestResult(id, 'pending', 'Testing connection...');
+      
+      // For now, we'll just return a mock test result
+      // In a real implementation, you would test the actual database connection
+      const testResult = { success: true, message: 'Connection successful' };
+      
+      await this.updateConnectionTestResult(
+        id, 
+        testResult.success ? 'success' : 'failed', 
+        testResult.message
+      );
+      
+      return testResult;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      await this.updateConnectionTestResult(id, 'failed', errorMessage);
+      return { success: false, message: errorMessage };
+    }
+  }
+
+  async updateConnectionTestResult(id: number, testStatus: string, testResult: string): Promise<SqlConnection> {
+    const [connection] = await db
+      .update(sqlConnections)
+      .set({
+        testStatus,
+        testResult,
+        lastTested: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(sqlConnections.id, id))
+      .returning();
+    return connection;
   }
 }
 

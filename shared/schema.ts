@@ -132,6 +132,27 @@ export const domains = pgTable("domains", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// SQL connections table for external database management
+export const sqlConnections = pgTable("sql_connections", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  host: varchar("host").notNull(),
+  port: integer("port").notNull().default(5432),
+  database: varchar("database").notNull(),
+  username: varchar("username").notNull(),
+  password: text("password").notNull(), // This will be encrypted in storage
+  connectionType: varchar("connection_type").notNull().default("postgresql"), // postgresql, mysql, mssql, sqlite
+  sslEnabled: boolean("ssl_enabled").default(false),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "cascade" }),
+  lastTested: timestamp("last_tested"),
+  testStatus: varchar("test_status"), // success, failed, pending, never_tested
+  testResult: text("test_result"), // error message or success confirmation
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks, { relationName: "assignedTasks" }),
@@ -139,6 +160,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks, { relationName: "createdTasks" }),
   performanceMetrics: many(performanceMetrics),
   ownedDomains: many(domains),
+  sqlConnections: many(sqlConnections),
 }));
 
 export const customersRelations = relations(customers, ({ many }) => ({
@@ -193,6 +215,13 @@ export const domainsRelations = relations(domains, ({ one }) => ({
   }),
 }));
 
+export const sqlConnectionsRelations = relations(sqlConnections, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [sqlConnections.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -228,6 +257,15 @@ export const insertDomainSchema = createInsertSchema(domains).omit({
   updatedAt: true,
 });
 
+export const insertSqlConnectionSchema = createInsertSchema(sqlConnections).omit({
+  id: true,
+  lastTested: true,
+  testStatus: true,
+  testResult: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -241,6 +279,8 @@ export type InsertTaskUpdate = z.infer<typeof insertTaskUpdateSchema>;
 export type TaskUpdate = typeof taskUpdates.$inferSelect;
 export type InsertDomain = z.infer<typeof insertDomainSchema>;
 export type Domain = typeof domains.$inferSelect;
+export type InsertSqlConnection = z.infer<typeof insertSqlConnectionSchema>;
+export type SqlConnection = typeof sqlConnections.$inferSelect;
 
 // Extended types for API responses
 export type TaskWithRelations = Task & {

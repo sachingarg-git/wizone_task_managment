@@ -23,5 +23,6 @@ export const {
   taskUpdates,
   performanceMetrics,
   domains,
+  sqlConnections,
   sessions,
 } = schema;

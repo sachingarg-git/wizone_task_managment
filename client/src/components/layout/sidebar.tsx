@@ -11,7 +11,8 @@ import {
   LogOut,
   TrendingUp,
   Globe,
-  User
+  User,
+  Database
 } from "lucide-react";
 import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
 
@@ -42,6 +43,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Analytics", href: "/analytics", icon: BarChart3 },
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Domain Management", href: "/domains", icon: Globe },
+      { name: "SQL Connections", href: "/sql-connections", icon: Database },
       { name: "My Portal", href: "/portal", icon: User },
     ];
   }
