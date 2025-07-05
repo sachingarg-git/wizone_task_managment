@@ -822,7 +822,7 @@ export class DatabaseStorage implements IStorage {
         totalTasks: count(),
         completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
         pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
-        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in-progress' then 1 end)`,
+        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in_progress' then 1 end)`,
         resolvedTasks: sql<number>`count(case when ${tasks.status} = 'resolved' then 1 end)`,
         cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
       })

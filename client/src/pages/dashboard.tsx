@@ -143,7 +143,7 @@ export default function Dashboard() {
                 trend="Active tasks"
                 trendUp={true}
                 clickable={true}
-                onClick={() => navigateToTasks('in-progress')}
+                onClick={() => navigateToTasks('in_progress')}
               />
               
               <StatsCard
