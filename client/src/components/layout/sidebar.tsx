@@ -1,6 +1,8 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   ListTodo, 
   BarChart3, 
@@ -11,6 +13,7 @@ import {
   Globe,
   User
 } from "lucide-react";
+import wizoneLogoPath from "@assets/20202020_1751691693654.jpg";
 
 const getNavigationForUser = (userRole: string) => {
   const baseNavigation = [
@@ -48,8 +51,22 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/user"], null);
+      window.location.href = "/login";
+    },
+    onError: () => {
+      // Force redirect even on error
+      window.location.href = "/login";
+    },
+  });
+
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    logoutMutation.mutate();
   };
 
   const navigation = getNavigationForUser(user?.role || 'engineer');
@@ -59,13 +76,11 @@ export default function Sidebar() {
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <ListTodo className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">TaskFlow</h1>
-            <p className="text-sm text-gray-500">Management System</p>
-          </div>
+          <img 
+            src={wizoneLogoPath} 
+            alt="Wizone Logo" 
+            className="w-32 h-auto object-contain"
+          />
         </div>
       </div>
       

@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, LogIn, User, Lock } from "lucide-react";
+import { Eye, EyeOff, LogIn, User, Lock, ListTodo } from "lucide-react";
+import wizoneLogoPath from "@assets/20202020_1751691693654.jpg";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -59,15 +60,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
-            <LogIn className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4 flex justify-center">
+            <img 
+              src={wizoneLogoPath} 
+              alt="Wizone Logo" 
+              className="w-40 h-auto object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">TaskFlow</h1>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <p className="text-gray-600 mt-2">IT Support Portal</p>
         </div>
 
         {/* Login Form */}

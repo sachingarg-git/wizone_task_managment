@@ -153,6 +153,14 @@ TaskFlow is a comprehensive task management and performance tracking system buil
   - Updated all authentication endpoints (/api/auth/login, /api/auth/user, /api/auth/logout)
   - Added authentication middleware for protected routes
   - Set up admin user with credentials: admin/admin123
+- July 05, 2025. Complete branding update to "Wizone IT Support Portal":
+  - Updated application branding from "TaskFlow" to "Wizone IT Support Portal"
+  - Integrated official Wizone logo throughout the application (sidebar and login page)
+  - Updated color theme to cyan-blue color scheme (hsl(195, 85%, 41%))
+  - Fixed logout functionality to properly redirect to /login page
+  - Added comprehensive meta tags and page title
+  - Enhanced user creation form with username and password fields
+  - Updated all authentication flows to work with new branding
 
 ## User Preferences
 
