@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { 
   Table, 
   TableBody, 
@@ -22,7 +25,8 @@ import {
   Download, 
   Users, 
   Wifi, 
-  UserPlus, 
+  UserPlus,
+  Settings, 
   Headphones,
   Eye,
   Edit,
@@ -38,6 +42,10 @@ export default function Customers() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPortalModal, setShowPortalModal] = useState(false);
+  const [portalCustomer, setPortalCustomer] = useState<any>(null);
+  const [portalUsername, setPortalUsername] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -116,6 +124,49 @@ export default function Customers() {
     setSelectedCustomer(null);
     setIsEditing(false);
   };
+
+  const handlePortalAccess = (customer: any) => {
+    setPortalCustomer(customer);
+    setPortalUsername(customer.username || "");
+    setPortalPassword(customer.password || "");
+    setShowPortalModal(true);
+  };
+
+  const portalAccessMutation = useMutation({
+    mutationFn: async ({ customerId, username, password, portalAccess }: { customerId: number, username: string, password: string, portalAccess: boolean }) => {
+      await apiRequest(`/api/customers/${customerId}/portal-access`, "PATCH", {
+        username,
+        password,
+        portalAccess
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setShowPortalModal(false);
+      toast({
+        title: "Success",
+        description: "Customer portal access updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update portal access",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="min-h-screen">
@@ -234,6 +285,7 @@ export default function Customers() {
                       <TableHead>Contact</TableHead>
                       <TableHead>Service Plan</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Portal Access</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -259,6 +311,30 @@ export default function Customers() {
                           <Badge className={customer.status === 'active' ? 'bg-success/10 text-success' : 'bg-gray-100 text-gray-700'}>
                             {customer.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {customer.portalAccess ? (
+                            <div className="flex items-center space-x-2">
+                              <Badge className="bg-green-100 text-green-700">Active</Badge>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handlePortalAccess(customer)}
+                                title="Manage Portal Access"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handlePortalAccess(customer)}
+                              title="Setup Portal Access"
+                            >
+                              Setup Portal
+                            </Button>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
@@ -310,6 +386,78 @@ export default function Customers() {
         customer={selectedCustomer}
         isEditing={isEditing}
       />
+
+      {/* Portal Access Management Dialog */}
+      <Dialog open={showPortalModal} onOpenChange={setShowPortalModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Customer Portal Access</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Customer: {portalCustomer?.name}</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch 
+                checked={portalCustomer?.portalAccess || false}
+                onCheckedChange={(checked) => {
+                  setPortalCustomer(prev => ({ ...prev, portalAccess: checked }));
+                }}
+              />
+              <Label>Enable Portal Access</Label>
+            </div>
+            {portalCustomer?.portalAccess && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-username">Username</Label>
+                  <Input
+                    id="portal-username"
+                    type="text"
+                    value={portalUsername}
+                    onChange={(e) => setPortalUsername(e.target.value)}
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-password">Password</Label>
+                  <Input
+                    id="portal-password"
+                    type="password"
+                    value={portalPassword}
+                    onChange={(e) => setPortalPassword(e.target.value)}
+                    placeholder="Enter password"
+                  />
+                </div>
+                <div className="text-sm text-gray-600">
+                  Portal URL: <code className="bg-gray-100 px-2 py-1 rounded">/customer-portal</code>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPortalModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!portalCustomer) return;
+                portalAccessMutation.mutate({
+                  customerId: portalCustomer.id,
+                  username: portalUsername,
+                  password: portalPassword,
+                  portalAccess: portalCustomer.portalAccess || false
+                });
+              }}
+              disabled={portalAccessMutation.isPending}
+            >
+              {portalAccessMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

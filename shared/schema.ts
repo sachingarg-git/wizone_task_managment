@@ -61,6 +61,9 @@ export const customers = pgTable("customers", {
   plan: varchar("plan"),
   installationDate: timestamp("installation_date"),
   status: varchar("status").notNull().default("active"),
+  username: varchar("username"),
+  password: varchar("password"),
+  portalAccess: boolean("portal_access").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -103,6 +106,18 @@ export const taskUpdates = pgTable("task_updates", {
   note: text("note"),
   attachments: text("attachments").array(), // Array of file URLs/paths
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const customerComments = pgTable("customer_comments", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  customerId: integer("customer_id").references(() => customers.id).notNull(),
+  comment: text("comment").notNull(),
+  attachments: text("attachments").array(), // Array of file URLs/paths
+  isInternal: boolean("is_internal").default(false), // For internal notes not visible to customer
+  respondedBy: varchar("responded_by").references(() => users.id), // Engineer who responded
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const performanceMetrics = pgTable("performance_metrics", {
@@ -208,6 +223,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 export const customersRelations = relations(customers, ({ many }) => ({
   tasks: many(tasks),
+  comments: many(customerComments),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -231,6 +247,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     relationName: "createdTasks",
   }),
   updates: many(taskUpdates),
+  customerComments: many(customerComments),
 }));
 
 export const taskUpdatesRelations = relations(taskUpdates, ({ one }) => ({
@@ -300,6 +317,21 @@ export const chatParticipantsRelations = relations(chatParticipants, ({ one }) =
   }),
 }));
 
+export const customerCommentsRelations = relations(customerComments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [customerComments.taskId],
+    references: [tasks.id],
+  }),
+  customer: one(customers, {
+    fields: [customerComments.customerId],
+    references: [customers.id],
+  }),
+  respondedByUser: one(users, {
+    fields: [customerComments.respondedBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -362,6 +394,12 @@ export const insertChatParticipantSchema = createInsertSchema(chatParticipants).
   lastReadAt: true,
 });
 
+export const insertCustomerCommentSchema = createInsertSchema(customerComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -416,4 +454,13 @@ export type ChatMessageWithSender = ChatMessage & {
 export type ChatRoomWithMessages = ChatRoom & {
   messages?: ChatMessageWithSender[];
   participants?: (ChatParticipant & { user: User })[];
+};
+
+export type CustomerComment = typeof customerComments.$inferSelect;
+export type InsertCustomerComment = z.infer<typeof insertCustomerCommentSchema>;
+
+export type CustomerCommentWithUser = CustomerComment & {
+  task?: Task;
+  customer?: Customer;
+  respondedByUser?: User;
 };

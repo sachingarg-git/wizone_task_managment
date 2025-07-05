@@ -25,8 +25,12 @@ import {
   ChatRoomWithParticipants,
   ChatMessageWithSender,
   ChatRoomWithMessages,
+  CustomerComment,
+  InsertCustomerComment,
+  CustomerCommentWithUser,
 } from "../shared/schema.js";
 import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
+import { customerComments } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -51,6 +55,12 @@ export interface IStorage {
   updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer>;
   deleteCustomer(id: number): Promise<void>;
   searchCustomers(query: string): Promise<Customer[]>;
+  
+  // Customer portal authentication
+  getCustomerByUsername(username: string): Promise<Customer | undefined>;
+  createCustomerWithCredentials(customer: InsertCustomer & { username: string; password: string }): Promise<Customer>;
+  updateCustomerCredentials(id: number, username: string, password: string, portalAccess: boolean): Promise<Customer>;
+  updateCustomerPortalAccess(id: number, data: { username: string; password: string; portalAccess: boolean }): Promise<Customer>;
   
   // Task operations
   getAllTasks(): Promise<TaskWithRelations[]>;
@@ -129,6 +139,12 @@ export interface IStorage {
   removeChatParticipant(roomId: number, userId: string): Promise<void>;
   getChatParticipants(roomId: number): Promise<(ChatParticipant & { user: User })[]>;
   isChatParticipant(roomId: number, userId: string): Promise<boolean>;
+  
+  // Customer comment operations
+  getTaskComments(taskId: number): Promise<CustomerCommentWithUser[]>;
+  createCustomerComment(comment: InsertCustomerComment): Promise<CustomerComment>;
+  updateCustomerComment(id: number, comment: Partial<InsertCustomerComment>): Promise<CustomerComment>;
+  deleteCustomerComment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -288,6 +304,54 @@ export class DatabaseStorage implements IStorage {
           ilike(customers.customerId, `%${query}%`)
         )
       );
+  }
+
+  // Customer portal authentication
+  async getCustomerByUsername(username: string): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.username, username));
+    return customer;
+  }
+
+  async createCustomerWithCredentials(customerData: InsertCustomer & { username: string; password: string }): Promise<Customer> {
+    // Generate customer ID
+    const customerId = `C${Date.now().toString().slice(-6)}`;
+    const [customer] = await db
+      .insert(customers)
+      .values({ 
+        ...customerData, 
+        customerId,
+        portalAccess: true
+      })
+      .returning();
+    return customer;
+  }
+
+  async updateCustomerCredentials(id: number, username: string, password: string, portalAccess: boolean): Promise<Customer> {
+    const [customer] = await db
+      .update(customers)
+      .set({ 
+        username,
+        password,
+        portalAccess,
+        updatedAt: new Date()
+      })
+      .where(eq(customers.id, id))
+      .returning();
+    return customer;
+  }
+
+  async updateCustomerPortalAccess(id: number, data: { username: string; password: string; portalAccess: boolean }): Promise<Customer> {
+    const [customer] = await db
+      .update(customers)
+      .set({ 
+        username: data.username,
+        password: data.password,
+        portalAccess: data.portalAccess,
+        updatedAt: new Date()
+      })
+      .where(eq(customers.id, id))
+      .returning();
+    return customer;
   }
 
   // Task operations
@@ -1287,6 +1351,74 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return !!participant;
+  }
+
+  // Customer comment operations
+  async getTaskComments(taskId: number): Promise<CustomerCommentWithUser[]> {
+    const comments = await db
+      .select({
+        id: customerComments.id,
+        taskId: customerComments.taskId,
+        customerId: customerComments.customerId,
+        comment: customerComments.comment,
+        attachments: customerComments.attachments,
+        isInternal: customerComments.isInternal,
+        respondedBy: customerComments.respondedBy,
+        createdAt: customerComments.createdAt,
+        updatedAt: customerComments.updatedAt,
+        customer: {
+          id: customers.id,
+          name: customers.name,
+          contactPerson: customers.contactPerson,
+          email: customers.email,
+        },
+        respondedByUser: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        },
+      })
+      .from(customerComments)
+      .leftJoin(customers, eq(customerComments.customerId, customers.id))
+      .leftJoin(users, eq(customerComments.respondedBy, users.id))
+      .where(eq(customerComments.taskId, taskId))
+      .orderBy(desc(customerComments.createdAt));
+
+    return comments.map(row => ({
+      id: row.id,
+      taskId: row.taskId,
+      customerId: row.customerId,
+      comment: row.comment,
+      attachments: row.attachments,
+      isInternal: row.isInternal,
+      respondedBy: row.respondedBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      customer: row.customer || undefined,
+      respondedByUser: row.respondedByUser || undefined,
+    }));
+  }
+
+  async createCustomerComment(commentData: InsertCustomerComment): Promise<CustomerComment> {
+    const [comment] = await db
+      .insert(customerComments)
+      .values(commentData)
+      .returning();
+    return comment;
+  }
+
+  async updateCustomerComment(id: number, commentData: Partial<InsertCustomerComment>): Promise<CustomerComment> {
+    const [comment] = await db
+      .update(customerComments)
+      .set({ ...commentData, updatedAt: new Date() })
+      .where(eq(customerComments.id, id))
+      .returning();
+    return comment;
+  }
+
+  async deleteCustomerComment(id: number): Promise<void> {
+    await db.delete(customerComments).where(eq(customerComments.id, id));
   }
 }
 

@@ -16,6 +16,7 @@ import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
 import Chat from "@/pages/chat";
 import Portal from "@/pages/portal";
+import CustomerPortal from "@/pages/customer-portal";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
@@ -34,6 +35,7 @@ function Router() {
       ) : !isAuthenticated ? (
         <>
           <Route path="/login" component={LoginPage} />
+          <Route path="/customer-portal" component={CustomerPortal} />
           <Route path="/" component={LoginPage} />
         </>
       ) : (

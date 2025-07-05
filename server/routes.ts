@@ -1247,6 +1247,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer Portal Authentication Routes
+  app.post('/api/customer/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      const customer = await storage.getCustomerByUsername(username);
+      if (!customer || !customer.portalAccess) {
+        return res.status(401).json({ message: "Invalid credentials or portal access denied" });
+      }
+      
+      // Verify password (in production, use proper password hashing)
+      if (customer.password !== password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Return customer data (without password)
+      const { password: _, ...customerData } = customer;
+      res.json(customerData);
+    } catch (error) {
+      console.error("Customer login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Get customer tasks
+  app.get('/api/customer/:customerId/tasks', async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.customerId);
+      const tasks = await storage.getTasksByCustomer(customerId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching customer tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Get task comments (customer view - excluding internal comments)
+  app.get('/api/tasks/:taskId/comments', async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const comments = await storage.getTaskComments(taskId);
+      
+      // Filter out internal comments for customer view
+      const customerComments = comments.filter(comment => !comment.isInternal);
+      res.json(customerComments);
+    } catch (error) {
+      console.error("Error fetching task comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  // Add customer comment
+  app.post('/api/customer/comments', async (req, res) => {
+    try {
+      const { taskId, customerId, comment } = req.body;
+      
+      if (!taskId || !customerId || !comment) {
+        return res.status(400).json({ message: "Task ID, customer ID, and comment are required" });
+      }
+      
+      const commentData = {
+        taskId,
+        customerId,
+        comment,
+        isInternal: false,
+        attachments: [],
+      };
+      
+      const newComment = await storage.createCustomerComment(commentData);
+      res.status(201).json(newComment);
+    } catch (error) {
+      console.error("Error creating customer comment:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  // Update customer portal access
+  app.patch('/api/customers/:customerId/portal-access', isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.customerId);
+      const { username, password, portalAccess } = req.body;
+      
+      const updatedCustomer = await storage.updateCustomerPortalAccess(customerId, {
+        username,
+        password,
+        portalAccess
+      });
+      
+      res.json(updatedCustomer);
+    } catch (error) {
+      console.error("Error updating customer portal access:", error);
+      res.status(500).json({ message: "Failed to update portal access" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

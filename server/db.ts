@@ -28,4 +28,5 @@ export const {
   chatRooms,
   chatMessages,
   chatParticipants,
+  customerComments,
 } = schema;
