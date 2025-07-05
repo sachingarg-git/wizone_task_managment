@@ -13,7 +13,7 @@ import {
   Globe,
   User
 } from "lucide-react";
-import wizoneLogoPath from "@assets/20202020_1751691693654.jpg";
+import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
 
 const getNavigationForUser = (userRole: string) => {
   const baseNavigation = [
