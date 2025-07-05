@@ -52,6 +52,23 @@ const editUserSchema = z.object({
   phone: z.string().optional(),
   role: z.string().min(1, "Role is required"),
   department: z.string().optional(),
+  newPassword: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine((data) => {
+  // Only validate password confirmation if newPassword is provided
+  if (data.newPassword && data.newPassword.length > 0) {
+    if (!data.confirmPassword || data.confirmPassword.length === 0) {
+      return false;
+    }
+    if (data.newPassword.length < 6) {
+      return false;
+    }
+    return data.newPassword === data.confirmPassword;
+  }
+  return true;
+}, {
+  message: "Passwords don't match or password must be at least 6 characters",
+  path: ["confirmPassword"],
 });
 
 // Reset Password Form Schema
@@ -178,6 +195,8 @@ interface EditUserFormProps {
 function EditUserForm({ user, onClose }: EditUserFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
 
   const form = useForm<EditUserFormData>({
     resolver: zodResolver(editUserSchema),
@@ -188,12 +207,23 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
       phone: user.phone || "",
       role: user.role || "engineer",
       department: user.department || "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: EditUserFormData) => {
-      await apiRequest("PUT", `/api/users/${user.id}`, data);
+      // If password is provided, handle password reset separately for admin users
+      if (data.newPassword && data.newPassword.length > 0 && isAdmin) {
+        await apiRequest("PUT", `/api/users/${user.id}/reset-password`, { 
+          newPassword: data.newPassword 
+        });
+      }
+      
+      // Update user details (excluding password fields)
+      const { newPassword, confirmPassword, ...userUpdateData } = data;
+      await apiRequest("PUT", `/api/users/${user.id}`, userUpdateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -330,6 +360,51 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
               )}
             />
           </div>
+
+          {/* Password Reset Section - Admin Only */}
+          {isAdmin && (
+            <div className="space-y-4 pt-6 border-t border-gray-200">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                  <Key className="w-4 h-4 mr-2" />
+                  Reset Password (Admin Only)
+                </h4>
+                <p className="text-sm text-blue-700">
+                  Leave password fields empty to keep current password unchanged.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password (min 6 chars)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Confirm new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
