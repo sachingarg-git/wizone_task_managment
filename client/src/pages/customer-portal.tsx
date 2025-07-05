@@ -83,6 +83,21 @@ export default function CustomerPortal() {
     status: "",
     priority: ""
   });
+  const [activeTab, setActiveTab] = useState("tasks");
+  const [showSystemDetailsForm, setShowSystemDetailsForm] = useState(false);
+  const [systemDetailsForm, setSystemDetailsForm] = useState({
+    empId: "",
+    systemName: "",
+    systemConfiguration: "",
+    processorName: "",
+    ram: "",
+    hardDisk: "",
+    ssd: "",
+    sharingStatus: false,
+    administratorAccount: false,
+    antivirusAvailable: false,
+    upsAvailable: false
+  });
   const { toast } = useToast();
 
   // Check if customer is already logged in
@@ -152,6 +167,12 @@ export default function CustomerPortal() {
   const { data: comments = [] } = useQuery<CustomerComment[]>({
     queryKey: [`/api/customer-portal/tasks/${selectedTask?.id}/comments`],
     enabled: !!selectedTask,
+  });
+
+  // Fetch customer system details
+  const { data: systemDetails = [], isLoading: systemDetailsLoading, refetch: refetchSystemDetails } = useQuery<any[]>({
+    queryKey: [`/api/customer-portal/system-details`],
+    enabled: !!customerUser,
   });
 
   // Customer task update mutation
@@ -237,6 +258,48 @@ export default function CustomerPortal() {
     },
   });
 
+  // System details mutations
+  const createSystemDetailsMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch("/api/customer-portal/system-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      setShowSystemDetailsForm(false);
+      setSystemDetailsForm({
+        empId: "",
+        systemName: "",
+        systemConfiguration: "",
+        processorName: "",
+        ram: "",
+        hardDisk: "",
+        ssd: "",
+        sharingStatus: false,
+        administratorAccount: false,
+        antivirusAvailable: false,
+        upsAvailable: false
+      });
+      refetchSystemDetails();
+      toast({
+        title: "Success",
+        description: "System details added successfully",
+      });
+    },
+    onError: (error) => {
+      console.error("System details error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add system details. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🔵 CUSTOMER PORTAL FORM SUBMIT - Login form data:', loginForm);
@@ -247,6 +310,11 @@ export default function CustomerPortal() {
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     createTaskMutation.mutate(createTaskForm);
+  };
+
+  const handleCreateSystemDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSystemDetailsMutation.mutate(systemDetailsForm);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -372,13 +440,47 @@ export default function CustomerPortal() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Button
-                onClick={() => setShowCreateTask(true)}
-                className="bg-cyan-600 hover:bg-cyan-700 flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Task
-              </Button>
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  onClick={() => setActiveTab("tasks")}
+                  variant={activeTab === "tasks" ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Tasks
+                </Button>
+                <Button
+                  onClick={() => setActiveTab("systems")}
+                  variant={activeTab === "systems" ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  System Details
+                </Button>
+              </div>
+              
+              {activeTab === "tasks" && (
+                <Button
+                  onClick={() => setShowCreateTask(true)}
+                  className="bg-cyan-600 hover:bg-cyan-700 flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Task
+                </Button>
+              )}
+              
+              {activeTab === "systems" && (
+                <Button
+                  onClick={() => setShowSystemDetailsForm(true)}
+                  className="bg-cyan-600 hover:bg-cyan-700 flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add System
+                </Button>
+              )}
+              
               <Button
                 onClick={handleLogout}
                 variant="outline"
@@ -394,8 +496,10 @@ export default function CustomerPortal() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Task Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {activeTab === "tasks" && (
+          <>
+            {/* Task Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -898,6 +1002,235 @@ export default function CustomerPortal() {
                 </CardContent>
               )}
             </Card>
+          </DialogContent>
+        </Dialog>
+          </>
+        )}
+
+        {activeTab === "systems" && (
+          <>
+            {/* System Details Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Systems</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {systemDetails?.length || 0}
+                      </p>
+                    </div>
+                    <Settings className="h-8 w-8 text-cyan-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* System Details List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  System Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {systemDetailsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading system details...</p>
+                  </div>
+                ) : systemDetails?.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No system details found</p>
+                    <p className="text-sm text-gray-500">Click "Add System" to create your first system record</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee ID</TableHead>
+                          <TableHead>System Name</TableHead>
+                          <TableHead>Configuration</TableHead>
+                          <TableHead>Processor</TableHead>
+                          <TableHead>RAM</TableHead>
+                          <TableHead>Storage</TableHead>
+                          <TableHead>Security</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {systemDetails?.map((system: any) => (
+                          <TableRow key={system.id}>
+                            <TableCell className="font-medium">{system.empId}</TableCell>
+                            <TableCell>{system.systemName}</TableCell>
+                            <TableCell>{system.systemConfiguration}</TableCell>
+                            <TableCell>{system.processorName}</TableCell>
+                            <TableCell>{system.ram}</TableCell>
+                            <TableCell>
+                              {system.hardDisk && `HDD: ${system.hardDisk}`}
+                              {system.ssd && `, SSD: ${system.ssd}GB`}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {system.antivirusAvailable && <Badge variant="outline" className="text-xs">Antivirus</Badge>}
+                                {system.upsAvailable && <Badge variant="outline" className="text-xs">UPS</Badge>}
+                                {system.administratorAccount && <Badge variant="outline" className="text-xs">Admin</Badge>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* System Details Form Dialog */}
+        <Dialog open={showSystemDetailsForm} onOpenChange={setShowSystemDetailsForm}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Add System Details
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateSystemDetails} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="empId">Employee ID</Label>
+                  <Input
+                    id="empId"
+                    value={systemDetailsForm.empId}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, empId: e.target.value})}
+                    placeholder="e.g., EMP001"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="systemName">System Name</Label>
+                  <Input
+                    id="systemName"
+                    value={systemDetailsForm.systemName}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, systemName: e.target.value})}
+                    placeholder="e.g., Desktop-001"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="systemConfiguration">System Configuration</Label>
+                  <Input
+                    id="systemConfiguration"
+                    value={systemDetailsForm.systemConfiguration}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, systemConfiguration: e.target.value})}
+                    placeholder="e.g., Workstation"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="processorName">Processor</Label>
+                  <Input
+                    id="processorName"
+                    value={systemDetailsForm.processorName}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, processorName: e.target.value})}
+                    placeholder="e.g., Intel Core i7-8700K"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ram">RAM</Label>
+                  <Input
+                    id="ram"
+                    value={systemDetailsForm.ram}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, ram: e.target.value})}
+                    placeholder="e.g., 16GB DDR4"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hardDisk">Hard Disk</Label>
+                  <Input
+                    id="hardDisk"
+                    value={systemDetailsForm.hardDisk}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, hardDisk: e.target.value})}
+                    placeholder="e.g., 1TB SATA"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ssd">SSD (GB)</Label>
+                  <Input
+                    id="ssd"
+                    value={systemDetailsForm.ssd}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, ssd: e.target.value})}
+                    placeholder="e.g., 256"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="sharingStatus"
+                    checked={systemDetailsForm.sharingStatus}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, sharingStatus: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="sharingStatus">File Sharing Enabled</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="administratorAccount"
+                    checked={systemDetailsForm.administratorAccount}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, administratorAccount: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="administratorAccount">Administrator Account</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="antivirusAvailable"
+                    checked={systemDetailsForm.antivirusAvailable}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, antivirusAvailable: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="antivirusAvailable">Antivirus Installed</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="upsAvailable"
+                    checked={systemDetailsForm.upsAvailable}
+                    onChange={(e) => setSystemDetailsForm({...systemDetailsForm, upsAvailable: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="upsAvailable">UPS Available</Label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowSystemDetailsForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-cyan-600 hover:bg-cyan-700"
+                  disabled={createSystemDetailsMutation.isPending}
+                >
+                  {createSystemDetailsMutation.isPending ? "Adding..." : "Add System"}
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

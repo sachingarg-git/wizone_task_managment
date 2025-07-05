@@ -28,9 +28,11 @@ import {
   CustomerComment,
   InsertCustomerComment,
   CustomerCommentWithUser,
+  CustomerSystemDetails,
+  InsertCustomerSystemDetails,
 } from "../shared/schema.js";
 import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
-import { customerComments } from "../shared/schema.js";
+import { customerComments, customerSystemDetails } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -145,6 +147,12 @@ export interface IStorage {
   createCustomerComment(comment: InsertCustomerComment): Promise<CustomerComment>;
   updateCustomerComment(id: number, comment: Partial<InsertCustomerComment>): Promise<CustomerComment>;
   deleteCustomerComment(id: number): Promise<void>;
+  
+  // Customer system details operations
+  getCustomerSystemDetails(customerId: number): Promise<CustomerSystemDetails[]>;
+  createCustomerSystemDetails(systemDetails: InsertCustomerSystemDetails): Promise<CustomerSystemDetails>;
+  updateCustomerSystemDetails(id: number, systemDetails: Partial<InsertCustomerSystemDetails>): Promise<CustomerSystemDetails>;
+  deleteCustomerSystemDetails(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1419,6 +1427,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerComment(id: number): Promise<void> {
     await db.delete(customerComments).where(eq(customerComments.id, id));
+  }
+
+  // Customer system details operations
+  async getCustomerSystemDetails(customerId: number): Promise<CustomerSystemDetails[]> {
+    const systems = await db
+      .select()
+      .from(customerSystemDetails)
+      .where(eq(customerSystemDetails.customerId, customerId))
+      .orderBy(desc(customerSystemDetails.createdAt));
+    return systems;
+  }
+
+  async createCustomerSystemDetails(systemData: InsertCustomerSystemDetails): Promise<CustomerSystemDetails> {
+    const [system] = await db
+      .insert(customerSystemDetails)
+      .values(systemData)
+      .returning();
+    return system;
+  }
+
+  async updateCustomerSystemDetails(id: number, systemData: Partial<InsertCustomerSystemDetails>): Promise<CustomerSystemDetails> {
+    const [system] = await db
+      .update(customerSystemDetails)
+      .set({ ...systemData, updatedAt: new Date() })
+      .where(eq(customerSystemDetails.id, id))
+      .returning();
+    return system;
+  }
+
+  async deleteCustomerSystemDetails(id: number): Promise<void> {
+    await db.delete(customerSystemDetails).where(eq(customerSystemDetails.id, id));
   }
 }
 

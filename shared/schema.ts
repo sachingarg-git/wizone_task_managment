@@ -120,6 +120,26 @@ export const customerComments = pgTable("customer_comments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Customer system details table - Employee system information
+export const customerSystemDetails = pgTable("customer_system_details", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").references(() => customers.id).notNull(),
+  empId: varchar("emp_id").notNull(), // Employee ID
+  systemName: varchar("system_name").notNull(),
+  systemConfiguration: text("system_configuration"), // System configuration details
+  processorName: varchar("processor_name"), // Processor name
+  ram: integer("ram"), // RAM in GB
+  hardDisk: integer("hard_disk"), // Hard disk in GB
+  ssd: integer("ssd"), // SSD in GB
+  sharingStatus: boolean("sharing_status").default(false), // Sharing on/off
+  administratorAccount: boolean("administrator_account").default(false), // Administrator account on/off
+  antivirusAvailable: boolean("antivirus_available").default(false), // Antivirus available/not
+  upsAvailable: boolean("ups_available").default(false), // UPS available/not
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const performanceMetrics = pgTable("performance_metrics", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   month: integer("month").notNull(),
@@ -376,6 +396,12 @@ export const insertSqlConnectionSchema = createInsertSchema(sqlConnections).omit
   updatedAt: true,
 });
 
+export const insertCustomerSystemDetailsSchema = createInsertSchema(customerSystemDetails).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
   id: true,
   createdAt: true,
@@ -415,6 +441,8 @@ export type InsertDomain = z.infer<typeof insertDomainSchema>;
 export type Domain = typeof domains.$inferSelect;
 export type InsertSqlConnection = z.infer<typeof insertSqlConnectionSchema>;
 export type SqlConnection = typeof sqlConnections.$inferSelect;
+export type InsertCustomerSystemDetails = z.infer<typeof insertCustomerSystemDetailsSchema>;
+export type CustomerSystemDetails = typeof customerSystemDetails.$inferSelect;
 export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
 export type ChatRoom = typeof chatRooms.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;

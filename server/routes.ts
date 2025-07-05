@@ -290,6 +290,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer system details routes
+  app.get('/api/customer-portal/system-details', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const systemDetails = await storage.getCustomerSystemDetails(customerId);
+      res.json(systemDetails);
+    } catch (error) {
+      console.error("Error fetching system details:", error);
+      res.status(500).json({ message: "Failed to fetch system details" });
+    }
+  });
+
+  app.post('/api/customer-portal/system-details', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const systemData = {
+        customerId,
+        ...req.body
+      };
+      
+      const newSystem = await storage.createCustomerSystemDetails(systemData);
+      res.json(newSystem);
+    } catch (error) {
+      console.error("Error creating system details:", error);
+      res.status(500).json({ message: "Failed to create system details" });
+    }
+  });
+
+  app.put('/api/customer-portal/system-details/:id', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const systemId = parseInt(req.params.id);
+      
+      // Verify the system belongs to the customer
+      const systems = await storage.getCustomerSystemDetails(customerId);
+      const systemExists = systems.find(s => s.id === systemId);
+      
+      if (!systemExists) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const updatedSystem = await storage.updateCustomerSystemDetails(systemId, req.body);
+      res.json(updatedSystem);
+    } catch (error) {
+      console.error("Error updating system details:", error);
+      res.status(500).json({ message: "Failed to update system details" });
+    }
+  });
+
+  app.delete('/api/customer-portal/system-details/:id', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const customerId = (req.session as any).customer.id;
+      const systemId = parseInt(req.params.id);
+      
+      // Verify the system belongs to the customer
+      const systems = await storage.getCustomerSystemDetails(customerId);
+      const systemExists = systems.find(s => s.id === systemId);
+      
+      if (!systemExists) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      await storage.deleteCustomerSystemDetails(systemId);
+      res.json({ message: "System details deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting system details:", error);
+      res.status(500).json({ message: "Failed to delete system details" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
     try {
