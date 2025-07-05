@@ -44,10 +44,12 @@ import {
   TripTrackingWithRelations,
   OfficeLocation,
   InsertOfficeLocation,
+  OfficeLocationSuggestion,
+  InsertOfficeLocationSuggestion,
   EngineerTrackingHistory,
   InsertEngineerTrackingHistory,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, engineerTrackingHistory } from "./db.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory } from "./db.js";
 import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count, gte, lte } from "drizzle-orm";
@@ -1523,6 +1525,103 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOfficeLocation(id: number): Promise<void> {
     await db.delete(officeLocations).where(eq(officeLocations.id, id));
+  }
+
+  // Office location suggestions based on team distribution
+  async generateOfficeLocationSuggestions(): Promise<OfficeLocationSuggestion[]> {
+    // Get all active users with their locations (from customers or addresses)
+    const activeUsers = await db
+      .select({
+        id: users.id,
+        role: users.role,
+        department: users.department,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(users)
+      .where(and(eq(users.isActive, true), sql`${users.role} IN ('field_engineer', 'engineer', 'backend_engineer')`));
+
+    // Get customer locations to approximate team member locations
+    const customerLocations = await db
+      .select({
+        latitude: customers.latitude,
+        longitude: customers.longitude,
+        city: customers.city,
+        state: customers.state,
+      })
+      .from(customers)
+      .where(and(
+        sql`${customers.latitude} IS NOT NULL`,
+        sql`${customers.longitude} IS NOT NULL`
+      ));
+
+    if (customerLocations.length === 0) {
+      return [];
+    }
+
+    // Calculate geographic center using customer distribution as proxy for team distribution
+    const latSum = customerLocations.reduce((sum, loc) => sum + parseFloat(loc.latitude!), 0);
+    const lngSum = customerLocations.reduce((sum, loc) => sum + parseFloat(loc.longitude!), 0);
+    const centerLat = latSum / customerLocations.length;
+    const centerLng = lngSum / customerLocations.length;
+
+    // Calculate distances from center
+    const distances = customerLocations.map(loc => {
+      const lat = parseFloat(loc.latitude!);
+      const lng = parseFloat(loc.longitude!);
+      return this.calculateDistance(centerLat, centerLng, lat, lng);
+    });
+
+    const averageDistance = distances.reduce((sum, dist) => sum + dist, 0) / distances.length;
+    const maxDistance = Math.max(...distances);
+    const coverageRadius = averageDistance * 1.5; // 150% of average for good coverage
+
+    // Calculate efficiency score (lower average distance = higher efficiency)
+    const efficiency = Math.max(0, 100 - (averageDistance / 10));
+
+    // Create suggestion with analysis data
+    const analysisData = {
+      totalTeamMembers: activeUsers.length,
+      totalCustomers: customerLocations.length,
+      centerCalculation: { centerLat, centerLng },
+      distanceStats: { averageDistance, maxDistance, coverageRadius },
+      departmentBreakdown: activeUsers.reduce((acc, user) => {
+        acc[user.department || 'unknown'] = (acc[user.department || 'unknown'] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      cityDistribution: customerLocations.reduce((acc, loc) => {
+        const city = loc.city || 'unknown';
+        acc[city] = (acc[city] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    };
+
+    // Store the suggestion in database
+    const [suggestion] = await db
+      .insert(officeLocationSuggestions)
+      .values({
+        suggestedLatitude: centerLat.toString(),
+        suggestedLongitude: centerLng.toString(),
+        calculatedCenter: true,
+        teamMembersCount: activeUsers.length,
+        averageDistance: averageDistance.toString(),
+        maxDistance: maxDistance.toString(),
+        coverageRadius: coverageRadius.toString(),
+        efficiency: efficiency.toString(),
+        suggestedAddress: `Optimal location for ${activeUsers.length} team members`,
+        analysisData: analysisData,
+      })
+      .returning();
+
+    return [suggestion];
+  }
+
+  async getOfficeLocationSuggestions(): Promise<OfficeLocationSuggestion[]> {
+    return await db
+      .select()
+      .from(officeLocationSuggestions)
+      .orderBy(sql`${officeLocationSuggestions.efficiency} DESC`, sql`${officeLocationSuggestions.createdAt} DESC`);
   }
 
   // Engineer tracking history operations

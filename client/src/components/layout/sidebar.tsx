@@ -49,7 +49,6 @@ const getNavigationForUser = (userRole: string) => {
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Domain Management", href: "/domains", icon: Globe },
       { name: "SQL Connections", href: "/sql-connections", icon: Database },
-      { name: "Geofencing", href: "/geofencing", icon: MapPin },
       { name: "Tracking History", href: "/tracking-history", icon: Clock },
       { name: "Office Management", href: "/office-management", icon: Building2 },
       { name: "Engineer Chat", href: "/chat", icon: MessageCircle },

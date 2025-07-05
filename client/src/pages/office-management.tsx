@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, MapPin, Plus, Edit, Trash2, Save, X } from "lucide-react";
+import { Building2, MapPin, Plus, Edit, Trash2, Save, X, Lightbulb, Target, Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,22 @@ interface OfficeLocation {
   address?: string;
   isMainOffice: boolean;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OfficeLocationSuggestion {
+  id: number;
+  suggestedLatitude: string;
+  suggestedLongitude: string;
+  calculatedCenter: boolean;
+  teamMembersCount: number;
+  averageDistance?: string;
+  maxDistance?: string;
+  coverageRadius?: string;
+  efficiency?: string;
+  suggestedAddress?: string;
+  analysisData?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +150,32 @@ export default function OfficeManagement() {
       toast({
         title: "Error",
         description: `Failed to delete office location: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch office location suggestions
+  const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery<OfficeLocationSuggestion[]>({
+    queryKey: ["/api/tracking/office-suggestions"],
+  });
+
+  // Generate office suggestions mutation
+  const generateSuggestionsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/tracking/office-suggestions/generate");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tracking/office-suggestions"] });
+      toast({
+        title: "Success",
+        description: "Office location suggestions generated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to generate suggestions: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -426,6 +468,145 @@ export default function OfficeManagement() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Office Location Suggestions */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Office Location Suggestions
+              </CardTitle>
+              <CardDescription>
+                AI-powered suggestions for optimal office placement based on team distribution
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => generateSuggestionsMutation.mutate()}
+              disabled={generateSuggestionsMutation.isPending}
+              variant="outline"
+            >
+              {generateSuggestionsMutation.isPending ? "Generating..." : "Generate Suggestions"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {suggestionsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading suggestions...</p>
+            </div>
+          ) : suggestions.length === 0 ? (
+            <div className="text-center py-8">
+              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Suggestions Available</h3>
+              <p className="text-muted-foreground mb-4">
+                Generate suggestions based on your team's location data.
+              </p>
+              <Button
+                onClick={() => generateSuggestionsMutation.mutate()}
+                disabled={generateSuggestionsMutation.isPending}
+              >
+                Generate First Suggestions
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {suggestions.map((suggestion) => (
+                <div key={suggestion.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={suggestion.calculatedCenter ? "default" : "secondary"}>
+                          {suggestion.calculatedCenter ? "AI Optimized" : "Basic Center"}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {suggestion.teamMembersCount} team members analyzed
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium">Coordinates:</span>
+                          <br />
+                          <span className="text-muted-foreground">
+                            {parseFloat(suggestion.suggestedLatitude).toFixed(6)}, {parseFloat(suggestion.suggestedLongitude).toFixed(6)}
+                          </span>
+                        </div>
+                        {suggestion.suggestedAddress && (
+                          <div>
+                            <span className="font-medium">Suggested Address:</span>
+                            <br />
+                            <span className="text-muted-foreground">{suggestion.suggestedAddress}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {(suggestion.averageDistance || suggestion.maxDistance || suggestion.coverageRadius) && (
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          {suggestion.averageDistance && (
+                            <div>
+                              <span className="font-medium">Avg Distance:</span>
+                              <br />
+                              <span className="text-muted-foreground">{suggestion.averageDistance}</span>
+                            </div>
+                          )}
+                          {suggestion.maxDistance && (
+                            <div>
+                              <span className="font-medium">Max Distance:</span>
+                              <br />
+                              <span className="text-muted-foreground">{suggestion.maxDistance}</span>
+                            </div>
+                          )}
+                          {suggestion.coverageRadius && (
+                            <div>
+                              <span className="font-medium">Coverage:</span>
+                              <br />
+                              <span className="text-muted-foreground">{suggestion.coverageRadius}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {suggestion.efficiency && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Efficiency Score:</span>
+                          <Badge variant="outline">{suggestion.efficiency}</Badge>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setFormData({
+                          name: "Suggested Office Location",
+                          description: `AI-generated suggestion based on ${suggestion.teamMembersCount} team members`,
+                          latitude: suggestion.suggestedLatitude,
+                          longitude: suggestion.suggestedLongitude,
+                          address: suggestion.suggestedAddress || "",
+                          isMainOffice: false,
+                          isActive: true,
+                        });
+                        setSelectedOffice(null);
+                        setIsFormOpen(true);
+                      }}
+                    >
+                      Use This Location
+                    </Button>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    Generated: {new Date(suggestion.createdAt).toLocaleString()}
                   </div>
                 </div>
               ))}

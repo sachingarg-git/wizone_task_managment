@@ -35,5 +35,6 @@ export const {
   geofenceEvents,
   tripTracking,
   officeLocations,
+  officeLocationSuggestions,
   engineerTrackingHistory,
 } = schema;

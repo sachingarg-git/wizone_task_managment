@@ -10,6 +10,7 @@ import {
   primaryKey,
   unique,
   index,
+  json,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -529,6 +530,23 @@ export const officeLocations = pgTable("office_locations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Office location suggestions based on team distribution analysis
+export const officeLocationSuggestions = pgTable("office_location_suggestions", {
+  id: serial("id").primaryKey(),
+  suggestedLatitude: decimal("suggested_latitude", { precision: 10, scale: 8 }).notNull(),
+  suggestedLongitude: decimal("suggested_longitude", { precision: 11, scale: 8 }).notNull(),
+  calculatedCenter: boolean("calculated_center").default(true),
+  teamMembersCount: integer("team_members_count").notNull(),
+  averageDistance: decimal("average_distance", { precision: 8, scale: 2 }),
+  maxDistance: decimal("max_distance", { precision: 8, scale: 2 }),
+  coverageRadius: decimal("coverage_radius", { precision: 8, scale: 2 }),
+  efficiency: decimal("efficiency", { precision: 5, scale: 2 }), // Percentage score
+  suggestedAddress: text("suggested_address"),
+  analysisData: json("analysis_data"), // Store team distribution details
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Geofencing zones (office, customer locations, service areas)
 export const geofenceZones = pgTable("geofence_zones", {
   id: serial("id").primaryKey(),
@@ -604,6 +622,7 @@ export const tripTracking = pgTable("trip_tracking", {
 
 // Insert schemas for geofencing and tracking
 export const insertOfficeLocationSchema = createInsertSchema(officeLocations);
+export const insertOfficeLocationSuggestionSchema = createInsertSchema(officeLocationSuggestions);
 export const insertUserLocationSchema = createInsertSchema(userLocations);
 export const insertGeofenceZoneSchema = createInsertSchema(geofenceZones);
 export const insertGeofenceEventSchema = createInsertSchema(geofenceEvents);
@@ -625,6 +644,9 @@ export type InsertTripTracking = z.infer<typeof insertTripTrackingSchema>;
 
 export type OfficeLocation = typeof officeLocations.$inferSelect;
 export type InsertOfficeLocation = z.infer<typeof insertOfficeLocationSchema>;
+
+export type OfficeLocationSuggestion = typeof officeLocationSuggestions.$inferSelect;
+export type InsertOfficeLocationSuggestion = z.infer<typeof insertOfficeLocationSuggestionSchema>;
 
 export type EngineerTrackingHistory = typeof engineerTrackingHistory.$inferSelect;
 export type InsertEngineerTrackingHistory = z.infer<typeof insertEngineerTrackingHistorySchema>;

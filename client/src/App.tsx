@@ -15,7 +15,7 @@ import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
-import Geofencing from "@/pages/geofencing";
+
 import TrackingHistory from "@/pages/tracking-history";
 import OfficeManagement from "@/pages/office-management";
 import Chat from "@/pages/chat";
@@ -92,7 +92,7 @@ function Router() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/domains" component={Domains} />
           <Route path="/sql-connections" component={SqlConnections} />
-          <Route path="/geofencing" component={Geofencing} />
+
           <Route path="/tracking-history" component={TrackingHistory} />
           <Route path="/office-management" component={OfficeManagement} />
           <Route path="/chat" component={Chat} />

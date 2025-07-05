@@ -1838,6 +1838,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Office location suggestions based on team distribution
+  app.post("/api/tracking/office-suggestions/generate", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can generate office location suggestions" });
+      }
+
+      const suggestions = await storage.generateOfficeLocationSuggestions();
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating office location suggestions:", error);
+      res.status(500).json({ message: "Failed to generate office location suggestions" });
+    }
+  });
+
+  // Get office location suggestions
+  app.get("/api/tracking/office-suggestions", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can view office location suggestions" });
+      }
+
+      const suggestions = await storage.getOfficeLocationSuggestions();
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error fetching office location suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch office location suggestions" });
+    }
+  });
+
   // Engineer tracking history endpoints
   app.get("/api/tracking/history/:userId", isAuthenticated, async (req, res) => {
     try {
