@@ -547,10 +547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', isAuthenticated, async (req, res) => {
     try {
-      const { id, email, firstName, lastName, phone, role } = req.body;
+      const { id, username, password, email, firstName, lastName, phone, role } = req.body;
       
-      if (!id || !email || !firstName || !lastName) {
-        return res.status(400).json({ message: "ID, email, first name, and last name are required" });
+      if (!id || !username || !password || !email || !firstName || !lastName) {
+        return res.status(400).json({ message: "ID, username, password, email, first name, and last name are required" });
       }
       
       // Check if user with this email already exists
@@ -570,9 +570,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "DUPLICATE_ID"
         });
       }
+
+      // Check if username already exists
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ 
+          message: "A user with this username already exists",
+          error: "DUPLICATE_USERNAME"
+        });
+      }
+      
+      // Hash the password
+      const { scrypt, randomBytes } = require("crypto");
+      const { promisify } = require("util");
+      const scryptAsync = promisify(scrypt);
+      
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64));
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
       
       const userData = {
         id,
+        username,
+        password: hashedPassword,
         email,
         firstName,
         lastName,
@@ -581,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
       };
       
-      const user = await storage.upsertUser(userData);
+      const user = await storage.createUserWithPassword(userData);
       res.status(201).json(user);
     } catch (error) {
       console.error("Error creating user:", error);

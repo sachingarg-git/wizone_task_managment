@@ -33,6 +33,8 @@ import { apiRequest } from "@/lib/queryClient";
 
 const userFormSchema = z.object({
   id: z.string().min(3, "User ID must be at least 3 characters").max(50),
+  username: z.string().min(3, "Username must be at least 3 characters").max(50),
+  password: z.string().min(6, "Password must be at least 6 characters").max(100),
   email: z.string().email("Please enter a valid email address"),
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
@@ -55,6 +57,8 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
     resolver: zodResolver(userFormSchema),
     defaultValues: {
       id: "",
+      username: "",
+      password: "",
       email: "",
       firstName: "",
       lastName: "",
@@ -160,6 +164,36 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter username for login" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password *</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter password (min 6 characters)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
