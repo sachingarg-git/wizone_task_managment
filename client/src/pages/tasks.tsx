@@ -531,9 +531,10 @@ export default function Tasks() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="start_task">Start Task</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -563,7 +564,22 @@ export default function Tasks() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(tasks as any[])?.map((task: any) => (
+                    {(tasks as any[])?.filter((task: any) => {
+                      // Apply search filter
+                      const matchesSearch = searchQuery === "" || 
+                        task.ticketNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        task.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        task.issueType?.toLowerCase().includes(searchQuery.toLowerCase());
+                      
+                      // Apply priority filter
+                      const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
+                      
+                      // Apply status filter
+                      const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+                      
+                      return matchesSearch && matchesPriority && matchesStatus;
+                    }).map((task: any) => (
                       <TableRow key={task.id}>
                         <TableCell className="font-medium">
                           <button
