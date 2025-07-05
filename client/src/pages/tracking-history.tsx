@@ -25,6 +25,15 @@ interface TrackingEntry {
   networkStatus?: string;
   timestamp: string;
   createdAt: string;
+  // Enhanced details
+  engineerName?: string;
+  engineerRole?: string;
+  engineerDepartment?: string;
+  taskTitle?: string;
+  taskStatus?: string;
+  taskPriority?: string;
+  ticketNumber?: string;
+  customerName?: string;
 }
 
 interface TrackingStats {
@@ -290,11 +299,26 @@ export default function TrackingHistory() {
                       
                       <div>
                         <p className="font-medium">
-                          {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
+                          {entry.engineerName || "Unknown Engineer"} - {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Coordinates: {parseFloat(entry.latitude).toFixed(4)}, {parseFloat(entry.longitude).toFixed(4)}
+                          {entry.taskTitle && entry.ticketNumber ? (
+                            <>Task: {entry.ticketNumber} - {entry.taskTitle}</>
+                          ) : (
+                            <>Coordinates: {parseFloat(entry.latitude).toFixed(4)}, {parseFloat(entry.longitude).toFixed(4)}</>
+                          )}
                         </p>
+                        {entry.taskStatus && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={entry.taskStatus === 'completed' ? 'default' : 
+                                          entry.taskStatus === 'in_progress' ? 'secondary' : 'outline'}>
+                              {entry.taskStatus}
+                            </Badge>
+                            {entry.customerName && (
+                              <span className="text-xs text-muted-foreground">Customer: {entry.customerName}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 

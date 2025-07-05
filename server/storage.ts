@@ -1624,14 +1624,51 @@ export class DatabaseStorage implements IStorage {
       .orderBy(sql`${officeLocationSuggestions.efficiency} DESC`, sql`${officeLocationSuggestions.createdAt} DESC`);
   }
 
-  // Engineer tracking history operations
-  async getEngineerTrackingHistory(userId: string, limit = 100): Promise<EngineerTrackingHistory[]> {
-    return await db
-      .select()
+  // Engineer tracking history operations with engineer and task details
+  async getEngineerTrackingHistory(userId?: string, limit = 100): Promise<any[]> {
+    const baseQuery = db
+      .select({
+        id: engineerTrackingHistory.id,
+        userId: engineerTrackingHistory.userId,
+        taskId: engineerTrackingHistory.taskId,
+        latitude: engineerTrackingHistory.latitude,
+        longitude: engineerTrackingHistory.longitude,
+        distanceFromOffice: engineerTrackingHistory.distanceFromOffice,
+        distanceFromCustomer: engineerTrackingHistory.distanceFromCustomer,
+        movementType: engineerTrackingHistory.movementType,
+        speedKmh: engineerTrackingHistory.speedKmh,
+        accuracy: engineerTrackingHistory.accuracy,
+        batteryLevel: engineerTrackingHistory.batteryLevel,
+        networkStatus: engineerTrackingHistory.networkStatus,
+        timestamp: engineerTrackingHistory.timestamp,
+        createdAt: engineerTrackingHistory.createdAt,
+        // Engineer details
+        engineerName: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        engineerRole: users.role,
+        engineerDepartment: users.department,
+        // Task details
+        taskTitle: tasks.title,
+        taskStatus: tasks.status,
+        taskPriority: tasks.priority,
+        ticketNumber: tasks.ticketNumber,
+        // Customer details
+        customerName: customers.name,
+      })
       .from(engineerTrackingHistory)
-      .where(eq(engineerTrackingHistory.userId, userId))
-      .orderBy(desc(engineerTrackingHistory.timestamp))
-      .limit(limit);
+      .leftJoin(users, eq(engineerTrackingHistory.userId, users.id))
+      .leftJoin(tasks, eq(engineerTrackingHistory.taskId, tasks.id))
+      .leftJoin(customers, eq(tasks.customerId, customers.id));
+
+    if (userId) {
+      return await baseQuery
+        .where(eq(engineerTrackingHistory.userId, userId))
+        .orderBy(desc(engineerTrackingHistory.timestamp))
+        .limit(limit);
+    } else {
+      return await baseQuery
+        .orderBy(desc(engineerTrackingHistory.timestamp))
+        .limit(limit);
+    }
   }
 
   async createTrackingHistoryEntry(trackingData: InsertEngineerTrackingHistory): Promise<EngineerTrackingHistory> {
