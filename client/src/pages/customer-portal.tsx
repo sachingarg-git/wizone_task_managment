@@ -91,10 +91,10 @@ export default function CustomerPortal() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      console.log('🔵 CUSTOMER PORTAL LOGIN - Making API call to:', "/api/customer-portal/auth/login");
+      console.log('🔵 CUSTOMER PORTAL LOGIN - Making API call to:', "/api/customer/login");
       console.log('🔵 CUSTOMER PORTAL LOGIN - With credentials:', credentials);
       
-      const response = await fetch("/api/customer-portal/auth/login", {
+      const response = await fetch("/api/customer/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
