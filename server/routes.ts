@@ -360,6 +360,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin system details routes
+  app.get('/api/customers/:customerId/system-details', isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.customerId);
+      const systemDetails = await storage.getCustomerSystemDetails(customerId);
+      res.json(systemDetails);
+    } catch (error) {
+      console.error("Error fetching customer system details:", error);
+      res.status(500).json({ message: "Failed to fetch system details" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
     try {

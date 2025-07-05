@@ -30,7 +30,8 @@ import {
   Headphones,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Computer
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -46,6 +47,8 @@ export default function Customers() {
   const [portalCustomer, setPortalCustomer] = useState<any>(null);
   const [portalUsername, setPortalUsername] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
+  const [showSystemDetailsDialog, setShowSystemDetailsDialog] = useState(false);
+  const [selectedCustomerForSystems, setSelectedCustomerForSystems] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -64,6 +67,12 @@ export default function Customers() {
         return;
       }
     },
+  });
+
+  // Fetch system details for selected customer
+  const { data: customerSystemDetails = [], isLoading: systemDetailsLoading } = useQuery({
+    queryKey: [`/api/customers/${selectedCustomerForSystems?.id}/system-details`],
+    enabled: !!selectedCustomerForSystems,
   });
 
   const deleteCustomerMutation = useMutation({
@@ -130,6 +139,11 @@ export default function Customers() {
     setPortalUsername(customer.username || "");
     setPortalPassword(customer.password || "");
     setShowPortalModal(true);
+  };
+
+  const handleViewSystemDetails = (customer: any) => {
+    setSelectedCustomerForSystems(customer);
+    setShowSystemDetailsDialog(true);
   };
 
   const portalAccessMutation = useMutation({
@@ -295,7 +309,12 @@ export default function Customers() {
                         <TableCell className="font-medium">{customer.customerId}</TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{customer.name}</div>
+                            <button
+                              onClick={() => handleViewSystemDetails(customer)}
+                              className="font-medium text-cyan-600 hover:text-cyan-800 underline cursor-pointer text-left"
+                            >
+                              {customer.name}
+                            </button>
                             <div className="text-sm text-gray-500">{customer.contactPerson}</div>
                           </div>
                         </TableCell>
@@ -454,6 +473,96 @@ export default function Customers() {
               disabled={portalAccessMutation.isPending}
             >
               {portalAccessMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* System Details Modal */}
+      <Dialog open={showSystemDetailsDialog} onOpenChange={setShowSystemDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              System Details - {selectedCustomerForSystems?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {systemDetailsLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+              <span className="ml-2">Loading system details...</span>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {customerSystemDetails.length > 0 ? (
+                <div className="grid gap-6">
+                  {customerSystemDetails.map((detail: any) => (
+                    <Card key={detail.id} className="border border-gray-200">
+                      <CardHeader className="bg-gray-50 border-b border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-lg font-medium text-gray-900">
+                            {detail.systemName}
+                          </h3>
+                          <span className="text-sm text-gray-500">
+                            ID: {detail.empId}
+                          </span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Hardware</h4>
+                            <div className="space-y-2 text-sm">
+                              <div><span className="font-medium">Processor:</span> {detail.processor}</div>
+                              <div><span className="font-medium">RAM:</span> {detail.ram}</div>
+                              <div><span className="font-medium">Hard Disk:</span> {detail.hardDisk}</div>
+                              <div><span className="font-medium">SSD:</span> {detail.ssd}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Security & Software</h4>
+                            <div className="space-y-2 text-sm">
+                              <div><span className="font-medium">Operating System:</span> {detail.operatingSystem}</div>
+                              <div><span className="font-medium">Antivirus:</span> {detail.antivirus}</div>
+                              <div><span className="font-medium">MS Office:</span> {detail.msOffice}</div>
+                              <div><span className="font-medium">Other Software:</span> {detail.otherSoftware}</div>
+                            </div>
+                          </div>
+                        </div>
+                        {detail.configuration && (
+                          <div className="mt-4">
+                            <h4 className="font-medium text-gray-900 mb-2">Configuration Details</h4>
+                            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                              {detail.configuration}
+                            </p>
+                          </div>
+                        )}
+                        <div className="mt-4 flex justify-between text-xs text-gray-500">
+                          <span>Created: {new Date(detail.createdAt).toLocaleDateString()}</span>
+                          <span>Updated: {new Date(detail.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-8">
+                  <Computer className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No System Details Found</h3>
+                  <p className="text-gray-500">
+                    This customer hasn't added any system details yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSystemDetailsDialog(false)}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -128,9 +128,9 @@ export const customerSystemDetails = pgTable("customer_system_details", {
   systemName: varchar("system_name").notNull(),
   systemConfiguration: text("system_configuration"), // System configuration details
   processorName: varchar("processor_name"), // Processor name
-  ram: integer("ram"), // RAM in GB
-  hardDisk: integer("hard_disk"), // Hard disk in GB
-  ssd: integer("ssd"), // SSD in GB
+  ram: varchar("ram"), // RAM specification (e.g., "16GB DDR4")
+  hardDisk: varchar("hard_disk"), // Hard disk specification (e.g., "1TB SATA")
+  ssd: varchar("ssd"), // SSD specification (e.g., "256GB")
   sharingStatus: boolean("sharing_status").default(false), // Sharing on/off
   administratorAccount: boolean("administrator_account").default(false), // Administrator account on/off
   antivirusAvailable: boolean("antivirus_available").default(false), // Antivirus available/not
