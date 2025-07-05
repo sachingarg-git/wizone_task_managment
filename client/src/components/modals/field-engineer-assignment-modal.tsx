@@ -62,7 +62,7 @@ export default function FieldEngineerAssignmentModal({
     resolver: zodResolver(assignmentSchema),
     defaultValues: {
       fieldEngineerIds: [],
-      region: "",
+      region: "all",
     },
   });
 
@@ -176,7 +176,8 @@ export default function FieldEngineerAssignmentModal({
                   <FormLabel className="text-gray-300">Filter by Region</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                      setSelectedRegion(value);
+                      const regionValue = value === "all" ? "" : value;
+                      setSelectedRegion(regionValue);
                       field.onChange(value);
                     }}
                     defaultValue={field.value}
@@ -187,10 +188,10 @@ export default function FieldEngineerAssignmentModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-slate-700 border-slate-600">
-                      <SelectItem value="">All Regions</SelectItem>
+                      <SelectItem value="all">All Regions</SelectItem>
                       {regions.map((region) => (
-                        <SelectItem key={region} value={region || ""}>
-                          {region}
+                        <SelectItem key={region} value={region || "unknown"}>
+                          {region || "Unknown Region"}
                         </SelectItem>
                       ))}
                     </SelectContent>
