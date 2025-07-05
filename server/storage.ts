@@ -30,9 +30,21 @@ import {
   CustomerCommentWithUser,
   CustomerSystemDetails,
   InsertCustomerSystemDetails,
+  UserLocation,
+  InsertUserLocation,
+  UserLocationWithRelations,
+  GeofenceZone,
+  InsertGeofenceZone,
+  GeofenceZoneWithRelations,
+  GeofenceEvent,
+  InsertGeofenceEvent,
+  GeofenceEventWithRelations,
+  TripTracking,
+  InsertTripTracking,
+  TripTrackingWithRelations,
 } from "../shared/schema.js";
 import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
-import { customerComments, customerSystemDetails } from "../shared/schema.js";
+import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -157,6 +169,14 @@ export interface IStorage {
   createCustomerSystemDetails(systemDetails: InsertCustomerSystemDetails): Promise<CustomerSystemDetails>;
   updateCustomerSystemDetails(id: number, systemDetails: Partial<InsertCustomerSystemDetails>): Promise<CustomerSystemDetails>;
   deleteCustomerSystemDetails(id: number): Promise<void>;
+  
+  // Geofencing operations
+  getGeofenceZones(): Promise<GeofenceZoneWithRelations[]>;
+  createGeofenceZone(zoneData: InsertGeofenceZone): Promise<GeofenceZone>;
+  getRecentGeofenceEvents(): Promise<GeofenceEventWithRelations[]>;
+  getLiveUserLocations(): Promise<UserLocationWithRelations[]>;
+  createUserLocation(locationData: InsertUserLocation): Promise<UserLocation>;
+  checkGeofenceEvents(userId: string, latitude: number, longitude: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1474,6 +1494,155 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerSystemDetails(id: number): Promise<void> {
     await db.delete(customerSystemDetails).where(eq(customerSystemDetails.id, id));
+  }
+
+  // Geofencing operations
+  async getGeofenceZones(): Promise<GeofenceZoneWithRelations[]> {
+    const zones = await db
+      .select()
+      .from(geofenceZones)
+      .leftJoin(customers, eq(geofenceZones.customerId, customers.id))
+      .leftJoin(users, eq(geofenceZones.createdBy, users.id))
+      .orderBy(desc(geofenceZones.createdAt));
+
+    return zones.map(row => ({
+      ...row.geofence_zones,
+      customer: row.customers || undefined,
+      createdByUser: row.users || undefined,
+    }));
+  }
+
+  async createGeofenceZone(zoneData: InsertGeofenceZone): Promise<GeofenceZone> {
+    const [zone] = await db
+      .insert(geofenceZones)
+      .values(zoneData)
+      .returning();
+    return zone;
+  }
+
+  async getRecentGeofenceEvents(): Promise<GeofenceEventWithRelations[]> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const events = await db
+      .select()
+      .from(geofenceEvents)
+      .leftJoin(users, eq(geofenceEvents.userId, users.id))
+      .leftJoin(geofenceZones, eq(geofenceEvents.zoneId, geofenceZones.id))
+      .leftJoin(tasks, eq(geofenceEvents.taskId, tasks.id))
+      .where(sql`${geofenceEvents.eventTime} >= ${oneDayAgo}`)
+      .orderBy(desc(geofenceEvents.eventTime))
+      .limit(50);
+
+    return events.map(row => ({
+      ...row.geofence_events,
+      user: row.users || undefined,
+      zone: row.geofence_zones || undefined,
+      task: row.tasks || undefined,
+    }));
+  }
+
+  async getLiveUserLocations(): Promise<UserLocationWithRelations[]> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    
+    const locations = await db
+      .select()
+      .from(userLocations)
+      .leftJoin(users, eq(userLocations.userId, users.id))
+      .leftJoin(tasks, eq(userLocations.taskId, tasks.id))
+      .where(and(
+        eq(userLocations.isActive, true),
+        sql`${userLocations.createdAt} >= ${oneHourAgo}`
+      ))
+      .orderBy(desc(userLocations.createdAt));
+
+    // Get most recent location per user
+    const uniqueLocations = new Map();
+    locations.forEach(row => {
+      const userId = row.user_locations.userId;
+      if (!uniqueLocations.has(userId)) {
+        uniqueLocations.set(userId, {
+          ...row.user_locations,
+          user: row.users || undefined,
+          task: row.tasks || undefined,
+        });
+      }
+    });
+
+    return Array.from(uniqueLocations.values());
+  }
+
+  async createUserLocation(locationData: InsertUserLocation): Promise<UserLocation> {
+    const [location] = await db
+      .insert(userLocations)
+      .values(locationData)
+      .returning();
+    return location;
+  }
+
+  async checkGeofenceEvents(userId: string, latitude: number, longitude: number): Promise<void> {
+    // Get all active zones
+    const zones = await db
+      .select()
+      .from(geofenceZones)
+      .where(eq(geofenceZones.isActive, true));
+
+    // Calculate distance to each zone and check for enter/exit events
+    for (const zone of zones) {
+      const distance = this.calculateDistance(
+        latitude,
+        longitude,
+        parseFloat(zone.centerLatitude),
+        parseFloat(zone.centerLongitude)
+      );
+
+      const isInside = distance <= parseFloat(zone.radius);
+      
+      // Check user's last event for this zone
+      const [lastEvent] = await db
+        .select()
+        .from(geofenceEvents)
+        .where(and(
+          eq(geofenceEvents.userId, userId),
+          eq(geofenceEvents.zoneId, zone.id)
+        ))
+        .orderBy(desc(geofenceEvents.eventTime))
+        .limit(1);
+
+      const wasInside = lastEvent?.eventType === 'enter';
+
+      if (isInside && !wasInside) {
+        // User entered the zone
+        await db.insert(geofenceEvents).values({
+          userId,
+          zoneId: zone.id,
+          eventType: 'enter',
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          distance: distance.toString(),
+        });
+      } else if (!isInside && wasInside) {
+        // User exited the zone
+        await db.insert(geofenceEvents).values({
+          userId,
+          zoneId: zone.id,
+          eventType: 'exit',
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          distance: distance.toString(),
+        });
+      }
+    }
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 }
 

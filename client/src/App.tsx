@@ -15,6 +15,7 @@ import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
+import Geofencing from "@/pages/geofencing";
 import Chat from "@/pages/chat";
 import Portal from "@/pages/portal";
 import CustomerPortal from "@/pages/customer-portal";
@@ -89,6 +90,7 @@ function Router() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/domains" component={Domains} />
           <Route path="/sql-connections" component={SqlConnections} />
+          <Route path="/geofencing" component={Geofencing} />
           <Route path="/chat" component={Chat} />
           <Route path="/portal" component={Portal} />
           <Route component={NotFound} />

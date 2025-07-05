@@ -29,4 +29,9 @@ export const {
   chatMessages,
   chatParticipants,
   customerComments,
+  customerSystemDetails,
+  userLocations,
+  geofenceZones,
+  geofenceEvents,
+  tripTracking,
 } = schema;

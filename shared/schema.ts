@@ -352,6 +352,8 @@ export const customerCommentsRelations = relations(customerComments, ({ one }) =
   }),
 }));
 
+// Relations for geofencing tables (moved to after table definitions)
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -492,3 +494,166 @@ export type CustomerCommentWithUser = CustomerComment & {
   customer?: Customer;
   respondedByUser?: User;
 };
+
+// Location tracking for field engineers
+export const userLocations = pgTable("user_locations", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  accuracy: decimal("accuracy", { precision: 8, scale: 2 }), // GPS accuracy in meters
+  altitude: decimal("altitude", { precision: 8, scale: 2 }),
+  speed: decimal("speed", { precision: 8, scale: 2 }), // Speed in km/h
+  heading: decimal("heading", { precision: 5, scale: 2 }), // Direction in degrees
+  locationSource: varchar("location_source").default("gps"), // gps, network, passive
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Geofencing zones (office, customer locations, service areas)
+export const geofenceZones = pgTable("geofence_zones", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  zoneType: varchar("zone_type").notNull(), // office, customer, service_area, restricted
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "cascade" }),
+  centerLatitude: decimal("center_latitude", { precision: 10, scale: 8 }).notNull(),
+  centerLongitude: decimal("center_longitude", { precision: 11, scale: 8 }).notNull(),
+  radius: decimal("radius", { precision: 8, scale: 2 }).notNull(), // Radius in meters
+  polygonCoordinates: text("polygon_coordinates"), // JSON array of lat/lng for complex shapes
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Geofence events (enter/exit tracking)
+export const geofenceEvents = pgTable("geofence_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  zoneId: integer("zone_id").notNull().references(() => geofenceZones.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  eventType: varchar("event_type").notNull(), // enter, exit, dwell
+  eventTime: timestamp("event_time").notNull().defaultNow(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  dwellTime: integer("dwell_time"), // Time spent in zone (minutes)
+  distance: decimal("distance", { precision: 8, scale: 2 }), // Distance traveled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Trip tracking for field engineers
+export const tripTracking = pgTable("trip_tracking", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  tripType: varchar("trip_type").notNull(), // to_customer, to_office, service_call
+  startTime: timestamp("start_time").notNull().defaultNow(),
+  endTime: timestamp("end_time"),
+  startLatitude: decimal("start_latitude", { precision: 10, scale: 8 }).notNull(),
+  startLongitude: decimal("start_longitude", { precision: 11, scale: 8 }).notNull(),
+  endLatitude: decimal("end_latitude", { precision: 10, scale: 8 }),
+  endLongitude: decimal("end_longitude", { precision: 11, scale: 8 }),
+  totalDistance: decimal("total_distance", { precision: 8, scale: 2 }), // Distance in km
+  totalDuration: integer("total_duration"), // Duration in minutes
+  avgSpeed: decimal("avg_speed", { precision: 8, scale: 2 }), // Average speed in km/h
+  maxSpeed: decimal("max_speed", { precision: 8, scale: 2 }), // Maximum speed in km/h
+  routeData: text("route_data"), // JSON array of location points
+  status: varchar("status").notNull().default("active"), // active, completed, cancelled
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for geofencing
+export const insertUserLocationSchema = createInsertSchema(userLocations);
+export const insertGeofenceZoneSchema = createInsertSchema(geofenceZones);
+export const insertGeofenceEventSchema = createInsertSchema(geofenceEvents);
+export const insertTripTrackingSchema = createInsertSchema(tripTracking);
+
+// Types for geofencing
+export type UserLocation = typeof userLocations.$inferSelect;
+export type InsertUserLocation = z.infer<typeof insertUserLocationSchema>;
+
+export type GeofenceZone = typeof geofenceZones.$inferSelect;
+export type InsertGeofenceZone = z.infer<typeof insertGeofenceZoneSchema>;
+
+export type GeofenceEvent = typeof geofenceEvents.$inferSelect;
+export type InsertGeofenceEvent = z.infer<typeof insertGeofenceEventSchema>;
+
+export type TripTracking = typeof tripTracking.$inferSelect;
+export type InsertTripTracking = z.infer<typeof insertTripTrackingSchema>;
+
+// Extended types with relations
+export type UserLocationWithRelations = UserLocation & {
+  user?: User;
+  task?: Task;
+};
+
+export type GeofenceZoneWithRelations = GeofenceZone & {
+  customer?: Customer;
+  createdByUser?: User;
+  events?: GeofenceEvent[];
+};
+
+export type GeofenceEventWithRelations = GeofenceEvent & {
+  user?: User;
+  zone?: GeofenceZone;
+  task?: Task;
+};
+
+export type TripTrackingWithRelations = TripTracking & {
+  user?: User;
+  task?: Task;
+};
+
+// Relations for geofencing tables (added after table definitions)
+export const userLocationsRelations = relations(userLocations, ({ one }) => ({
+  user: one(users, {
+    fields: [userLocations.userId],
+    references: [users.id],
+  }),
+  task: one(tasks, {
+    fields: [userLocations.taskId],
+    references: [tasks.id],
+  }),
+}));
+
+export const geofenceZonesRelations = relations(geofenceZones, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [geofenceZones.customerId],
+    references: [customers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [geofenceZones.createdBy],
+    references: [users.id],
+  }),
+  events: many(geofenceEvents),
+}));
+
+export const geofenceEventsRelations = relations(geofenceEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [geofenceEvents.userId],
+    references: [users.id],
+  }),
+  zone: one(geofenceZones, {
+    fields: [geofenceEvents.zoneId],
+    references: [geofenceZones.id],
+  }),
+  task: one(tasks, {
+    fields: [geofenceEvents.taskId],
+    references: [tasks.id],
+  }),
+}));
+
+export const tripTrackingRelations = relations(tripTracking, ({ one }) => ({
+  user: one(users, {
+    fields: [tripTracking.userId],
+    references: [users.id],
+  }),
+  task: one(tasks, {
+    fields: [tripTracking.taskId],
+    references: [tasks.id],
+  }),
+}));

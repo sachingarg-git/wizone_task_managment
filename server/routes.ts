@@ -24,6 +24,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create default users
   await createDefaultUsers();
 
+
+
   // Customer portal redirect route
   app.get('/customer-portal', (req, res) => {
     res.redirect('/#/customer-portal');
@@ -278,6 +280,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     next();
   };
+
+  // Geofencing routes
+  app.get('/api/geofencing/zones', isAuthenticated, async (req, res) => {
+    try {
+      const zones = await storage.getGeofenceZones();
+      res.json(zones);
+    } catch (error) {
+      console.error("Error fetching geofencing zones:", error);
+      res.status(500).json({ message: "Failed to fetch geofencing zones" });
+    }
+  });
+
+  app.post('/api/geofencing/zones', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const zoneData = { ...req.body, createdBy: userId };
+      const zone = await storage.createGeofenceZone(zoneData);
+      res.json(zone);
+    } catch (error) {
+      console.error("Error creating geofencing zone:", error);
+      res.status(500).json({ message: "Failed to create geofencing zone" });
+    }
+  });
+
+  app.get('/api/geofencing/events', isAuthenticated, async (req, res) => {
+    try {
+      const events = await storage.getRecentGeofenceEvents();
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching geofencing events:", error);
+      res.status(500).json({ message: "Failed to fetch geofencing events" });
+    }
+  });
+
+  app.get('/api/geofencing/locations/live', isAuthenticated, async (req, res) => {
+    try {
+      const locations = await storage.getLiveUserLocations();
+      res.json(locations);
+    } catch (error) {
+      console.error("Error fetching live locations:", error);
+      res.status(500).json({ message: "Failed to fetch live locations" });
+    }
+  });
+
+  app.post('/api/geofencing/locations', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const locationData = { ...req.body, userId };
+      const location = await storage.createUserLocation(locationData);
+      
+      // Check for geofence events
+      await storage.checkGeofenceEvents(userId, locationData.latitude, locationData.longitude);
+      
+      res.json(location);
+    } catch (error) {
+      console.error("Error updating location:", error);
+      res.status(500).json({ message: "Failed to update location" });
+    }
+  });
 
   // Seed database route (for development)
   app.post('/api/seed', isAuthenticated, async (req: any, res) => {
