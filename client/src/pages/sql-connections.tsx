@@ -40,16 +40,13 @@ export default function SqlConnectionsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: connections, isLoading } = useQuery({
+  const { data: connections = [], isLoading } = useQuery<SqlConnection[]>({
     queryKey: ['/api/sql-connections'],
   });
 
   const createConnectionMutation = useMutation({
     mutationFn: (data: SqlConnectionFormData) =>
-      apiRequest('/api/sql-connections', {
-        method: 'POST',
-        body: data,
-      }),
+      apiRequest('POST', '/api/sql-connections', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sql-connections'] });
       setIsFormOpen(false);
@@ -69,10 +66,7 @@ export default function SqlConnectionsPage() {
 
   const updateConnectionMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<SqlConnectionFormData> }) =>
-      apiRequest(`/api/sql-connections/${id}`, {
-        method: 'PUT',
-        body: data,
-      }),
+      apiRequest('PUT', `/api/sql-connections/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sql-connections'] });
       setEditingConnection(null);
@@ -92,9 +86,7 @@ export default function SqlConnectionsPage() {
 
   const deleteConnectionMutation = useMutation({
     mutationFn: (id: number) =>
-      apiRequest(`/api/sql-connections/${id}`, {
-        method: 'DELETE',
-      }),
+      apiRequest('DELETE', `/api/sql-connections/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sql-connections'] });
       toast({
@@ -112,10 +104,10 @@ export default function SqlConnectionsPage() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/sql-connections/${id}/test`, {
-        method: 'POST',
-      }),
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('POST', `/api/sql-connections/${id}/test`);
+      return await response.json();
+    },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['/api/sql-connections'] });
       toast({
@@ -260,7 +252,8 @@ export default function SqlConnectionsPage() {
                         <Textarea 
                           placeholder="Main production database for customer data..."
                           className="min-h-[60px]"
-                          {...field} 
+                          {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -383,7 +376,7 @@ export default function SqlConnectionsPage() {
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={field.value || false}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
@@ -401,7 +394,7 @@ export default function SqlConnectionsPage() {
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={field.value || false}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
