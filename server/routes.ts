@@ -9,6 +9,8 @@ import {
   insertPerformanceMetricsSchema 
 } from "@shared/schema";
 import { z } from "zod";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -22,6 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
+
     next();
   };
 
@@ -49,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/recent-tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const tasks = await storage.getTasksByUser(userId);
       const recentTasks = tasks.slice(0, 5); // Get 5 most recent tasks
       res.json(recentTasks);
@@ -63,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
       const { search, priority, status } = req.query;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Get current user to check role
       const currentUser = await storage.getUser(userId);
@@ -133,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertTaskSchema.parse({
         ...req.body,
         createdBy: userId,
@@ -161,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const updateData = insertTaskSchema.partial().parse(req.body);
       
       // Get the current task to check status changes
@@ -307,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/:id/upload', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { files, notes } = req.body;
       
       if (!files || !Array.isArray(files) || files.length === 0) {
@@ -348,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/:id/assign-field-engineer', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { fieldEngineerId } = req.body;
 
       if (!fieldEngineerId) {
@@ -366,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/:id/field-status', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { status, note } = req.body;
 
       if (!status) {
@@ -384,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { completionNote, files } = req.body;
 
       if (!completionNote || completionNote.trim() === '') {
@@ -581,12 +584,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash the password
-      const { scrypt, randomBytes } = require("crypto");
-      const { promisify } = require("util");
       const scryptAsync = promisify(scrypt);
       
       const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(password, salt, 64));
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
       const hashedPassword = `${buf.toString("hex")}.${salt}`;
       
       const userData = {

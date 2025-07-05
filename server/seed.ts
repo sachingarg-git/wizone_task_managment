@@ -246,6 +246,7 @@ export async function seedDatabase() {
 
     tasks100.push({
       ticketNumber: `T${String(i).padStart(6, '0')}`,
+      title: `${issueType} - ${priority} Priority`,
       customerId,
       assignedTo,
       createdBy: "admin001",
