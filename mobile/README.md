@@ -1,275 +1,195 @@
 # Wizone IT Support Portal - Mobile App
 
-A comprehensive React Native mobile application for the Wizone IT Support Portal, providing full task management and customer support functionality on mobile devices.
+A comprehensive React Native mobile application for IT support professionals built with Expo.
 
 ## Features
 
-### 🔐 Authentication
-- Secure username/password login system
-- Session-based authentication with backend integration
-- Auto-login with stored credentials
-- Demo credentials support for quick testing
+- 📱 Cross-platform (Android & iOS)
+- 🔐 Secure authentication
+- 📋 Task management and tracking
+- 👥 Customer management
+- 📊 Performance analytics
+- 💬 Real-time communication
+- 🎨 Material Design UI with React Native Paper
 
-### 📊 Dashboard
-- Real-time performance statistics
-- Task overview with visual status indicators
-- Recent tasks display with detailed information
-- Responsive grid layout optimized for mobile
-
-### ✅ Task Management
-- Complete task listing with search and filtering
-- Task details with status, priority, and assignment info
-- Field engineer assignment tracking
-- Customer information integration
-- Pull-to-refresh functionality
-
-### 👥 Customer Management
-- Customer database with contact information
-- Company and service type tracking
-- Direct call and email integration
-- Address and location information
-- Advanced search capabilities
-
-### 👤 User Management (Admin Only)
-- User listing with role-based access control
-- Performance metrics integration
-- Role and department filtering
-- Detailed user profiles with contact info
-
-### 🔧 Profile & Settings
-- Personal profile management
-- Performance statistics overview
-- Account settings and preferences
-- Secure logout functionality
-
-## Technology Stack
-
-### Frontend
-- **React Native** with Expo framework
-- **TypeScript** for type safety
-- **React Native Paper** for Material Design components
-- **React Navigation** for screen navigation
-- **TanStack Query** for server state management
-- **React Native Vector Icons** for consistent iconography
-
-### Backend Integration
-- Connects to existing Express.js backend
-- RESTful API integration
-- Session-based authentication
-- Real-time data synchronization
-
-### State Management
-- Context API for authentication state
-- TanStack Query for server state caching
-- AsyncStorage for local data persistence
-
-## Architecture
-
-```
-mobile/
-├── src/
-│   ├── context/          # React Context providers
-│   │   └── AuthContext.tsx
-│   ├── screens/          # Main app screens
-│   │   ├── LoginScreen.tsx
-│   │   ├── DashboardScreen.tsx
-│   │   ├── TasksScreen.tsx
-│   │   ├── CustomersScreen.tsx
-│   │   ├── UsersScreen.tsx
-│   │   └── ProfileScreen.tsx
-│   └── utils/            # Utility functions
-│       └── api.ts        # API integration layer
-├── App.tsx               # Main app component with navigation
-├── app.json              # Expo configuration
-├── package.json          # Dependencies and scripts
-└── README.md            # This file
-```
-
-## Setup Instructions
+## Quick Start
 
 ### Prerequisites
-- Node.js 16+ installed
-- Expo CLI installed globally: `npm install -g @expo/cli`
-- iOS Simulator (for iOS) or Android emulator (for Android)
+
+- Node.js 18 or higher
+- npm or yarn
+- Expo CLI
+- Android Studio (for Android builds)
+- Xcode (for iOS builds, macOS only)
 
 ### Installation
 
-1. **Navigate to mobile directory:**
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Run on Android device/emulator
+npm run android
+
+# Run on iOS device/simulator (macOS only)
+npm run ios
+```
+
+## Building APK
+
+### Method 1: Automated Build Script
+
+```bash
+# Run the automated build script
+npm run build:apk
+```
+
+This script will:
+- Check required dependencies
+- Install missing packages
+- Attempt local build first
+- Fallback to EAS Build if needed
+
+### Method 2: Manual EAS Build
+
+```bash
+# Install EAS CLI globally
+npm install -g @expo/cli
+
+# Login to Expo (create account at expo.dev)
+npx expo login
+
+# Build APK for testing
+npm run build:android
+
+# Build production AAB
+npm run build:android:production
+```
+
+### Method 3: Local Build (Android Studio)
+
+1. **Eject to bare React Native:**
    ```bash
-   cd mobile
+   npx expo eject
    ```
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+2. **Open Android project:**
+   - Open `android/` folder in Android Studio
+   - Wait for Gradle sync to complete
 
-3. **Configure backend URL:**
-   - Edit `src/utils/api.ts`
-   - Update `API_BASE_URL` to match your backend server
-   ```typescript
-   const API_BASE_URL = 'http://your-backend-url:5000';
-   ```
+3. **Build APK:**
+   - Go to `Build` → `Generate Signed Bundle / APK`
+   - Choose APK and follow the signing process
+   - APK will be generated in `android/app/build/outputs/apk/`
 
-4. **Start the development server:**
-   ```bash
-   npm start
-   ```
+## Project Structure
 
-5. **Run on device/simulator:**
-   - For iOS: Press `i` in terminal or use Expo Go app
-   - For Android: Press `a` in terminal or use Expo Go app
-   - For web: Press `w` in terminal
+```
+mobile/
+├── assets/           # App icons and splash screens
+├── src/
+│   ├── components/   # Reusable UI components
+│   ├── context/      # React Context providers
+│   ├── screens/      # App screens/pages
+│   └── utils/        # Utility functions
+├── App.tsx           # Main app component
+├── app.json          # Expo configuration
+├── eas.json          # EAS Build configuration
+└── package.json      # Dependencies and scripts
+```
 
 ## Configuration
 
-### API Configuration
-The mobile app connects to the same backend as the web application. Update the API base URL in `src/utils/api.ts`:
+### Environment Variables
 
-```typescript
-const API_BASE_URL = 'http://localhost:5000'; // Development
-// const API_BASE_URL = 'https://your-production-api.com'; // Production
-```
+The app connects to your backend server. Update the API base URL in:
+- `src/utils/api.ts`
 
-### Authentication
-The app uses the same authentication system as the web version:
-- Username/password login
-- Session-based authentication
-- Secure credential storage with AsyncStorage
+### App Configuration
 
-### Demo Credentials
-- Username: `manpreet`
-- Password: `admin123`
+Customize app settings in:
+- `app.json` - App metadata, icons, splash screen
+- `eas.json` - Build profiles and configurations
 
-## Features by Screen
+## Distribution
 
-### Login Screen
-- Clean, professional login interface
-- Demo credentials quick-fill button
-- Password visibility toggle
-- Error handling with user-friendly messages
+### Android
 
-### Dashboard
-- 6 key performance metric cards
-- Recent tasks list with status indicators
-- Pull-to-refresh functionality
-- Role-based welcome message
+1. **Development Testing:**
+   - Use preview build profile for APK generation
+   - Share APK file directly
 
-### Tasks Screen
-- Comprehensive task listing
-- Search and filter capabilities
-- Status and priority indicators
-- Task details modal with full information
-- Field engineer assignment display
+2. **Production Release:**
+   - Use production build profile for AAB
+   - Upload to Google Play Console
 
-### Customers Screen
-- Customer database with contact info
-- Direct call and email integration
-- Company and service type display
-- Address information with formatting
-- Search functionality across all fields
+### iOS (macOS required)
 
-### Users Screen (Admin Only)
-- Admin-only access control
-- User listing with role indicators
-- Performance metrics integration
-- Role-based filtering
-- Detailed user information
+1. **Development Testing:**
+   - Use TestFlight for beta testing
+   - Requires Apple Developer account
 
-### Profile Screen
-- Personal information display
-- Performance statistics overview
-- Account settings access
-- Secure logout functionality
-- App version and build information
+2. **Production Release:**
+   - Submit to App Store through App Store Connect
 
-## Development
+## Dependencies
 
-### Code Structure
-- **Screens**: Individual app screens with business logic
-- **Components**: Reusable UI components
-- **Context**: Global state management
-- **Utils**: Helper functions and API integration
-- **Types**: TypeScript type definitions
+### Core
+- **React Native 0.72.6** - Mobile framework
+- **Expo ~49.0.0** - Development platform
+- **React Navigation 6.x** - Navigation library
+- **React Native Paper 5.x** - Material Design components
 
-### Styling
-- React Native Paper for consistent Material Design
-- Custom styles with responsive design
-- Wizone brand colors and theme integration
-- Accessible design with proper contrast ratios
-
-### Data Flow
-1. User interaction triggers API call
-2. TanStack Query manages request state
-3. Data flows through React components
-4. UI updates reflect current state
-5. Background sync keeps data fresh
-
-## Build & Deployment
-
-### Development Build
-```bash
-npm run start
-```
-
-### Production Build
-```bash
-# For iOS
-expo build:ios
-
-# For Android
-expo build:android
-```
-
-### Publishing Updates
-```bash
-expo publish
-```
-
-## Security
+### State Management
+- **TanStack Query 5.x** - Server state management
+- **React Context** - Local state management
 
 ### Authentication
-- Secure credential storage
-- Session-based authentication
-- Automatic token refresh
-- Secure logout with credential cleanup
+- **AsyncStorage** - Secure credential storage
+- **Custom authentication** - Integration with backend
 
-### Data Protection
-- HTTPS enforcement for API calls
-- Input validation and sanitization
-- Role-based access control
-- Secure error handling
+## Build Profiles
 
-## Performance
+### Preview (APK)
+- **Purpose:** Testing and development
+- **Output:** APK file for direct installation
+- **Signing:** Debug signing
 
-### Optimization Features
-- Image lazy loading
-- Efficient list rendering with FlatList
-- Query caching with TanStack Query
-- Optimistic updates for better UX
-- Background data synchronization
+### Production (AAB)
+- **Purpose:** Play Store distribution
+- **Output:** Android App Bundle
+- **Signing:** Release signing (requires keystore)
 
-### Monitoring
-- Error boundary implementation
-- Performance tracking
-- User interaction analytics
-- Crash reporting integration
+## Troubleshooting
 
-## Support
+### Common Issues
 
-For technical support or questions:
-- Check the main web application documentation
-- Review API documentation
-- Contact the development team
+1. **Build Failures:**
+   - Clear Expo cache: `expo start -c`
+   - Reset dependencies: `rm -rf node_modules && npm install`
+
+2. **Asset Loading Issues:**
+   - Check file paths in `assets/` folder
+   - Ensure all referenced assets exist
+
+3. **Authentication Problems:**
+   - Verify backend API endpoints
+   - Check network connectivity
+   - Validate API response format
+
+### Getting Help
+
+- Check [Expo Documentation](https://docs.expo.dev/)
+- Review [React Native Paper](https://reactnativepaper.com/)
+- Visit [React Navigation](https://reactnavigation.org/)
 
 ## Version History
 
-- **v1.0.0** - Initial mobile app release
-  - Complete feature parity with web version
-  - Native mobile UI/UX optimization
-  - Offline capability preparation
-  - Performance optimization
+- **v1.0.0** - Initial release with full feature parity to web app
 
 ---
 
-© 2025 Wizone IT Support Portal - Mobile Application
+**Built with ❤️ for Wizone IT Support Portal**
