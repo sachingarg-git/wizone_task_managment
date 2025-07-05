@@ -43,7 +43,7 @@ interface ChatMessage {
   id: number;
   roomId: number;
   senderId: string;
-  content: string;
+  message: string;
   messageType: string;
   createdAt: string;
   sender: User;
@@ -92,7 +92,7 @@ export default function Chat() {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (messageData: { content: string }) => {
+    mutationFn: async (messageData: { message: string }) => {
       const response = await fetch(`/api/chat/rooms/${selectedRoom?.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,7 +137,7 @@ export default function Chat() {
 
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedRoom) return;
-    sendMessageMutation.mutate({ content: messageText });
+    sendMessageMutation.mutate({ message: messageText });
   };
 
   const handleCreateRoom = (e: React.FormEvent<HTMLFormElement>) => {
@@ -323,14 +323,14 @@ export default function Chat() {
                                   {message.sender?.firstName || "Unknown"} {message.sender?.lastName || "User"}
                                 </span>
                                 <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
-                                  {message.sender.role}
+                                  {message.sender?.role || "User"}
                                 </Badge>
                                 <span className="text-xs text-slate-400">
                                   {formatTime(message.createdAt)}
                                 </span>
                               </div>
                               <p className="text-slate-200 text-sm leading-relaxed">
-                                {message.content}
+                                {message.message}
                               </p>
                             </div>
                           </div>
