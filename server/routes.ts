@@ -713,6 +713,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset password route (admin only)
+  app.put('/api/users/:id/reset-password', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check if current user is admin
+      const currentUser = req.user;
+      if (currentUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can reset passwords" });
+      }
+
+      const { id } = req.params;
+      const { newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+      
+      // Hash the new password
+      const scryptAsync = promisify(scrypt);
+      const salt = randomBytes(16);
+      const derivedKey = await scryptAsync(newPassword, salt, 64) as Buffer;
+      const hashedPassword = `${salt.toString('hex')}:${derivedKey.toString('hex')}`;
+      
+      // Update user password in storage
+      const user = await storage.updateUser(id, { 
+        password: hashedPassword,
+        updatedAt: new Date()
+      });
+      
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // Analytics routes
   app.get('/api/analytics/overview', isAuthenticated, async (req, res) => {
     try {

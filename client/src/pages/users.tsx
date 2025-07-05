@@ -26,7 +26,8 @@ import {
   Eye,
   Edit,
   Ban,
-  X
+  X,
+  Key
 } from "lucide-react";
 import {
   Dialog,
@@ -41,6 +42,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth } from "@/hooks/useAuth";
 
 // Edit User Form Schema
 const editUserSchema = z.object({
@@ -52,7 +54,121 @@ const editUserSchema = z.object({
   department: z.string().optional(),
 });
 
+// Reset Password Form Schema
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password confirmation is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 type EditUserFormData = z.infer<typeof editUserSchema>;
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+interface ResetPasswordFormProps {
+  user: any;
+  onClose: () => void;
+}
+
+function ResetPasswordForm({ user, onClose }: ResetPasswordFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordFormData) => {
+      await apiRequest("PUT", `/api/users/${user.id}/reset-password`, { newPassword: data.newPassword });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to reset password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ResetPasswordFormData) => {
+    resetPasswordMutation.mutate(data);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          <strong>Reset Password for:</strong> {user.firstName} {user.lastName} ({user.email})
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="newPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>New Password *</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Enter new password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm Password *</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Confirm new password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={resetPasswordMutation.isPending}>
+              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
 
 interface EditUserFormProps {
   user: any;
@@ -237,8 +353,10 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showEditUser, setShowEditUser] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -274,6 +392,8 @@ export default function UsersPage() {
       });
     },
   });
+
+
 
   const usersArray = Array.isArray(users) ? users : [];
   
@@ -330,6 +450,14 @@ export default function UsersPage() {
     setSelectedUser(user);
     setShowEditUser(true);
   };
+
+  const handleResetPassword = (user: any) => {
+    setSelectedUser(user);
+    setShowResetPassword(true);
+  };
+
+  // Check if current user is admin
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <div className="min-h-screen">
@@ -538,6 +666,17 @@ export default function UsersPage() {
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
+                              {isAdmin && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleResetPassword(user)}
+                                  title="Reset Password"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <Key className="w-4 h-4" />
+                                </Button>
+                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -767,6 +906,23 @@ export default function UsersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Password Modal - Admin Only */}
+      {isAdmin && (
+        <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>Reset Password</DialogTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowResetPassword(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+            {selectedUser && <ResetPasswordForm user={selectedUser} onClose={() => setShowResetPassword(false)} />}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
