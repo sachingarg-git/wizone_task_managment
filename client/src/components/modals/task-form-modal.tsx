@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -48,6 +48,9 @@ interface TaskFormModalProps {
 
 export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModalProps) {
   const [selectedPriority, setSelectedPriority] = useState<string>("medium");
+  const [customIssueTypes, setCustomIssueTypes] = useState<string[]>([]);
+  const [showAddIssueType, setShowAddIssueType] = useState(false);
+  const [newIssueType, setNewIssueType] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -64,6 +67,42 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       visitCharges: "",
     },
   });
+
+  // Generate automatic ticket ID
+  const generateTicketId = () => {
+    const now = new Date();
+    const dateTime = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
+    return `WIZ-${dateTime}_1`;
+  };
+
+  // Add custom issue type
+  const handleAddIssueType = () => {
+    if (newIssueType.trim() && !customIssueTypes.includes(newIssueType.trim())) {
+      const newType = newIssueType.trim();
+      setCustomIssueTypes(prev => [...prev, newType]);
+      form.setValue("issueType", newType);
+      setNewIssueType("");
+      setShowAddIssueType(false);
+      toast({
+        title: "Issue Type Added",
+        description: `"${newType}" has been added to issue types`,
+      });
+    }
+  };
+
+  // Default issue types
+  const defaultIssueTypes = [
+    "Network Connectivity",
+    "Speed Issues", 
+    "Router Problems",
+    "Configuration",
+    "Hardware Failure",
+    "Software Issue",
+    "Maintenance"
+  ];
+
+  // Combined issue types
+  const allIssueTypes = [...defaultIssueTypes, ...customIssueTypes];
 
   // Fetch customers for dropdown
   const { data: customers, isLoading: customersLoading } = useQuery({
@@ -82,6 +121,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     mutationFn: async (data: TaskFormData) => {
       const payload = {
         ...data,
+        ticketNumber: generateTicketId(),
         visitCharges: data.visitCharges && data.visitCharges.trim() !== "" ? parseFloat(data.visitCharges) : undefined,
         customerId: data.customerId || undefined,
         assignedTo: data.assignedTo || undefined,
@@ -274,22 +314,94 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Issue Type *</FormLabel>
-                      <Select onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Issue Type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Network Connectivity">Network Connectivity</SelectItem>
-                          <SelectItem value="Speed Issues">Speed Issues</SelectItem>
-                          <SelectItem value="Router Problems">Router Problems</SelectItem>
-                          <SelectItem value="Configuration">Configuration</SelectItem>
-                          <SelectItem value="Hardware Failure">Hardware Failure</SelectItem>
-                          <SelectItem value="Software Issue">Software Issue</SelectItem>
-                          <SelectItem value="Maintenance">Maintenance</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Issue Type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {allIssueTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                            <div className="border-t pt-2 mt-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="w-full justify-start text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
+                                onClick={() => setShowAddIssueType(true)}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Custom Issue Type
+                              </Button>
+                            </div>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Add Custom Issue Type Input */}
+                        {showAddIssueType && (
+                          <div className="flex gap-2 p-2 border rounded-md bg-gray-50">
+                            <Input
+                              placeholder="Enter new issue type"
+                              value={newIssueType}
+                              onChange={(e) => setNewIssueType(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddIssueType();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleAddIssueType}
+                              className="bg-cyan-600 hover:bg-cyan-700"
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setShowAddIssueType(false);
+                                setNewIssueType("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Display Custom Issue Types */}
+                        {customIssueTypes.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {customIssueTypes.map((type) => (
+                              <Badge
+                                key={type}
+                                variant="secondary"
+                                className="bg-cyan-100 text-cyan-700 border-cyan-200"
+                              >
+                                {type}
+                                <X
+                                  className="w-3 h-3 ml-1 cursor-pointer hover:text-cyan-900"
+                                  onClick={() => {
+                                    setCustomIssueTypes(prev => prev.filter(t => t !== type));
+                                    if (field.value === type) {
+                                      form.setValue("issueType", "");
+                                    }
+                                  }}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
