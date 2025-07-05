@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Globe,
   User,
-  Database
+  Database,
+  MessageCircle
 } from "lucide-react";
 import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
 
@@ -31,6 +32,7 @@ const getNavigationForUser = (userRole: string) => {
     return [
       ...baseNavigation,
       { name: "Task Management", href: "/tasks", icon: ListTodo },
+      { name: "Engineer Chat", href: "/chat", icon: MessageCircle },
       { name: "My Portal", href: "/portal", icon: User },
     ];
   } else {
@@ -44,6 +46,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Domain Management", href: "/domains", icon: Globe },
       { name: "SQL Connections", href: "/sql-connections", icon: Database },
+      { name: "Engineer Chat", href: "/chat", icon: MessageCircle },
       { name: "My Portal", href: "/portal", icon: User },
     ];
   }

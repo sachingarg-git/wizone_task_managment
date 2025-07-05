@@ -8,6 +8,7 @@ import {
   timestamp,
   decimal,
   primaryKey,
+  unique,
   index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -153,6 +154,45 @@ export const sqlConnections = pgTable("sql_connections", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Chat system tables for internal engineer communication
+export const chatRooms = pgTable("chat_rooms", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  roomType: varchar("room_type", { length: 20 }).notNull().default("group"), // group, direct, general
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  roomId: integer("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  senderId: varchar("sender_id", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  messageType: varchar("message_type", { length: 20 }).notNull().default("text"), // text, file, image, system
+  attachmentUrl: text("attachment_url"),
+  attachmentName: varchar("attachment_name", { length: 255 }),
+  isEdited: boolean("is_edited").notNull().default(false),
+  editedAt: timestamp("edited_at"),
+  replyToMessageId: integer("reply_to_message_id").references(() => chatMessages.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const chatParticipants = pgTable("chat_participants", {
+  id: serial("id").primaryKey(),
+  roomId: integer("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 20 }).notNull().default("member"), // admin, moderator, member
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  uniqueRoomUser: unique().on(table.roomId, table.userId),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks, { relationName: "assignedTasks" }),
@@ -161,6 +201,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   performanceMetrics: many(performanceMetrics),
   ownedDomains: many(domains),
   sqlConnections: many(sqlConnections),
+  createdChatRooms: many(chatRooms),
+  sentMessages: many(chatMessages),
+  chatParticipations: many(chatParticipants),
 }));
 
 export const customersRelations = relations(customers, ({ many }) => ({
@@ -222,6 +265,41 @@ export const sqlConnectionsRelations = relations(sqlConnections, ({ one }) => ({
   }),
 }));
 
+export const chatRoomsRelations = relations(chatRooms, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [chatRooms.createdBy],
+    references: [users.id],
+  }),
+  messages: many(chatMessages),
+  participants: many(chatParticipants),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  room: one(chatRooms, {
+    fields: [chatMessages.roomId],
+    references: [chatRooms.id],
+  }),
+  sender: one(users, {
+    fields: [chatMessages.senderId],
+    references: [users.id],
+  }),
+  replyToMessage: one(chatMessages, {
+    fields: [chatMessages.replyToMessageId],
+    references: [chatMessages.id],
+  }),
+}));
+
+export const chatParticipantsRelations = relations(chatParticipants, ({ one }) => ({
+  room: one(chatRooms, {
+    fields: [chatParticipants.roomId],
+    references: [chatRooms.id],
+  }),
+  user: one(users, {
+    fields: [chatParticipants.userId],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -266,6 +344,24 @@ export const insertSqlConnectionSchema = createInsertSchema(sqlConnections).omit
   updatedAt: true,
 });
 
+export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatParticipantSchema = createInsertSchema(chatParticipants).omit({
+  id: true,
+  joinedAt: true,
+  lastReadAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -281,6 +377,12 @@ export type InsertDomain = z.infer<typeof insertDomainSchema>;
 export type Domain = typeof domains.$inferSelect;
 export type InsertSqlConnection = z.infer<typeof insertSqlConnectionSchema>;
 export type SqlConnection = typeof sqlConnections.$inferSelect;
+export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
+export type ChatRoom = typeof chatRooms.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatParticipant = z.infer<typeof insertChatParticipantSchema>;
+export type ChatParticipant = typeof chatParticipants.$inferSelect;
 
 // Extended types for API responses
 export type TaskWithRelations = Task & {
@@ -297,4 +399,21 @@ export type TaskUpdateWithUser = TaskUpdate & {
 
 export type UserWithMetrics = User & {
   performanceMetrics?: PerformanceMetrics[];
+};
+
+// Chat-related extended types
+export type ChatRoomWithParticipants = ChatRoom & {
+  participants?: (ChatParticipant & { user: User })[];
+  messagesCount?: number;
+  lastMessage?: ChatMessage & { sender: User };
+};
+
+export type ChatMessageWithSender = ChatMessage & {
+  sender: User;
+  replyToMessage?: ChatMessage & { sender: User };
+};
+
+export type ChatRoomWithMessages = ChatRoom & {
+  messages?: ChatMessageWithSender[];
+  participants?: (ChatParticipant & { user: User })[];
 };

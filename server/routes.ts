@@ -7,7 +7,10 @@ import {
   insertTaskSchema, 
   insertCustomerSchema, 
   insertPerformanceMetricsSchema,
-  insertSqlConnectionSchema
+  insertSqlConnectionSchema,
+  insertChatRoomSchema,
+  insertChatMessageSchema,
+  insertChatParticipantSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
@@ -1041,6 +1044,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error seeding data:", error);
       res.status(500).json({ message: "Failed to seed data" });
+    }
+  });
+
+  // Chat system routes - restricted to engineers only
+  const isEngineer = (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const user = req.user;
+    if (!user || !['manager', 'backend_engineer', 'field_engineer', 'admin'].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied. Only engineers can access chat." });
+    }
+    
+    next();
+  };
+
+  // Get all chat rooms for the current user
+  app.get('/api/chat/rooms', isEngineer, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const rooms = await storage.getChatRooms(userId);
+      res.json(rooms);
+    } catch (error) {
+      console.error("Error fetching chat rooms:", error);
+      res.status(500).json({ message: "Failed to fetch chat rooms" });
+    }
+  });
+
+  // Create a new chat room
+  app.post('/api/chat/rooms', isEngineer, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const roomData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const validatedData = insertChatRoomSchema.parse(roomData);
+      const room = await storage.createChatRoom(validatedData);
+      
+      // Add creator as admin participant
+      const participantData = {
+        roomId: room.id,
+        userId: userId,
+        role: 'admin'
+      };
+      await storage.addChatParticipant(participantData);
+      
+      res.status(201).json(room);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid chat room data", errors: error.errors });
+      }
+      console.error("Error creating chat room:", error);
+      res.status(500).json({ message: "Failed to create chat room" });
+    }
+  });
+
+  // Get messages for a specific room
+  app.get('/api/chat/rooms/:roomId/messages', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const userId = (req.user as any)?.id;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      // Check if user is participant of this room
+      const isParticipant = await storage.isChatParticipant(roomId, userId);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Access denied. You are not a participant of this room." });
+      }
+      
+      const messages = await storage.getChatMessages(roomId, limit, offset);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Failed to fetch chat messages" });
+    }
+  });
+
+  // Send a message to a room
+  app.post('/api/chat/rooms/:roomId/messages', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const userId = (req.user as any)?.id;
+      
+      // Check if user is participant of this room
+      const isParticipant = await storage.isChatParticipant(roomId, userId);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Access denied. You are not a participant of this room." });
+      }
+      
+      const messageData = {
+        roomId,
+        senderId: userId,
+        ...req.body
+      };
+      
+      const validatedData = insertChatMessageSchema.parse(messageData);
+      const message = await storage.createChatMessage(validatedData);
+      
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      }
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Join a chat room
+  app.post('/api/chat/rooms/:roomId/join', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const userId = (req.user as any)?.id;
+      
+      const participantData = {
+        roomId,
+        userId,
+        role: 'member'
+      };
+      
+      const validatedData = insertChatParticipantSchema.parse(participantData);
+      await storage.addChatParticipant(validatedData);
+      
+      res.status(201).json({ message: "Successfully joined the room" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid participant data", errors: error.errors });
+      }
+      console.error("Error joining room:", error);
+      res.status(500).json({ message: "Failed to join room" });
+    }
+  });
+
+  // Leave a chat room
+  app.post('/api/chat/rooms/:roomId/leave', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const userId = (req.user as any)?.id;
+      
+      await storage.removeChatParticipant(roomId, userId);
+      res.json({ message: "Successfully left the room" });
+    } catch (error) {
+      console.error("Error leaving room:", error);
+      res.status(500).json({ message: "Failed to leave room" });
+    }
+  });
+
+  // Get room participants
+  app.get('/api/chat/rooms/:roomId/participants', isEngineer, async (req, res) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const userId = (req.user as any)?.id;
+      
+      // Check if user is participant of this room
+      const isParticipant = await storage.isChatParticipant(roomId, userId);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Access denied. You are not a participant of this room." });
+      }
+      
+      const participants = await storage.getChatParticipants(roomId);
+      res.json(participants);
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+      res.status(500).json({ message: "Failed to fetch participants" });
     }
   });
 

@@ -14,6 +14,7 @@ import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
+import Chat from "@/pages/chat";
 import Portal from "@/pages/portal";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
@@ -48,6 +49,7 @@ function Router() {
               <Route path="/analytics" component={Analytics} />
               <Route path="/domains" component={Domains} />
               <Route path="/sql-connections" component={SqlConnections} />
+              <Route path="/chat" component={Chat} />
               <Route path="/portal" component={Portal} />
             </div>
           </div>

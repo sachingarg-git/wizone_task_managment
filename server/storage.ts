@@ -16,9 +16,20 @@ import {
   InsertDomain,
   SqlConnection,
   InsertSqlConnection,
+  ChatRoom,
+  InsertChatRoom,
+  ChatMessage,
+  InsertChatMessage,
+  ChatParticipant,
+  InsertChatParticipant,
+  ChatRoomWithParticipants,
+  ChatMessageWithSender,
+  ChatRoomWithMessages,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections } from "./db.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants } from "./db.js";
+import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -108,6 +119,16 @@ export interface IStorage {
   deleteSqlConnection(id: number): Promise<void>;
   testSqlConnection(id: number): Promise<{ success: boolean; message: string; }>;
   updateConnectionTestResult(id: number, testStatus: string, testResult: string): Promise<SqlConnection>;
+  
+  // Chat operations
+  getChatRooms(userId: string): Promise<ChatRoomWithParticipants[]>;
+  createChatRoom(room: InsertChatRoom): Promise<ChatRoom>;
+  getChatMessages(roomId: number, limit?: number, offset?: number): Promise<ChatMessageWithSender[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  addChatParticipant(participant: InsertChatParticipant): Promise<ChatParticipant>;
+  removeChatParticipant(roomId: number, userId: string): Promise<void>;
+  getChatParticipants(roomId: number): Promise<(ChatParticipant & { user: User })[]>;
+  isChatParticipant(roomId: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1092,6 +1113,180 @@ export class DatabaseStorage implements IStorage {
       .where(eq(sqlConnections.id, id))
       .returning();
     return connection;
+  }
+
+  // Chat operations
+  async getChatRooms(userId: string): Promise<ChatRoomWithParticipants[]> {
+    // Use direct postgres connection to avoid Drizzle schema issues
+    try {
+      if (!process.env.DATABASE_URL) {
+        throw new Error("DATABASE_URL is required");
+      }
+      
+      const pgClient = postgres(process.env.DATABASE_URL, {
+        ssl: 'require',
+        max: 1,
+      });
+      
+      const result = await pgClient`
+        SELECT * FROM chat_rooms 
+        WHERE is_active = true 
+        ORDER BY created_at DESC
+      `;
+
+      await pgClient.end();
+
+      // Return rooms with empty participants array for now
+      return result.map((room: any) => ({
+        id: room.id,
+        name: room.name,
+        description: room.description,
+        roomType: room.room_type,
+        isActive: room.is_active,
+        createdBy: room.created_by,
+        createdAt: room.created_at,
+        updatedAt: room.updated_at,
+        participants: [],
+      }));
+    } catch (error) {
+      console.error('Error in getChatRooms:', error);
+      throw error;
+    }
+  }
+
+  async createChatRoom(roomData: InsertChatRoom): Promise<ChatRoom> {
+    const [room] = await db
+      .insert(chatRooms)
+      .values(roomData)
+      .returning();
+    return room;
+  }
+
+  async getChatMessages(roomId: number, limit = 50, offset = 0): Promise<ChatMessageWithSender[]> {
+    const messages = await db
+      .select({
+        id: chatMessages.id,
+        roomId: chatMessages.roomId,
+        senderId: chatMessages.senderId,
+        message: chatMessages.message,
+        messageType: chatMessages.messageType,
+        attachmentUrl: chatMessages.attachmentUrl,
+        attachmentName: chatMessages.attachmentName,
+        isEdited: chatMessages.isEdited,
+        editedAt: chatMessages.editedAt,
+        replyToMessageId: chatMessages.replyToMessageId,
+        createdAt: chatMessages.createdAt,
+        updatedAt: chatMessages.updatedAt,
+        sender: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        },
+      })
+      .from(chatMessages)
+      .leftJoin(users, eq(chatMessages.senderId, users.id))
+      .where(eq(chatMessages.roomId, roomId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return messages;
+  }
+
+  async createChatMessage(messageData: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values(messageData)
+      .returning();
+    return message;
+  }
+
+  async addChatParticipant(participantData: InsertChatParticipant): Promise<ChatParticipant> {
+    // Check if participant already exists
+    const existing = await db
+      .select()
+      .from(chatParticipants)
+      .where(
+        and(
+          eq(chatParticipants.roomId, participantData.roomId),
+          eq(chatParticipants.userId, participantData.userId)
+        )
+      );
+
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    const [participant] = await db
+      .insert(chatParticipants)
+      .values(participantData)
+      .returning();
+    return participant;
+  }
+
+  async removeChatParticipant(roomId: number, userId: string): Promise<void> {
+    await db
+      .delete(chatParticipants)
+      .where(
+        and(
+          eq(chatParticipants.roomId, roomId),
+          eq(chatParticipants.userId, userId)
+        )
+      );
+  }
+
+  async getChatParticipants(roomId: number): Promise<(ChatParticipant & { user: User })[]> {
+    const participants = await db
+      .select({
+        id: chatParticipants.id,
+        roomId: chatParticipants.roomId,
+        userId: chatParticipants.userId,
+        role: chatParticipants.role,
+        joinedAt: chatParticipants.joinedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          department: users.department,
+          phone: users.phone,
+          profileImageUrl: users.profileImageUrl,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+          password: users.password,
+        },
+      })
+      .from(chatParticipants)
+      .leftJoin(users, eq(chatParticipants.userId, users.id))
+      .where(eq(chatParticipants.roomId, roomId));
+
+    return participants.map(p => ({
+      id: p.id,
+      roomId: p.roomId,
+      userId: p.userId,
+      role: p.role,
+      joinedAt: p.joinedAt,
+      isActive: true,
+      lastReadAt: p.joinedAt,
+      user: p.user,
+    }));
+  }
+
+  async isChatParticipant(roomId: number, userId: string): Promise<boolean> {
+    const [participant] = await db
+      .select()
+      .from(chatParticipants)
+      .where(
+        and(
+          eq(chatParticipants.roomId, roomId),
+          eq(chatParticipants.userId, userId)
+        )
+      );
+    return !!participant;
   }
 }
 

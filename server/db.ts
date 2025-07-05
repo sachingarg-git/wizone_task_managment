@@ -25,4 +25,7 @@ export const {
   domains,
   sqlConnections,
   sessions,
+  chatRooms,
+  chatMessages,
+  chatParticipants,
 } = schema;
