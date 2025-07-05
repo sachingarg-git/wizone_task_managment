@@ -133,14 +133,21 @@ interface DatabaseConnection {
 export async function createTablesInExternalDatabase(connection: DatabaseConnection): Promise<{ success: boolean; message: string; }> {
   try {
     if (connection.connectionType === 'mssql') {
-      // Generate SQL script for SQL Server using the function defined above
+      // For now, let's use SQL script generation approach due to mssql package import issues
+      // This approach provides SQL scripts that can be executed manually or through other tools
       const sqlScript = generateSqlServerSchema();
       
-      // For demonstration purposes, return the SQL script
-      // In a production environment, you would execute this against the remote database
+      console.log('Generated SQL Server schema for:', connection.host + ':' + connection.port);
+      console.log('SQL Script length:', sqlScript.length, 'characters');
+      
+      // Save the SQL script to a temporary location for manual execution
+      const fs = await import('fs');
+      const scriptPath = './wizone_database_schema.sql';
+      await fs.promises.writeFile(scriptPath, sqlScript, 'utf8');
+      
       return { 
         success: true, 
-        message: `Database schema generated successfully! Copy and execute this SQL script in your SQL Server database to create all tables and initial data.` 
+        message: `Database schema generated successfully! SQL script saved to 'wizone_database_schema.sql'. Please execute this script in your SQL Server Management Studio or SQL Server command line to create all tables at ${connection.host}:${connection.port}.` 
       };
     }
     
@@ -157,9 +164,11 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
       return { success: false, message: 'Seeding only implemented for SQL Server' };
     }
     
-    // Generate seed data script
+    // Generate seed data script and save to file
     const seedScript = `
--- Default admin user and sample customers
+-- Wizone IT Support Portal Sample Data
+-- SQL Server INSERT statements for default users and customers
+
 INSERT INTO users (id, username, password, email, firstName, lastName, role, department, isActive)
 SELECT 'admin001', 'admin', '32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1', 'admin@wizoneit.com', 'Admin', 'User', 'admin', 'WIZONE HELP DESK', 1
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
@@ -172,7 +181,6 @@ INSERT INTO customers (customerId, name, email, phone, address, city, state, zip
 SELECT 'C002', 'Digital Innovations Ltd', 'info@digiinnovations.com', '+1-555-0124', '456 Tech Street', 'San Francisco', 'CA', '94102', 'USA', 'Cloud Services', 199.99, 1
 WHERE NOT EXISTS (SELECT 1 FROM customers WHERE customerId = 'C002');
 
--- Sample field engineers
 INSERT INTO users (id, username, password, email, firstName, lastName, role, department, isActive)
 SELECT 'field001', 'field_eng1', '32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1', 'field1@wizoneit.com', 'John', 'Engineer', 'field_engineer', 'FIELD OPERATIONS', 1
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 'field001');
@@ -182,9 +190,16 @@ SELECT 'field002', 'field_eng2', '32dc874d83f8e3829e47123a59ed94f270e6b284fea685
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 'field002');
 `;
     
+    console.log('Generated seed data for:', connection.host + ':' + connection.port);
+    
+    // Save the SQL script to a file
+    const fs = await import('fs');
+    const seedPath = './wizone_sample_data.sql';
+    await fs.promises.writeFile(seedPath, seedScript, 'utf8');
+    
     return { 
       success: true, 
-      message: `Sample data script generated successfully! Execute this SQL script to seed your database with default users and customers.` 
+      message: `Sample data script generated successfully! SQL script saved to 'wizone_sample_data.sql'. Please execute this script in your SQL Server Management Studio to seed the database at ${connection.host}:${connection.port}.` 
     };
   } catch (error: any) {
     console.error('Seeding error:', error);
