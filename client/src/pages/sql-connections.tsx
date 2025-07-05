@@ -596,8 +596,8 @@ export default function SqlConnectionsPage() {
                       <TableCell>{connection.database}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          {getStatusIcon(connection.testStatus)}
-                          {getStatusBadge(connection.testStatus)}
+                          {getStatusIcon(connection.testStatus || 'never_tested')}
+                          {getStatusBadge(connection.testStatus || 'never_tested')}
                         </div>
                       </TableCell>
                       <TableCell>
