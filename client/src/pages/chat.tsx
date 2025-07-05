@@ -53,6 +53,7 @@ export default function Chat() {
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [messageText, setMessageText] = useState("");
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -67,6 +68,12 @@ export default function Chat() {
     queryKey: ["/api/chat/rooms", selectedRoom?.id, "messages"],
     enabled: !!selectedRoom,
     refetchInterval: 2000, // Refresh every 2 seconds
+  });
+
+  // Fetch all users for user management
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery({
+    queryKey: ["/api/users"],
+    enabled: isUsersDialogOpen,
   });
 
   // Create room mutation
@@ -183,50 +190,101 @@ export default function Chat() {
                   <MessageCircle className="h-5 w-5" />
                   Chat Rooms
                 </CardTitle>
-                <Dialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-slate-800 border-slate-700">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Create New Room</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateRoom} className="space-y-4">
-                      <div>
-                        <Label htmlFor="name" className="text-white">Room Name</Label>
-                        <Input
-                          id="name"
-                          name="name"
-                          required
-                          className="bg-slate-700 border-slate-600 text-white"
-                          placeholder="Enter room name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description" className="text-white">Description</Label>
-                        <Textarea
-                          id="description"
-                          name="description"
-                          className="bg-slate-700 border-slate-600 text-white"
-                          placeholder="Optional description"
-                        />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch id="isPrivate" name="isPrivate" />
-                        <Label htmlFor="isPrivate" className="text-white">Private Room</Label>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-cyan-600 hover:bg-cyan-700"
-                        disabled={createRoomMutation.isPending}
-                      >
-                        {createRoomMutation.isPending ? "Creating..." : "Create Room"}
+                <div className="flex gap-2">
+                  <Dialog open={isUsersDialogOpen} onOpenChange={setIsUsersDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                        <Users className="h-4 w-4" />
                       </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">All Registered Users</DialogTitle>
+                      </DialogHeader>
+                      <div className="max-h-96 overflow-y-auto">
+                        {usersLoading ? (
+                          <div className="text-slate-400 text-center py-4">Loading users...</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {allUsers.map((user: any) => (
+                              <div key={user.id} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="bg-cyan-600 text-white text-xs">
+                                      {getInitials(user.firstName, user.lastName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-white">
+                                      {user.firstName} {user.lastName}
+                                    </p>
+                                    <p className="text-sm text-slate-400">
+                                      {user.department} • {user.role}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs border-slate-500 text-slate-300">
+                                    {user.role}
+                                  </Badge>
+                                  {user.isActive && (
+                                    <Badge variant="outline" className="text-xs border-green-500 text-green-400">
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="bg-cyan-600 hover:bg-cyan-700">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-slate-800 border-slate-700">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Create New Room</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleCreateRoom} className="space-y-4">
+                        <div>
+                          <Label htmlFor="name" className="text-white">Room Name</Label>
+                          <Input
+                            id="name"
+                            name="name"
+                            required
+                            className="bg-slate-700 border-slate-600 text-white"
+                            placeholder="Enter room name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="description" className="text-white">Description</Label>
+                          <Textarea
+                            id="description"
+                            name="description"
+                            className="bg-slate-700 border-slate-600 text-white"
+                            placeholder="Optional description"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch id="isPrivate" name="isPrivate" />
+                          <Label htmlFor="isPrivate" className="text-white">Private Room</Label>
+                        </div>
+                        <Button
+                          type="submit"
+                          className="w-full bg-cyan-600 hover:bg-cyan-700"
+                          disabled={createRoomMutation.isPending}
+                        >
+                          {createRoomMutation.isPending ? "Creating..." : "Create Room"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
