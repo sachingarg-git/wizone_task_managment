@@ -592,6 +592,9 @@ export class DatabaseStorage implements IStorage {
       updatedBy: assignedBy,
     });
 
+    // Automatically create tracking entry for field assignment
+    await this.createAutomaticTrackingEntry(taskId, fieldEngineerId, "assigned_to_field", `Assigned to ${fieldEngineerName}`);
+
     return task;
   }
 
@@ -695,6 +698,9 @@ export class DatabaseStorage implements IStorage {
       updatedBy: userId,
     });
 
+    // Automatically create tracking entry for field activities
+    await this.createAutomaticTrackingEntry(taskId, userId, status, note);
+
     return task;
   }
 
@@ -719,6 +725,9 @@ export class DatabaseStorage implements IStorage {
       updatedBy: userId,
       attachments: files || [],
     });
+
+    // Automatically create tracking entry for task completion
+    await this.createAutomaticTrackingEntry(taskId, userId, "completed", completionNote);
 
     return task;
   }
@@ -1677,6 +1686,72 @@ export class DatabaseStorage implements IStorage {
       .values(trackingData)
       .returning();
     return tracking;
+  }
+
+  // Automatic tracking entry creation for field activities
+  async createAutomaticTrackingEntry(taskId: number, userId: string, status: string, note?: string): Promise<void> {
+    try {
+      // Get task details to retrieve customer location
+      const task = await this.getTask(taskId);
+      if (!task || !task.customer) return;
+
+      // Get main office location for distance calculation
+      const mainOffice = await this.getMainOffice();
+      if (!mainOffice) return;
+
+      // Use customer location or default coordinates
+      const customerLat = task.customer.latitude ? parseFloat(task.customer.latitude) : 28.6139; // Default Delhi coordinates
+      const customerLng = task.customer.longitude ? parseFloat(task.customer.longitude) : 77.2090;
+
+      // Calculate distance from office to customer location
+      const distanceFromOffice = this.calculateDistance(
+        parseFloat(mainOffice.latitude),
+        parseFloat(mainOffice.longitude),
+        customerLat,
+        customerLng
+      );
+
+      // Determine movement type based on status
+      let movementType = "unknown";
+      switch (status) {
+        case "start_task":
+          movementType = "traveling_to_customer";
+          break;
+        case "in_progress":
+        case "working_on_site":
+          movementType = "at_customer_location";
+          break;
+        case "waiting_for_customer":
+          movementType = "waiting_at_location";
+          break;
+        case "completed":
+          movementType = "returning_to_office";
+          break;
+        default:
+          movementType = "field_activity";
+      }
+
+      // Create tracking entry
+      const trackingData = {
+        userId,
+        taskId,
+        latitude: customerLat.toString(),
+        longitude: customerLng.toString(),
+        distanceFromOffice: (distanceFromOffice / 1000).toFixed(2), // Convert to km
+        distanceFromCustomer: "0.0",
+        movementType,
+        speedKmh: "0",
+        accuracy: "10",
+        batteryLevel: 100,
+        networkStatus: "good",
+        timestamp: new Date(),
+      };
+
+      await this.createTrackingHistoryEntry(trackingData);
+    } catch (error) {
+      console.error("Error creating automatic tracking entry:", error);
+      // Don't throw error to avoid breaking the main operation
+    }
   }
 
   async getTrackingHistoryByTask(taskId: number): Promise<EngineerTrackingHistory[]> {
