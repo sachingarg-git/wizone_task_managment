@@ -604,12 +604,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Hash the password
-      const scryptAsync = promisify(scrypt);
-      
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+      // Hash the password using the same function as auth
+      const { hashPassword } = require("./auth");
+      const hashedPassword = await hashPassword(password);
       
       const userData = {
         id,
@@ -729,11 +726,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Password must be at least 6 characters long" });
       }
       
-      // Hash the new password
-      const scryptAsync = promisify(scrypt);
-      const salt = randomBytes(16);
-      const derivedKey = await scryptAsync(newPassword, salt, 64) as Buffer;
-      const hashedPassword = `${salt.toString('hex')}:${derivedKey.toString('hex')}`;
+      // Hash the new password using the same function as auth
+      const { hashPassword } = require("./auth");
+      const hashedPassword = await hashPassword(newPassword);
       
       // Update user password in storage
       const user = await storage.updateUser(id, { 
