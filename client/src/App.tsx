@@ -26,7 +26,7 @@ import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, error } = useAuth();
   const [location] = useLocation();
   const [customerUser, setCustomerUser] = useState(null);
 
@@ -59,10 +59,27 @@ function Router() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading application...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there's a fetch error (not auth error)
+  if (error && !error.message.includes('401')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div className="text-center">
+          <p className="text-white mb-4">Unable to load application</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
