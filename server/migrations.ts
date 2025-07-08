@@ -143,8 +143,8 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
       server: connection.host.trim(),
       port: connection.port,
       database: 'master', // Connect to master first to create database
-      user: connection.username,
-      password: connection.password,
+      user: connection.username.trim(),
+      password: connection.password.trim(),
       options: {
         encrypt: connection.sslEnabled,
         trustServerCertificate: true,
@@ -160,6 +160,7 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
     };
     
     console.log('Connecting to SQL Server:', connection.host.trim() + ':' + connection.port);
+    console.log('Using credentials - Username:', `"${connection.username.trim()}"`, 'Database:', `"${connection.database.trim()}"`);
     const pool = new ConnectionPool(config);
     await pool.connect();
     
@@ -326,9 +327,9 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
     const config = {
       server: connection.host.trim(),
       port: connection.port,
-      database: connection.database,
-      user: connection.username,
-      password: connection.password,
+      database: connection.database.trim(),
+      user: connection.username.trim(),
+      password: connection.password.trim(),
       options: {
         encrypt: connection.sslEnabled,
         trustServerCertificate: true,

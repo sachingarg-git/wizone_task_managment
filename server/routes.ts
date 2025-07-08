@@ -1396,6 +1396,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "SQL connection not found" });
       }
       
+      // Debug log the connection data to see what's stored
+      console.log('Stored connection data:', {
+        host: `"${connection.host}"`,
+        username: `"${connection.username}"`,
+        database: `"${connection.database}"`,
+        hostLength: connection.host?.length,
+        usernameLength: connection.username?.length,
+        databaseLength: connection.database?.length
+      });
+      
       const migrationResult = await createTablesInExternalDatabase({
         host: connection.host,
         port: connection.port,

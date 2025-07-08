@@ -1197,6 +1197,8 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...connectionData,
         host: connectionData.host.trim(),
+        username: connectionData.username.trim(),
+        database: connectionData.database.trim(),
         testStatus: 'never_tested',
       })
       .returning();
@@ -1207,6 +1209,12 @@ export class DatabaseStorage implements IStorage {
     const cleanData = { ...connectionData };
     if (cleanData.host) {
       cleanData.host = cleanData.host.trim();
+    }
+    if (cleanData.username) {
+      cleanData.username = cleanData.username.trim();
+    }
+    if (cleanData.database) {
+      cleanData.database = cleanData.database.trim();
     }
     
     const [connection] = await db
