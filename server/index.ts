@@ -12,6 +12,9 @@ app.use(express.urlencoded({ extended: false }));
 setupDomainCORS(app);
 app.use(domainValidationMiddleware);
 
+// Trust proxy for production hosting behind load balancers/reverse proxies
+app.set('trust proxy', true);
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

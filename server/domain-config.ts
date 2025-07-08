@@ -15,15 +15,35 @@ export class DomainManager {
   // Default domains that are always available
   private readonly defaultDomains = [
     'localhost:5000',
+    'task.wizoneit.com',
+    '*.wizoneit.com',
     '*.replit.app',
     '*.replit.dev',
     '*.repl.co'
   ];
 
   constructor() {
-    // Initialize with default Replit domains
+    // Initialize with default domains
     this.addDomain({
       domain: '*.replit.app',
+      ssl: true,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    // Add production domain
+    this.addDomain({
+      domain: 'task.wizoneit.com',
+      ssl: true,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    // Add wildcard for Wizone domains
+    this.addDomain({
+      domain: '*.wizoneit.com',
       ssl: true,
       status: 'active',
       createdAt: new Date(),
