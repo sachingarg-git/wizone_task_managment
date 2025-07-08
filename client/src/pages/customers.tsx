@@ -52,8 +52,55 @@ export default function Customers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Export customers to CSV
+  const exportCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers/export', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) throw new Error('Failed to export customers');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `customers-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Export Success",
+        description: "Customer data has been exported successfully",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export customer data",
+        variant: "destructive",
+      });
+    }
+  };
+
   const { data: customers, isLoading: customersLoading } = useQuery({
-    queryKey: ["/api/customers", { search: searchQuery, location: locationFilter }],
+    queryKey: ["/api/customers", searchQuery, locationFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (locationFilter !== 'all') params.append('location', locationFilter);
+      
+      const url = `/api/customers${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch customers');
+      return response.json();
+    },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -189,7 +236,7 @@ export default function Customers() {
         subtitle="Manage customer information and service history"
       >
         <div className="flex space-x-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={exportCustomers}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -257,19 +304,29 @@ export default function Customers() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <CardTitle>Customer Database</CardTitle>
-              <div className="flex space-x-3">
+              <div className="flex flex-wrap gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    placeholder="Search customers..."
+                    placeholder="Search by name, ID, email, or location..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
+                    className="pl-10 w-80"
                   />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
                   <SelectTrigger className="w-40">
-                    <SelectValue />
+                    <SelectValue placeholder="Location" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
@@ -278,6 +335,20 @@ export default function Customers() {
                     <SelectItem value="delhi">Delhi</SelectItem>
                   </SelectContent>
                 </Select>
+                {(searchQuery || locationFilter !== 'all') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setLocationFilter("all");
+                    }}
+                    className="h-10"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>

@@ -80,7 +80,18 @@ export default function Tasks() {
   }, [location]);
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/tasks", { search: searchQuery, priority: priorityFilter, status: statusFilter }],
+    queryKey: ["/api/tasks", searchQuery, priorityFilter, statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (priorityFilter !== 'all') params.append('priority', priorityFilter);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      
+      const url = `/api/tasks${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
   });
 
   const { data: taskStats, isLoading: statsLoading } = useQuery({
@@ -502,19 +513,29 @@ export default function Tasks() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <CardTitle>All Tasks</CardTitle>
-              <div className="flex space-x-3">
+              <div className="flex flex-wrap gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    placeholder="Search tasks..."
+                    placeholder="Search by ticket #, type, customer, or description..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
+                    className="pl-10 w-80"
                   />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Priority" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Priorities</SelectItem>
@@ -524,8 +545,8 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
@@ -537,6 +558,21 @@ export default function Tasks() {
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+                {(searchQuery || priorityFilter !== 'all' || statusFilter !== 'all') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setPriorityFilter("all");
+                      setStatusFilter("all");
+                    }}
+                    className="h-10"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>

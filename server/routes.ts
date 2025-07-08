@@ -923,6 +923,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export customers to CSV
+  app.get('/api/customers/export', isAuthenticated, async (req, res) => {
+    try {
+      const customers = await storage.getAllCustomers();
+      
+      // Create CSV content
+      const csvHeader = 'Customer ID,Name,Contact Person,Email,Phone,Mobile Phone,Address,City,State,ZIP Code,Service Type,Account Manager,Created At,Modified At,Last Service Date\n';
+      
+      const csvContent = customers.map(customer => {
+        const escapeCSV = (field: any) => {
+          if (field === null || field === undefined) return '';
+          const str = String(field);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+        
+        return [
+          escapeCSV(customer.customerId),
+          escapeCSV(customer.name),
+          escapeCSV(customer.contactPerson),
+          escapeCSV(customer.email),
+          escapeCSV(customer.phone),
+          escapeCSV(customer.mobilePhone),
+          escapeCSV(customer.address),
+          escapeCSV(customer.city),
+          escapeCSV(customer.state),
+          escapeCSV(customer.zipCode),
+          escapeCSV(customer.serviceType),
+          escapeCSV(customer.accountManager),
+          escapeCSV(customer.createdAt ? new Date(customer.createdAt).toISOString().split('T')[0] : ''),
+          escapeCSV(customer.modifiedAt ? new Date(customer.modifiedAt).toISOString().split('T')[0] : ''),
+          escapeCSV(customer.lastServiceDate ? new Date(customer.lastServiceDate).toISOString().split('T')[0] : '')
+        ].join(',');
+      }).join('\n');
+      
+      const csv = csvHeader + csvContent;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="customers-export-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting customers:", error);
+      res.status(500).json({ message: "Failed to export customers" });
+    }
+  });
+
   // Performance routes
   app.get('/api/performance/top-performers', isAuthenticated, async (req, res) => {
     try {
