@@ -26,9 +26,12 @@ import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  console.log("Router component rendering...");
   const { isAuthenticated, isLoading, error } = useAuth();
   const [location] = useLocation();
   const [customerUser, setCustomerUser] = useState(null);
+  
+  console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
 
   // Check for stored customer session
   useEffect(() => {
@@ -87,6 +90,7 @@ function Router() {
 
   // If admin is not authenticated, show unified login
   if (!isAuthenticated) {
+    console.log("Showing unified login...");
     return (
       <UnifiedLogin 
         onAdminLogin={handleAdminLogin}
@@ -96,6 +100,7 @@ function Router() {
   }
 
   // Admin is authenticated, show admin dashboard
+  console.log("Showing admin dashboard...");
   return (
     <div className="flex min-h-screen bg-slate-900">
       <Sidebar />
@@ -122,11 +127,15 @@ function Router() {
 }
 
 function App() {
+  console.log("App component rendering...");
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <div className="app-container">
+          <Router />
+          <Toaster />
+        </div>
       </TooltipProvider>
     </QueryClientProvider>
   );

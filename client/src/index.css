@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure app container is visible */
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-container {
+  min-height: 100vh;
+  width: 100%;
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(215, 25%, 27%);
