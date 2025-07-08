@@ -72,27 +72,12 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        console.log('🔐 LOGIN ATTEMPT:', { username, passwordLength: password?.length });
         const user = await storage.getUserByUsername(username);
-        console.log('🔐 USER FOUND:', user ? { id: user.id, username: user.username, hasPassword: !!user.password } : 'NO USER');
-        
-        if (!user || !user.password) {
-          console.log('🔐 LOGIN FAILED: User not found or no password');
+        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid username or password" });
         }
-        
-        const passwordMatch = await comparePasswords(password, user.password);
-        console.log('🔐 PASSWORD MATCH:', passwordMatch);
-        
-        if (!passwordMatch) {
-          console.log('🔐 LOGIN FAILED: Password mismatch');
-          return done(null, false, { message: "Invalid username or password" });
-        }
-        
-        console.log('🔐 LOGIN SUCCESS:', { id: user.id, username: user.username });
         return done(null, user);
       } catch (error) {
-        console.log('🔐 LOGIN ERROR:', error);
         return done(error);
       }
     }),
@@ -109,32 +94,8 @@ export function setupAuth(app: Express) {
   });
 
   // Login endpoint
-  app.post("/api/auth/login", (req, res, next) => {
-    console.log('🔐 LOGIN REQUEST:', { body: req.body, headers: req.headers });
-    
-    passport.authenticate("local", (err, user, info) => {
-      console.log('🔐 PASSPORT RESULT:', { err, user: user ? { id: user.id, username: user.username } : null, info });
-      
-      if (err) {
-        console.log('🔐 PASSPORT ERROR:', err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
-      
-      if (!user) {
-        console.log('🔐 LOGIN FAILED - No user returned:', info);
-        return res.status(401).json({ message: info?.message || "Invalid credentials" });
-      }
-      
-      req.logIn(user, (err) => {
-        if (err) {
-          console.log('🔐 SESSION ERROR:', err);
-          return res.status(500).json({ message: "Session error" });
-        }
-        
-        console.log('🔐 LOGIN SUCCESS - Session created');
-        res.status(200).json(user);
-      });
-    })(req, res, next);
+  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
+    res.status(200).json(req.user);
   });
 
   // Logout endpoint

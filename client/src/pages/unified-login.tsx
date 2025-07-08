@@ -22,9 +22,6 @@ export default function UnifiedLogin({ onAdminLogin, onCustomerLogin }: LoginPro
   // Admin login mutation
   const adminLoginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      console.log('🔴 ADMIN LOGIN - Making API call to:', "/api/auth/login");
-      console.log('🔴 ADMIN LOGIN - Credentials:', { username: credentials.username, passwordLength: credentials.password.length });
-      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,17 +29,10 @@ export default function UnifiedLogin({ onAdminLogin, onCustomerLogin }: LoginPro
         credentials: "include",
       });
       
-      console.log('🔴 ADMIN LOGIN - Response status:', response.status);
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.log('🔴 ADMIN LOGIN - Error response:', errorText);
         throw new Error("Invalid admin credentials");
       }
-      
-      const result = await response.json();
-      console.log('🔴 ADMIN LOGIN - Success response:', result);
-      return result;
+      return response.json();
     },
     onSuccess: (user) => {
       console.log('🔴 ADMIN LOGIN - Success:', user);
@@ -61,8 +51,6 @@ export default function UnifiedLogin({ onAdminLogin, onCustomerLogin }: LoginPro
   // Customer login mutation
   const customerLoginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      console.log('🔵 CUSTOMER LOGIN - Making API call to:', "/api/customer/login");
-      
       const response = await fetch("/api/customer/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

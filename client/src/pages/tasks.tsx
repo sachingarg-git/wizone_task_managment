@@ -67,6 +67,7 @@ export default function Tasks() {
   const [showFieldAssignment, setShowFieldAssignment] = useState(false);
   const [showFieldWorkflow, setShowFieldWorkflow] = useState(false);
   const [selectedTaskForField, setSelectedTaskForField] = useState<any>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -439,9 +440,12 @@ export default function Tasks() {
         subtitle="Create, assign, and track task progress"
       >
         <div className="flex space-x-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setShowFilterModal(true)}>
             <Filter className="w-4 h-4 mr-2" />
             Filter
+            {(searchQuery || priorityFilter !== 'all' || statusFilter !== 'all') && (
+              <span className="ml-2 w-2 h-2 bg-purple-600 rounded-full"></span>
+            )}
           </Button>
           <Button onClick={() => setShowTaskForm(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -1166,6 +1170,104 @@ export default function Tasks() {
           task={selectedTaskForField}
         />
       )}
+      {/* Filter Modal */}
+      <Dialog open={showFilterModal} onOpenChange={setShowFilterModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Filter Tasks</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Search
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search by ticket #, type, customer..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Priority
+              </label>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="high">High Priority</SelectItem>
+                  <SelectItem value="medium">Medium Priority</SelectItem>
+                  <SelectItem value="low">Low Priority</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Status
+              </label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="start_task">Start Task</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setPriorityFilter("all");
+                  setStatusFilter("all");
+                }}
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear All
+              </Button>
+              <Button
+                onClick={() => setShowFilterModal(false)}
+                className="flex-1"
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Form Modal */}
+      <TaskFormModal 
+        isOpen={showTaskForm} 
+        onClose={() => setShowTaskForm(false)} 
+      />
     </div>
   );
 }
