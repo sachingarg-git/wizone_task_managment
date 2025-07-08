@@ -140,7 +140,7 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
     const { ConnectionPool } = mssql.default || mssql;
     
     const config = {
-      server: connection.host,
+      server: connection.host.trim(),
       port: connection.port,
       database: 'master', // Connect to master first to create database
       user: connection.username,
@@ -159,7 +159,7 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
       requestTimeout: 60000,
     };
     
-    console.log('Connecting to SQL Server:', connection.host + ':' + connection.port);
+    console.log('Connecting to SQL Server:', connection.host.trim() + ':' + connection.port);
     const pool = new ConnectionPool(config);
     await pool.connect();
     
@@ -324,7 +324,7 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
     const { ConnectionPool } = mssql.default || mssql;
     
     const config = {
-      server: connection.host,
+      server: connection.host.trim(),
       port: connection.port,
       database: connection.database,
       user: connection.username,
@@ -343,7 +343,7 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
       requestTimeout: 60000,
     };
     
-    console.log('Connecting to SQL Server for seeding:', connection.host + ':' + connection.port);
+    console.log('Connecting to SQL Server for seeding:', connection.host.trim() + ':' + connection.port);
     const pool = new ConnectionPool(config);
     await pool.connect();
     

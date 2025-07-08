@@ -1196,6 +1196,7 @@ export class DatabaseStorage implements IStorage {
       .insert(sqlConnections)
       .values({
         ...connectionData,
+        host: connectionData.host.trim(),
         testStatus: 'never_tested',
       })
       .returning();
@@ -1203,10 +1204,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSqlConnection(id: number, connectionData: Partial<InsertSqlConnection>): Promise<SqlConnection> {
+    const cleanData = { ...connectionData };
+    if (cleanData.host) {
+      cleanData.host = cleanData.host.trim();
+    }
+    
     const [connection] = await db
       .update(sqlConnections)
       .set({
-        ...connectionData,
+        ...cleanData,
         updatedAt: new Date(),
       })
       .where(eq(sqlConnections.id, id))
