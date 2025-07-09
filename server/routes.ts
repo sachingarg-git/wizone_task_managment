@@ -462,8 +462,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/recent-tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
-      const tasks = await storage.getTasksByUser(userId);
+      const userId = req.user?.id;
+      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // For field engineers, get their assigned tasks, for others get all recent tasks
+      const userRole = req.user?.role;
+      let tasks;
+      
+      if (userRole === 'field_engineer') {
+        tasks = await storage.getTasksByUser(userId);
+      } else {
+        tasks = await storage.getAllTasks();
+      }
+      
       const recentTasks = tasks.slice(0, 5); // Get 5 most recent tasks
       res.json(recentTasks);
     } catch (error) {
@@ -845,22 +858,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Engineer portal route - filter tasks by logged-in user
   app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
     try {
-      console.log("=== MY-TASKS DEBUG START ===");
-      console.log("req.user:", JSON.stringify(req.user, null, 2));
-      console.log("req.user?.id:", (req.user as any)?.id);
-      console.log("typeof req.user?.id:", typeof (req.user as any)?.id);
-      
       const userId = (req.user as any)?.id;
       if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN' || userId === undefined) {
-        console.log("INVALID USER ID DETECTED:", userId);
         return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
       }
       
-      console.log("Calling getTasksByUser with userId:", userId);
       const userTasks = await storage.getTasksByUser(userId);
-      console.log("Retrieved tasks count:", userTasks.length);
-      console.log("=== MY-TASKS DEBUG END ===");
-      
       res.json(userTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -872,31 +875,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/sync', isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
-      if (!userId) {
+      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
+      console.log("Syncing data for user:", userId);
+      
       // Force refresh user tasks and related data
       const userTasks = await storage.getTasksByUser(userId);
+      console.log("Sync found tasks:", userTasks.length);
       
       // Also get any recent updates for user's tasks
       const taskIds = userTasks.map(task => task.id);
       const recentUpdates = [];
       
       for (const taskId of taskIds) {
-        const updates = await storage.getTaskUpdates(taskId);
-        recentUpdates.push(...updates.slice(0, 3)); // Get last 3 updates per task
+        try {
+          const updates = await storage.getTaskUpdates(taskId);
+          recentUpdates.push(...updates.slice(0, 2)); // Get last 2 updates per task
+        } catch (error) {
+          console.error(`Error getting updates for task ${taskId}:`, error);
+        }
       }
       
       res.json({
         tasks: userTasks,
-        recentUpdates: recentUpdates.slice(0, 10), // Limit to 10 most recent
+        recentUpdates: recentUpdates.slice(0, 8), // Limit to 8 most recent
         syncTime: new Date().toISOString(),
-        message: "Data synced successfully"
+        message: `Data synced successfully - ${userTasks.length} tasks found`,
+        userId: userId
       });
     } catch (error) {
       console.error("Error syncing tasks:", error);
-      res.status(500).json({ message: "Failed to sync tasks" });
+      res.status(500).json({ message: "Failed to sync tasks", error: error.message });
     }
   });
 
