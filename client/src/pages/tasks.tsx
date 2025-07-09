@@ -488,9 +488,9 @@ export default function Tasks() {
     quickAssignMutation.mutate({ taskId, userId });
   };
 
-  const isCustomerCreatedTask = (task: any) => {
-    // Check if task is unassigned and created by admin (customer portal)
-    return !task.assignedTo && (task.createdByUser?.username === 'admin' || task.createdByUser?.id === 'admin001');
+  const shouldShowAssignmentButtons = (task: any) => {
+    // Show assignment buttons for tasks that need backend engineer assignment
+    return !task.assignedTo || task.assignedTo === null;
   };
 
   return (
@@ -727,8 +727,8 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            {/* Quick Assignment Buttons for Customer-Created Unassigned Tasks */}
-                            {isCustomerCreatedTask(task) && backendEngineers && (
+                            {/* Quick Assignment Buttons for Backend Engineer Assignment */}
+                            {shouldShowAssignmentButtons(task) && backendEngineers && (
                               <div className="flex space-x-1">
                                 <Button 
                                   variant="outline" 
@@ -741,8 +741,8 @@ export default function Tasks() {
                                   Assign to Me
                                 </Button>
                                 <Select onValueChange={(userId) => handleQuickAssign(task.id, userId)}>
-                                  <SelectTrigger className="h-8 w-32 text-xs">
-                                    <SelectValue placeholder="Backend" />
+                                  <SelectTrigger className="h-8 w-36 text-xs">
+                                    <SelectValue placeholder="Backend Eng." />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {backendEngineers?.map((engineer: any) => (
