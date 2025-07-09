@@ -128,7 +128,7 @@ export const customerComments = pgTable("customer_comments", {
 // Customer system details table - Employee system information
 export const customerSystemDetails = pgTable("customer_system_details", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").references(() => customers.id).notNull(),
+  customerId: varchar("customer_id").references(() => customers.customerId).notNull(),
   empId: varchar("emp_id").notNull(), // Employee ID
   systemName: varchar("system_name").notNull(),
   systemConfiguration: text("system_configuration"), // System configuration details
