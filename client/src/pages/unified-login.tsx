@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, EyeOff, Building2, Users } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
+import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
 interface LoginProps {
   onAdminLogin: (user: any) => void;

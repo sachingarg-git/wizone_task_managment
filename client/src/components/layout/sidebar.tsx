@@ -18,7 +18,7 @@ import {
   Clock,
   Building2
 } from "lucide-react";
-import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
+import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
 const getNavigationForUser = (userRole: string) => {
   const baseNavigation = [

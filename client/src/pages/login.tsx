@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, LogIn, User, Lock, ListTodo } from "lucide-react";
-import wizoneLogoPath from "@assets/wizone logo_1751691807955.jpg";
+import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
