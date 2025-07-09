@@ -559,6 +559,7 @@ export default function BotConfiguration() {
                               <SelectItem value="HTML">HTML</SelectItem>
                               <SelectItem value="Markdown">Markdown</SelectItem>
                               <SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
+                              <SelectItem value="">None (Plain Text)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
