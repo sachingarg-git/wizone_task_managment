@@ -457,10 +457,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
-    if (!userId || userId === 'undefined' || userId === 'null') {
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
       console.error("Invalid userId provided to getTasksByUser:", userId);
-      throw new Error("Valid user ID is required");
+      return []; // Return empty array instead of throwing error
     }
+    
+    console.log("Fetching tasks for user ID:", userId);
     
     const result = await db
       .select({
@@ -473,6 +475,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
       .orderBy(desc(tasks.createdAt));
+    
+    console.log(`Found ${result.length} tasks for user ${userId}`);
     
     return result.map(row => ({
       ...row.task,
