@@ -543,10 +543,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks/:id', isAuthenticated, async (req, res) => {
     try {
+      console.log("GET /api/tasks/:id called with ID:", req.params.id);
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        console.log("Invalid task ID, returning 400");
+        return res.status(400).json({ message: "Invalid task ID" });
+      }
       const task = await storage.getTask(id);
       
       if (!task) {
+        console.log("Task not found for ID:", id);
         return res.status(404).json({ message: "Task not found" });
       }
       
@@ -721,6 +727,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tasks/:id/updates', isAuthenticated, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Invalid task ID" });
+      }
       const updates = await storage.getTaskUpdates(taskId);
       res.json(updates);
     } catch (error) {
@@ -865,15 +874,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("=== MY-TASKS API CALL ===");
       console.log("User ID:", userId);
-      console.log("User object:", JSON.stringify(req.user, null, 2));
+      console.log("User role:", (req.user as any)?.role);
       
       const userTasks = await storage.getTasksByUser(userId);
       console.log("Tasks retrieved:", userTasks.length);
+      
+      if (userTasks.length > 0) {
+        console.log("First task:", JSON.stringify(userTasks[0], null, 2));
+      }
       console.log("=== MY-TASKS API END ===");
       
       res.json(userTasks);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error("Error fetching my-tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
     }
   });

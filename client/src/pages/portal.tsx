@@ -71,7 +71,7 @@ export default function Portal() {
 
   const { data: taskUpdates } = useQuery({
     queryKey: [`/api/tasks/${selectedTaskId}/updates`],
-    enabled: !!selectedTaskId,
+    enabled: !!selectedTaskId && !isNaN(selectedTaskId),
   });
 
   // Task update mutation
