@@ -1,5 +1,8 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, createDefaultUsers } from "./auth";
 import { seedDatabase } from "./seed";
@@ -52,29 +55,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Serve static files from uploads directory for downloads
+  app.use('/downloads', express.static('uploads'));
+
   // APK download endpoint
   app.get('/api/download/apk', (req, res) => {
-    const path = require('path');
-    const fs = require('fs');
     const filePath = path.join(process.cwd(), 'uploads', 'Wizone-APK-Package.tar.gz');
     
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'APK package not found' });
-    }
-    
-    res.setHeader('Content-Type', 'application/gzip');
-    res.setHeader('Content-Disposition', 'attachment; filename="Wizone-APK-Package.tar.gz"');
-    
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
-    
-    fileStream.on('error', (err) => {
-      console.error('APK download error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ message: 'Download failed' });
+    try {
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'APK package not found' });
       }
-    });
+      
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', 'attachment; filename="Wizone-APK-Package.tar.gz"');
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+      fileStream.on('error', (err) => {
+        console.error('APK download error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Download failed' });
+        }
+      });
+    } catch (error) {
+      console.error('APK download error:', error);
+      res.status(500).json({ message: 'Download failed' });
+    }
   });
   
   // Auth middleware
