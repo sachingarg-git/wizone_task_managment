@@ -28,42 +28,9 @@ try {
   const root = createRoot(rootElement);
   console.log("React root created successfully");
   
-  // Simple test render first
-  root.render(
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white',
-      fontFamily: 'system-ui, sans-serif'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1>Wizone IT Support Portal</h1>
-        <p>System is initializing...</p>
-        <div style={{ marginTop: '20px' }}>
-          <button 
-            onClick={() => {
-              console.log("Loading full app...");
-              root.render(<App />);
-            }}
-            style={{
-              padding: '10px 20px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            Load Application
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-  console.log("Initial render successful");
+  // Directly render the full app
+  root.render(<App />);
+  console.log("Full app render successful");
 } catch (error) {
   console.error("Failed to render app:", error);
   // Fallback render
