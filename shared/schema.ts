@@ -667,7 +667,6 @@ export const botConfigurations = pgTable("bot_configurations", {
   
   // Rate Limiting
   maxNotificationsPerHour: integer("max_notifications_per_hour").default(100),
-  lastNotificationSent: timestamp("last_notification_sent"),
   
   // Retry Settings
   retryCount: integer("retry_count").default(3),
@@ -687,17 +686,19 @@ export const botConfigurations = pgTable("bot_configurations", {
 export const notificationLogs = pgTable("notification_logs", {
   id: serial("id").primaryKey(),
   configId: integer("config_id").references(() => botConfigurations.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type").notNull(), // task_create, task_update, status_change, etc.
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
-  notificationType: varchar("notification_type").notNull(), // task_create, task_update, status_change, etc.
-  recipientId: varchar("recipient_id"), // Chat ID, Phone number, etc.
-  message: text("message").notNull(),
-  messageData: json("message_data"), // Original data sent
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  messageText: text("message_text"),
+  messageTemplateUsed: varchar("message_template_used"),
   status: varchar("status").notNull().default("pending"), // pending, sent, failed, retrying
   responseData: json("response_data"), // API response
   errorMessage: text("error_message"),
-  retryCount: integer("retry_count").default(0),
-  sentAt: timestamp("sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  sentAt: timestamp("sent_at"),
+  retryCount: integer("retry_count").default(0),
+  nextRetryAt: timestamp("next_retry_at"),
 });
 
 // Insert schemas for geofencing and tracking

@@ -23,6 +23,7 @@ import {
   Plus, 
   Search, 
   Download, 
+  Upload,
   Users, 
   Wifi, 
   UserPlus,
@@ -31,7 +32,9 @@ import {
   Eye,
   Edit,
   Trash2,
-  Computer
+  Computer,
+  FileSpreadsheet,
+  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -49,6 +52,8 @@ export default function Customers() {
   const [portalPassword, setPortalPassword] = useState("");
   const [showSystemDetailsDialog, setShowSystemDetailsDialog] = useState(false);
   const [selectedCustomerForSystems, setSelectedCustomerForSystems] = useState<any>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -87,6 +92,72 @@ export default function Customers() {
         variant: "destructive",
       });
     }
+  };
+
+  // Import customers from Excel/CSV
+  const importCustomersMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/customers/import', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Import failed' }));
+        throw new Error(errorData.message || 'Failed to import customers');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setShowImportDialog(false);
+      setImportFile(null);
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${data.imported} customers. ${data.errors || 0} errors occurred.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImport = () => {
+    if (importFile) {
+      importCustomersMutation.mutate(importFile);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const headers = [
+      'customerId', 'name', 'email', 'contactPerson', 'mobilePhone', 
+      'address', 'city', 'state', 'latitude', 'longitude', 
+      'connectionType', 'planType', 'monthlyFee', 'status'
+    ];
+    
+    const csvContent = headers.join(',') + '\n' +
+      'C001,Sample Company,contact@example.com,John Doe,9876543210,' +
+      '"123 Main St",Mumbai,Maharashtra,19.0760,72.8777,' +
+      'fiber,business,2500,active';
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'customer-import-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   const { data: customers, isLoading: customersLoading } = useQuery({
@@ -239,6 +310,10 @@ export default function Customers() {
           <Button variant="outline" onClick={exportCustomers}>
             <Download className="w-4 h-4 mr-2" />
             Export
+          </Button>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import
           </Button>
           <Button onClick={() => setShowCustomerForm(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -634,6 +709,97 @@ export default function Customers() {
               onClick={() => setShowSystemDetailsDialog(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Customers Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Import Customers</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900 mb-1">Import Instructions:</p>
+                  <ul className="text-blue-700 space-y-1">
+                    <li>• Upload Excel (.xlsx) or CSV (.csv) files</li>
+                    <li>• Download template below for correct format</li>
+                    <li>• Existing customers will be updated if ID matches</li>
+                    <li>• Maximum file size: 10MB</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                variant="outline" 
+                onClick={downloadTemplate}
+                className="w-full"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Download Template
+              </Button>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="import-file"
+                />
+                <label 
+                  htmlFor="import-file"
+                  className="cursor-pointer flex flex-col items-center text-center"
+                >
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <p className="text-sm font-medium text-gray-900">
+                    Choose file to upload
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Excel (.xlsx) or CSV (.csv) files only
+                  </p>
+                </label>
+              </div>
+
+              {importFile && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-900">
+                      {importFile.name}
+                    </span>
+                    <span className="text-xs text-green-600">
+                      ({(importFile.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowImportDialog(false);
+                setImportFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={!importFile || importCustomersMutation.isPending}
+            >
+              {importCustomersMutation.isPending ? "Importing..." : "Import"}
             </Button>
           </DialogFooter>
         </DialogContent>

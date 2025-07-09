@@ -18,8 +18,29 @@ import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
+import multer from "multer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure multer for file uploads
+  const upload = multer({
+    dest: 'uploads/',
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only CSV and Excel files are allowed.'));
+      }
+    }
+  });
+
   // Health check endpoint for monitoring
   app.get('/api/health', (req, res) => {
     res.status(200).json({ 
@@ -954,6 +975,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching customers:", error);
       res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  // Customer import endpoint
+  app.post('/api/customers/import', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file provided" });
+      }
+
+      const fs = await import('fs');
+      const { parse } = await import('csv-parse/sync');
+      
+      const filePath = req.file.path;
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      
+      let records;
+      if (req.file.originalname.endsWith('.csv')) {
+        records = parse(fileContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        });
+      } else {
+        // For now, focus on CSV support
+        return res.status(400).json({ message: "Please use CSV format for imports" });
+      }
+
+      let imported = 0;
+      let errors = 0;
+      const errorDetails = [];
+
+      for (const record of records) {
+        try {
+          const customerData = {
+            customerId: record.customerId || `C${Date.now()}${Math.random().toString(36).substr(2, 3)}`,
+            name: record.name,
+            email: record.email,
+            contactPerson: record.contactPerson,
+            mobilePhone: record.mobilePhone,
+            address: record.address,
+            city: record.city,
+            state: record.state,
+            latitude: record.latitude ? parseFloat(record.latitude) : null,
+            longitude: record.longitude ? parseFloat(record.longitude) : null,
+            connectionType: record.connectionType || 'fiber',
+            planType: record.planType || 'basic',
+            monthlyFee: record.monthlyFee ? parseFloat(record.monthlyFee) : 0,
+            status: record.status || 'active'
+          };
+
+          // Validate required fields
+          if (!customerData.name || !customerData.email) {
+            errors++;
+            errorDetails.push(`Row ${imported + errors}: Missing required fields (name, email)`);
+            continue;
+          }
+
+          // Check if customer exists by email
+          const customers = await storage.getAllCustomers();
+          const existingCustomer = customers.find(c => c.email === customerData.email);
+          
+          if (existingCustomer) {
+            // Update existing customer
+            await storage.updateCustomer(existingCustomer.id, customerData);
+          } else {
+            // Create new customer
+            await storage.createCustomer(customerData);
+          }
+          
+          imported++;
+        } catch (error) {
+          errors++;
+          errorDetails.push(`Row ${imported + errors}: ${error.message}`);
+        }
+      }
+
+      // Clean up uploaded file
+      fs.unlinkSync(filePath);
+
+      res.json({
+        imported,
+        errors,
+        total: records.length,
+        errorDetails: errorDetails.slice(0, 10) // Return first 10 errors
+      });
+
+    } catch (error) {
+      console.error("Error importing customers:", error);
+      
+      // Clean up file if it exists
+      if (req.file?.path) {
+        try {
+          const fs = await import('fs');
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error("Error cleaning up file:", cleanupError);
+        }
+      }
+      
+      res.status(500).json({ message: "Failed to import customers", error: error.message });
     }
   });
 
