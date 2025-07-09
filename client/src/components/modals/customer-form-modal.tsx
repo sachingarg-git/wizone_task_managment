@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,7 @@ interface CustomerFormModalProps {
 export default function CustomerFormModal({ isOpen, onClose, customer, isEditing = false }: CustomerFormModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showCustomPlanInput, setShowCustomPlanInput] = useState(false);
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
@@ -97,6 +99,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
       });
       onClose();
       form.reset();
+      setShowCustomPlanInput(false);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -131,6 +134,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
       });
       onClose();
       form.reset();
+      setShowCustomPlanInput(false);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -169,6 +173,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
 
   const handleClose = () => {
     form.reset();
+    setShowCustomPlanInput(false);
     onClose();
   };
 
@@ -355,34 +360,51 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Service Plan *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Plan" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Basic - 25 Mbps">Basic - 25 Mbps</SelectItem>
-                          <SelectItem value="Standard - 50 Mbps">Standard - 50 Mbps</SelectItem>
-                          <SelectItem value="Premium - 100 Mbps">Premium - 100 Mbps</SelectItem>
-                          <SelectItem value="Enterprise - 200 Mbps">Enterprise - 200 Mbps</SelectItem>
-                          <SelectItem value="Business Pro - 500 Mbps">Business Pro - 500 Mbps</SelectItem>
-                          <SelectItem value="N/A">N/A (Not Available)</SelectItem>
-                          <SelectItem value="custom">Custom Plan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {field.value === "custom" && (
-                        <Input 
-                          placeholder="Enter custom plan name" 
-                          value=""
-                          onChange={(e) => {
-                            const customValue = e.target.value;
-                            // Directly set the custom value, replacing "custom"
-                            field.onChange(customValue);
-                          }}
-                          className="mt-2"
-                          autoFocus
-                        />
+                      {!showCustomPlanInput ? (
+                        <Select onValueChange={(value) => {
+                          if (value === "custom") {
+                            setShowCustomPlanInput(true);
+                            field.onChange("");
+                          } else {
+                            field.onChange(value);
+                          }
+                        }} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Plan" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Basic - 25 Mbps">Basic - 25 Mbps</SelectItem>
+                            <SelectItem value="Standard - 50 Mbps">Standard - 50 Mbps</SelectItem>
+                            <SelectItem value="Premium - 100 Mbps">Premium - 100 Mbps</SelectItem>
+                            <SelectItem value="Enterprise - 200 Mbps">Enterprise - 200 Mbps</SelectItem>
+                            <SelectItem value="Business Pro - 500 Mbps">Business Pro - 500 Mbps</SelectItem>
+                            <SelectItem value="N/A">N/A (Not Available)</SelectItem>
+                            <SelectItem value="custom">Custom Plan</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="relative">
+                          <Input 
+                            placeholder="Enter custom plan name" 
+                            value={field.value}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCustomPlanInput(false);
+                              field.onChange("");
+                            }}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       )}
                       <FormMessage />
                     </FormItem>
