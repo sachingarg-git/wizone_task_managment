@@ -83,12 +83,12 @@ export default function BotConfiguration() {
     notifyOnTaskStatusChange: true,
     notifyOnHighPriority: true,
     
-    // Templates
-    taskCreateTemplate: "🆕 New Task Created\n\n📋 Task: {taskNumber}\n👤 Customer: {customerName}\n⚡ Priority: {priority}\n📝 Description: {description}\n👷 Assigned to: {assignedTo}",
-    taskUpdateTemplate: "📝 Task Updated\n\n📋 Task: {taskNumber}\n👤 Customer: {customerName}\n🔄 Status: {status}\n💬 Notes: {notes}",
-    taskCompleteTemplate: "✅ Task Completed\n\n📋 Task: {taskNumber}\n👤 Customer: {customerName}\n⏱️ Duration: {duration}\n✅ Completed by: {completedBy}",
-    taskAssignTemplate: "👷 Task Assigned\n\n📋 Task: {taskNumber}\n👤 Customer: {customerName}\n⚡ Priority: {priority}\n👷 Assigned to: {assignedTo}",
-    statusChangeTemplate: "🔄 Status Changed\n\n📋 Task: {taskNumber}\n👤 Customer: {customerName}\n📊 From: {oldStatus} → {newStatus}\n👷 Updated by: {updatedBy}",
+    // Templates - Enhanced for automatic notifications
+    taskCreateTemplate: "🆕 New Task Created - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n📧 Email: {customerEmail}\n📱 Contact: {customerPhone}\n⚡ Priority: {priority}\n📝 Description: {description}\n👷 Assigned to: {assignedTo}\n🏢 Department: {department}\n📅 Created: {createdAt}\n\n🔗 View Task: {taskUrl}",
+    taskUpdateTemplate: "📝 Task Updated - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n🔄 Status: {status}\n💬 Latest Notes: {notes}\n👷 Updated by: {updatedBy}\n📅 Updated: {updatedAt}\n\n🔗 View Task: {taskUrl}",
+    taskCompleteTemplate: "✅ Task Completed - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n⏱️ Duration: {duration}\n✅ Completed by: {completedBy}\n📝 Resolution: {resolution}\n📅 Completed: {completedAt}\n\n🎉 Task successfully resolved!",
+    taskAssignTemplate: "👷 Task Assigned - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n⚡ Priority: {priority}\n👷 Assigned to: {assignedTo}\n🏢 Department: {department}\n📅 Assigned: {assignedAt}\n\n📝 Description: {description}\n🔗 View Task: {taskUrl}",
+    statusChangeTemplate: "🔄 Status Changed - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n📊 Status: {oldStatus} → {newStatus}\n👷 Updated by: {updatedBy}\n📅 Changed: {changedAt}\n💬 Notes: {notes}\n\n🔗 View Task: {taskUrl}",
     
     // Filtering
     filterByPriority: ["high", "medium", "low"],
@@ -377,35 +377,48 @@ export default function BotConfiguration() {
         title="Bot Configuration"
         subtitle="Configure notification bots for Telegram, WhatsApp, and webhooks"
         actions={
-          <Dialog open={showConfigForm} onOpenChange={setShowConfigForm}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setSelectedConfig(null);
-                resetForm();
-              }}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Bot Configuration
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedConfig ? 'Edit Bot Configuration' : 'Add New Bot Configuration'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="basic">Basic Settings</TabsTrigger>
-                    <TabsTrigger value="config">Bot Configuration</TabsTrigger>
-                    <TabsTrigger value="templates">Message Templates</TabsTrigger>
-                    <TabsTrigger value="advanced">Advanced Settings</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="basic" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="configName">Configuration Name</Label>
+          <div className="flex space-x-3">
+            <Button onClick={() => {
+              setSelectedConfig(null);
+              resetForm();
+              setFormData(prev => ({ ...prev, botType: "webhook" }));
+              setShowConfigForm(true);
+            }} variant="outline">
+              <Webhook className="w-4 h-4 mr-2" />
+              Add Webhook Config
+            </Button>
+            <Button onClick={() => {
+              setSelectedConfig(null);
+              resetForm();
+              setShowConfigForm(true);
+            }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Bot Configuration
+            </Button>
+          </div>
+        }
+      />
+
+      <Dialog open={showConfigForm} onOpenChange={setShowConfigForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedConfig ? 'Edit Bot Configuration' : 'Add New Bot Configuration'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="basic">Basic Settings</TabsTrigger>
+                <TabsTrigger value="config">Bot Configuration</TabsTrigger>
+                <TabsTrigger value="templates">Message Templates</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced Settings</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="basic" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="configName">Configuration Name</Label>
                         <Input
                           id="configName"
                           placeholder="e.g., Main Telegram Bot"
@@ -772,11 +785,9 @@ export default function BotConfiguration() {
                     {selectedConfig ? 'Update' : 'Create'} Configuration
                   </Button>
                 </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        }
-      />
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Statistics Cards */}
