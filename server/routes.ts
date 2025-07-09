@@ -846,16 +846,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
-      if (!userId) {
-        console.error("Error fetching task: User ID is undefined");
-        return res.status(400).json({ message: "User ID not found" });
+      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
+        return res.status(400).json({ message: "Invalid user ID" });
       }
-      console.log("Fetching tasks for user:", userId);
       const userTasks = await storage.getTasksByUser(userId);
       res.json(userTasks);
     } catch (error) {
-      console.error("Error fetching task:", error);
-      res.status(500).json({ message: "Failed to fetch task" });
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Sync endpoint for field engineers to refresh their task data
+  app.post('/api/tasks/sync', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Force refresh user tasks and related data
+      const userTasks = await storage.getTasksByUser(userId);
+      
+      // Also get any recent updates for user's tasks
+      const taskIds = userTasks.map(task => task.id);
+      const recentUpdates = [];
+      
+      for (const taskId of taskIds) {
+        const updates = await storage.getTaskUpdates(taskId);
+        recentUpdates.push(...updates.slice(0, 3)); // Get last 3 updates per task
+      }
+      
+      res.json({
+        tasks: userTasks,
+        recentUpdates: recentUpdates.slice(0, 10), // Limit to 10 most recent
+        syncTime: new Date().toISOString(),
+        message: "Data synced successfully"
+      });
+    } catch (error) {
+      console.error("Error syncing tasks:", error);
+      res.status(500).json({ message: "Failed to sync tasks" });
     }
   });
 

@@ -96,6 +96,25 @@ export default function Portal() {
     },
   });
 
+  // Sync mutation for refreshing data
+  const syncTasksMutation = useMutation({
+    mutationFn: () => apiRequest("/api/tasks/sync", "POST", {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/my-tasks"] });
+      toast({
+        title: "Data Synced",
+        description: `Successfully synced ${data.tasks?.length || 0} tasks`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync task data",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -320,9 +339,20 @@ export default function Portal() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>My Assigned Tasks</CardTitle>
-              <Badge variant="outline" className="text-sm">
-                {myTasks.length} tasks assigned to you
-              </Badge>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="text-sm">
+                  {myTasks.length} tasks assigned to you
+                </Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => syncTasksMutation.mutate()}
+                  disabled={syncTasksMutation.isPending}
+                  className="text-xs"
+                >
+                  {syncTasksMutation.isPending ? "Syncing..." : "Sync Data"}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

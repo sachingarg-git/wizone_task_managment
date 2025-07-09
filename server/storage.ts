@@ -462,8 +462,6 @@ export class DatabaseStorage implements IStorage {
       return []; // Return empty array instead of throwing error
     }
     
-    console.log("Fetching tasks for user ID:", userId);
-    
     const result = await db
       .select({
         task: tasks,
@@ -475,8 +473,6 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
       .orderBy(desc(tasks.createdAt));
-    
-    console.log(`Found ${result.length} tasks for user ${userId}`);
     
     return result.map(row => ({
       ...row.task,
