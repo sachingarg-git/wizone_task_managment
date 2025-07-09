@@ -40,7 +40,8 @@ import {
   Paperclip,
   TrendingUp,
   RefreshCw,
-  Play
+  Play,
+  Trash2
 } from "lucide-react";
 import {
   Dialog,
@@ -222,6 +223,40 @@ export default function Tasks() {
     },
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest("DELETE", `/api/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-tasks"] });
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Query for task updates/history
   const { data: taskUpdates } = useQuery({
     queryKey: [`/api/tasks/${selectedTaskId}/updates`],
@@ -309,6 +344,12 @@ export default function Tasks() {
   const handleFieldWorkflow = (task: any) => {
     setSelectedTaskForField(task);
     setShowFieldWorkflow(true);
+  };
+
+  const handleDeleteTask = (taskId: number, taskNumber: string) => {
+    if (window.confirm(`Are you sure you want to delete task ${taskNumber}? This action cannot be undone.`)) {
+      deleteTaskMutation.mutate(taskId);
+    }
   };
 
   const getFileIcon = (fileName: string) => {
@@ -769,6 +810,15 @@ export default function Tasks() {
                               title="Edit Task"
                             >
                               <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteTask(task.id, task.ticketNumber)}
+                              title="Delete Task"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>
