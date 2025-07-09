@@ -845,15 +845,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Engineer portal route - filter tasks by logged-in user
   app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
     try {
+      console.log("=== MY-TASKS DEBUG START ===");
+      console.log("req.user:", JSON.stringify(req.user, null, 2));
+      console.log("req.user?.id:", (req.user as any)?.id);
+      console.log("typeof req.user?.id:", typeof (req.user as any)?.id);
+      
       const userId = (req.user as any)?.id;
-      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
-        return res.status(400).json({ message: "Invalid user ID" });
+      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN' || userId === undefined) {
+        console.log("INVALID USER ID DETECTED:", userId);
+        return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
       }
+      
+      console.log("Calling getTasksByUser with userId:", userId);
       const userTasks = await storage.getTasksByUser(userId);
+      console.log("Retrieved tasks count:", userTasks.length);
+      console.log("=== MY-TASKS DEBUG END ===");
+      
       res.json(userTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
-      res.status(500).json({ message: "Failed to fetch tasks" });
+      res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
     }
   });
 

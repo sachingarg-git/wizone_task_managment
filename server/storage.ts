@@ -457,28 +457,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
+    console.log("=== STORAGE getTasksByUser DEBUG START ===");
+    console.log("userId parameter:", userId);
+    console.log("typeof userId:", typeof userId);
+    console.log("userId === 'NaN':", userId === 'NaN');
+    
     if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
       console.error("Invalid userId provided to getTasksByUser:", userId);
       return []; // Return empty array instead of throwing error
     }
     
-    const result = await db
-      .select({
-        task: tasks,
-        customer: customers,
-        assignedUser: users,
-      })
-      .from(tasks)
-      .leftJoin(customers, eq(tasks.customerId, customers.id))
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
-      .orderBy(desc(tasks.createdAt));
+    console.log("Building query with userId:", userId);
     
-    return result.map(row => ({
-      ...row.task,
-      customer: row.customer || undefined,
-      assignedUser: row.assignedUser || undefined,
-    }));
+    try {
+      const result = await db
+        .select({
+          task: tasks,
+          customer: customers,
+          assignedUser: users,
+        })
+        .from(tasks)
+        .leftJoin(customers, eq(tasks.customerId, customers.id))
+        .leftJoin(users, eq(tasks.assignedTo, users.id))
+        .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
+        .orderBy(desc(tasks.createdAt));
+      
+      console.log("Query executed successfully, result count:", result.length);
+      console.log("=== STORAGE getTasksByUser DEBUG END ===");
+      
+      return result.map(row => ({
+        ...row.task,
+        customer: row.customer || undefined,
+        assignedUser: row.assignedUser || undefined,
+      }));
+    } catch (error) {
+      console.error("Error in getTasksByUser:", error);
+      console.log("=== STORAGE getTasksByUser DEBUG END (ERROR) ===");
+      throw error;
+    }
   }
 
   async getTasksByCustomer(customerId: number): Promise<TaskWithRelations[]> {
