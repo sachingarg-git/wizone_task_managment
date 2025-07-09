@@ -13,9 +13,10 @@ interface HeaderProps {
   title: string;
   subtitle: string;
   children?: React.ReactNode;
+  actions?: React.ReactNode;
 }
 
-export default function Header({ title, subtitle, children }: HeaderProps) {
+export default function Header({ title, subtitle, children, actions }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   
   // Mock notifications - in real app, this would come from API
@@ -56,6 +57,7 @@ export default function Header({ title, subtitle, children }: HeaderProps) {
           <p className="text-gray-300">{subtitle}</p>
         </div>
         <div className="flex items-center space-x-4">
+          {actions}
           <Popover open={showNotifications} onOpenChange={setShowNotifications}>
             <PopoverTrigger asChild>
               <Button 
