@@ -935,19 +935,29 @@ export default function Tasks() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-700">Status *</label>
-                          <Select value={taskStatus} onValueChange={setTaskStatus}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-yellow-500" />
-                                  Pending
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="start_task">
-                                <div className="flex items-center gap-2">
+                          {task.status === 'resolved' || task.status === 'completed' ? (
+                            <div className="p-3 bg-gray-100 border border-gray-200 rounded-md">
+                              <p className="text-sm text-gray-600">
+                                Status: <span className="font-medium capitalize">{task.status?.replace('_', ' ')}</span>
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Task is {task.status} and cannot be modified
+                              </p>
+                            </div>
+                          ) : (
+                            <Select value={taskStatus} onValueChange={setTaskStatus}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-yellow-500" />
+                                    Pending
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="start_task">
+                                  <div className="flex items-center gap-2">
                                   <Play className="w-4 h-4 text-blue-500" />
                                   Start Task
                                 </div>
@@ -978,6 +988,7 @@ export default function Tasks() {
                               </SelectItem>
                             </SelectContent>
                           </Select>
+                          )}
                         </div>
                         
                         <div className="space-y-2">
@@ -998,16 +1009,24 @@ export default function Tasks() {
                           value={updateNotes}
                           onChange={(e) => setUpdateNotes(e.target.value)}
                           placeholder={
-                            taskStatus === 'completed' 
-                              ? "Describe how the issue was resolved..." 
-                              : "Add progress updates, findings, or comments..."
+                            task.status === 'resolved' || task.status === 'completed' 
+                              ? "Task is finalized - no further updates allowed"
+                              : (taskStatus === 'completed' 
+                                ? "Describe how the issue was resolved..." 
+                                : "Add progress updates, findings, or comments...")
                           }
                           rows={4}
                           className="resize-none"
+                          disabled={task.status === 'resolved' || task.status === 'completed'}
                         />
-                        {taskStatus === 'completed' && (
+                        {taskStatus === 'completed' && task.status !== 'resolved' && task.status !== 'completed' && (
                           <p className="text-xs text-gray-500">
                             Required when marking task as completed
+                          </p>
+                        )}
+                        {(task.status === 'resolved' || task.status === 'completed') && (
+                          <p className="text-xs text-blue-600">
+                            ℹ️ This task has been finalized and cannot be modified further
                           </p>
                         )}
                       </div>
@@ -1032,7 +1051,7 @@ export default function Tasks() {
                         </Button>
                         <Button 
                           onClick={handleUpdateTask}
-                          disabled={updateTaskMutation.isPending || (!taskStatus && !updateNotes.trim())}
+                          disabled={task.status === 'resolved' || task.status === 'completed' || updateTaskMutation.isPending || (!taskStatus && !updateNotes.trim())}
                           className="gradient-blue text-white"
                         >
                           {updateTaskMutation.isPending ? (

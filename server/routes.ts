@@ -690,10 +690,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 resolution: updateData.resolution || `Task automatically closed after resolution by field engineer on ${new Date().toISOString()}`
               });
               
-              // Log auto-closure
+              // Log auto-closure using the field engineer's user ID
               await storage.createTaskUpdate({
                 taskId: id,
-                updatedBy: 'system',
+                updatedBy: userId,
                 updateType: 'status_change',
                 oldValue: 'resolved',
                 newValue: 'completed',

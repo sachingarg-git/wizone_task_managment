@@ -613,18 +613,29 @@ export default function Portal() {
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="status">Change Status</Label>
-                        <Select value={taskStatus} onValueChange={setTaskStatus}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select new status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="resolved">Resolved</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {task.status === 'resolved' || task.status === 'completed' ? (
+                          <div className="p-3 bg-gray-100 border border-gray-200 rounded-md">
+                            <p className="text-sm text-gray-600">
+                              Status: <span className="font-medium capitalize">{task.status?.replace('_', ' ')}</span>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Task is {task.status} and cannot be modified
+                            </p>
+                          </div>
+                        ) : (
+                          <Select value={taskStatus} onValueChange={setTaskStatus}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select new status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="resolved">Resolved</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                         <p className="text-xs text-gray-500">
                           Current status: <span className="font-medium">{task.status?.replace('_', ' ')}</span>
                         </p>
@@ -634,15 +645,21 @@ export default function Portal() {
                         <Label htmlFor="notes">Update Notes</Label>
                         <Textarea
                           id="notes"
-                          placeholder={taskStatus === 'completed' ? 'Provide resolution details (required)' : 'Add notes about this update (optional)'}
+                          placeholder={task.status === 'resolved' || task.status === 'completed' ? 'Task is finalized - no further updates allowed' : (taskStatus === 'completed' ? 'Provide resolution details (required)' : 'Add notes about this update (optional)')}
                           value={updateNotes}
                           onChange={(e) => setUpdateNotes(e.target.value)}
                           rows={4}
                           className="resize-none"
+                          disabled={task.status === 'resolved' || task.status === 'completed'}
                         />
-                        {taskStatus === 'completed' && (
+                        {taskStatus === 'completed' && task.status !== 'resolved' && task.status !== 'completed' && (
                           <p className="text-xs text-amber-600">
                             ⚠️ Resolution notes are required when marking task as completed
+                          </p>
+                        )}
+                        {(task.status === 'resolved' || task.status === 'completed') && (
+                          <p className="text-xs text-blue-600">
+                            ℹ️ This task has been finalized and cannot be modified further
                           </p>
                         )}
                       </div>
@@ -654,84 +671,92 @@ export default function Portal() {
                           <span>Upload Photos/Files</span>
                         </Label>
                         
-                        <div className="space-y-3">
-                          {/* File Upload Input */}
-                          <div className="flex items-center space-x-3">
-                            <Input
-                              type="file"
-                              multiple
-                              accept="image/*,.pdf,.doc,.docx,.txt"
-                              onChange={handleFileChange}
-                              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const input = document.createElement('input');
-                                input.type = 'file';
-                                input.accept = 'image/*';
-                                input.capture = 'environment';
-                                input.onchange = (e) => {
-                                  const files = Array.from((e.target as HTMLInputElement).files || []);
-                                  setUploadFiles(prev => [...prev, ...files]);
-                                };
-                                input.click();
-                              }}
-                              className="flex items-center space-x-2"
-                            >
-                              <Camera className="w-4 h-4" />
-                              <span>Camera</span>
-                            </Button>
+                        {task.status === 'resolved' || task.status === 'completed' ? (
+                          <div className="p-3 bg-gray-100 border border-gray-200 rounded-md">
+                            <p className="text-sm text-gray-600">
+                              File uploads are disabled for {task.status} tasks
+                            </p>
                           </div>
-                          
-                          {/* File List */}
-                          {uploadFiles.length > 0 && (
-                            <div className="space-y-2">
-                              <Label className="text-xs text-gray-500">Selected Files:</Label>
-                              <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {uploadFiles.map((file, index) => (
-                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
-                                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                      {file.type.startsWith('image/') ? (
-                                        <Image className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      ) : (
-                                        <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                      )}
-                                      <span className="truncate">{file.name}</span>
-                                      <span className="text-gray-400 text-xs flex-shrink-0">
-                                        ({(file.size / 1024).toFixed(1)} KB)
-                                      </span>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removeFile(index)}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      <Trash2 className="w-3 h-3 text-red-500" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                              
-                              {/* Upload Notes */}
-                              <div className="space-y-2">
-                                <Label htmlFor="uploadNotes" className="text-xs">Notes for files (optional)</Label>
-                                <Textarea
-                                  id="uploadNotes"
-                                  placeholder="Add notes about the uploaded files..."
-                                  value={uploadNotes}
-                                  onChange={(e) => setUploadNotes(e.target.value)}
-                                  rows={2}
-                                  className="resize-none text-sm"
-                                />
-                              </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {/* File Upload Input */}
+                            <div className="flex items-center space-x-3">
+                              <Input
+                                type="file"
+                                multiple
+                                accept="image/*,.pdf,.doc,.docx,.txt"
+                                onChange={handleFileChange}
+                                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.capture = 'environment';
+                                  input.onchange = (e) => {
+                                    const files = Array.from((e.target as HTMLInputElement).files || []);
+                                    setUploadFiles(prev => [...prev, ...files]);
+                                  };
+                                  input.click();
+                                }}
+                                className="flex items-center space-x-2"
+                              >
+                                <Camera className="w-4 h-4" />
+                                <span>Camera</span>
+                              </Button>
                             </div>
-                          )}
-                        </div>
+                            
+                            {/* File List */}
+                            {uploadFiles.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-xs text-gray-500">Selected Files:</Label>
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                  {uploadFiles.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+                                      <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                        {file.type.startsWith('image/') ? (
+                                          <Image className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                        ) : (
+                                          <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                        )}
+                                        <span className="truncate">{file.name}</span>
+                                        <span className="text-gray-400 text-xs flex-shrink-0">
+                                          ({(file.size / 1024).toFixed(1)} KB)
+                                        </span>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeFile(index)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {/* Upload Notes */}
+                                <div className="space-y-2">
+                                  <Label htmlFor="uploadNotes" className="text-xs">Notes for files (optional)</Label>
+                                  <Textarea
+                                    id="uploadNotes"
+                                    placeholder="Add notes about the uploaded files..."
+                                    value={uploadNotes}
+                                    onChange={(e) => setUploadNotes(e.target.value)}
+                                    rows={2}
+                                    className="resize-none text-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Status Change Warnings */}
@@ -754,7 +779,7 @@ export default function Portal() {
                         </Button>
                         <Button 
                           onClick={handleUpdateTask}
-                          disabled={updateTaskMutation.isPending || uploadFilesMutation.isPending || (!taskStatus && !updateNotes.trim() && uploadFiles.length === 0)}
+                          disabled={task.status === 'resolved' || task.status === 'completed' || updateTaskMutation.isPending || uploadFilesMutation.isPending || (!taskStatus && !updateNotes.trim() && uploadFiles.length === 0)}
                           className="bg-primary hover:bg-blue-700 text-white"
                         >
                           {updateTaskMutation.isPending || uploadFilesMutation.isPending ? (
