@@ -1,27 +1,28 @@
 {
   "name": "Wizone IT Support Portal",
-  "short_name": "Wizone",
-  "description": "Professional mobile app for IT support teams",
-  "version": "1.0.0",
+  "short_name": "Wizone IT",
+  "description": "Comprehensive IT support and task management system",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#22d3ee",
-  "background_color": "#ffffff",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/mobile/assets/icon.png",
-      "sizes": "512x512",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/mobile/assets/adaptive-icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "business"],
+  "categories": ["business", "productivity", "utilities"],
+  "scope": "/",
   "lang": "en",
   "dir": "ltr"
 }

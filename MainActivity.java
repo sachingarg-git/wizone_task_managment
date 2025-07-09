@@ -23,7 +23,7 @@ public class MainActivity extends Activity {
         webSettings.setUseWideViewPort(true);
         
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("https://your-domain.replit.app");
+        webView.loadUrl("https://replit.dev");
     }
     
     @Override
