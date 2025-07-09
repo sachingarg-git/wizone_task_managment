@@ -51,6 +51,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       environment: process.env.NODE_ENV || 'development'
     });
   });
+
+  // APK download endpoint
+  app.get('/api/download/apk', (req, res) => {
+    const path = require('path');
+    const filePath = path.join(process.cwd(), 'uploads', 'Wizone-APK-Package.tar.gz');
+    
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', 'attachment; filename="Wizone-APK-Package.tar.gz"');
+    
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('APK download error:', err);
+        res.status(404).json({ message: 'APK package not found' });
+      }
+    });
+  });
   
   // Auth middleware
   setupAuth(app);
