@@ -8,6 +8,9 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Serve static files from uploads directory for downloads
+app.use('/downloads', express.static('uploads'));
+
 // Setup domain validation and CORS for custom domains
 setupDomainCORS(app);
 app.use(domainValidationMiddleware);

@@ -55,15 +55,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // APK download endpoint
   app.get('/api/download/apk', (req, res) => {
     const path = require('path');
+    const fs = require('fs');
     const filePath = path.join(process.cwd(), 'uploads', 'Wizone-APK-Package.tar.gz');
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'APK package not found' });
+    }
     
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', 'attachment; filename="Wizone-APK-Package.tar.gz"');
     
-    res.sendFile(filePath, (err) => {
-      if (err) {
-        console.error('APK download error:', err);
-        res.status(404).json({ message: 'APK package not found' });
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+    fileStream.on('error', (err) => {
+      console.error('APK download error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Download failed' });
       }
     });
   });
