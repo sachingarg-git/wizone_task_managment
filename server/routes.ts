@@ -37,6 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+
+
   // Customer portal redirect route
   app.get('/customer-portal', (req, res) => {
     res.redirect('/#/customer-portal');
@@ -840,6 +842,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Engineer portal route - filter tasks by logged-in user
+  app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const userTasks = await storage.getTasksByUser(userId);
+      res.json(userTasks);
+    } catch (error) {
+      console.error("Error fetching user tasks:", error);
+      res.status(500).json({ message: "Failed to fetch user tasks" });
+    }
+  });
+
   // Customer routes
   app.get('/api/customers', isAuthenticated, async (req, res) => {
     try {
@@ -929,7 +943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customers = await storage.getAllCustomers();
       
       // Create CSV content
-      const csvHeader = 'Customer ID,Name,Contact Person,Email,Phone,Mobile Phone,Address,City,State,ZIP Code,Service Type,Account Manager,Created At,Modified At,Last Service Date\n';
+      const csvHeader = 'Customer ID,Name,Contact Person,Email,Mobile Phone,Address,City,State,Service Plan,Connected Tower,Wireless IP,Wireless AP IP,Port,Plan,Status,Portal Access,Latitude,Longitude,Location Notes,Created At,Updated At\n';
       
       const csvContent = customers.map(customer => {
         const escapeCSV = (field: any) => {
@@ -946,17 +960,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           escapeCSV(customer.name),
           escapeCSV(customer.contactPerson),
           escapeCSV(customer.email),
-          escapeCSV(customer.phone),
           escapeCSV(customer.mobilePhone),
           escapeCSV(customer.address),
           escapeCSV(customer.city),
           escapeCSV(customer.state),
-          escapeCSV(customer.zipCode),
-          escapeCSV(customer.serviceType),
-          escapeCSV(customer.accountManager),
+          escapeCSV(customer.servicePlan),
+          escapeCSV(customer.connectedTower),
+          escapeCSV(customer.wirelessIp),
+          escapeCSV(customer.wirelessApIp),
+          escapeCSV(customer.port),
+          escapeCSV(customer.plan),
+          escapeCSV(customer.status),
+          escapeCSV(customer.portalAccess ? 'Yes' : 'No'),
+          escapeCSV(customer.latitude),
+          escapeCSV(customer.longitude),
+          escapeCSV(customer.locationNotes),
           escapeCSV(customer.createdAt ? new Date(customer.createdAt).toISOString().split('T')[0] : ''),
-          escapeCSV(customer.modifiedAt ? new Date(customer.modifiedAt).toISOString().split('T')[0] : ''),
-          escapeCSV(customer.lastServiceDate ? new Date(customer.lastServiceDate).toISOString().split('T')[0] : '')
+          escapeCSV(customer.updatedAt ? new Date(customer.updatedAt).toISOString().split('T')[0] : '')
         ].join(',');
       }).join('\n');
       

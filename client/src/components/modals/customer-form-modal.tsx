@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -268,7 +269,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>State *</FormLabel>
-                      <Select onValueChange={field.onChange}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select State" />
@@ -285,8 +286,17 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                           <SelectItem value="Uttar Pradesh">Uttar Pradesh</SelectItem>
                           <SelectItem value="Madhya Pradesh">Madhya Pradesh</SelectItem>
                           <SelectItem value="Punjab">Punjab</SelectItem>
+                          <SelectItem value="Uttarakhand">Uttarakhand</SelectItem>
+                          <SelectItem value="custom">Other (Enter manually)</SelectItem>
                         </SelectContent>
                       </Select>
+                      {field.value === "custom" && (
+                        <Input 
+                          placeholder="Enter state name" 
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="mt-2"
+                        />
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -338,7 +348,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Service Plan *</FormLabel>
-                      <Select onValueChange={field.onChange}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select Plan" />
@@ -350,8 +360,17 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                           <SelectItem value="Premium - 100 Mbps">Premium - 100 Mbps</SelectItem>
                           <SelectItem value="Enterprise - 200 Mbps">Enterprise - 200 Mbps</SelectItem>
                           <SelectItem value="Business Pro - 500 Mbps">Business Pro - 500 Mbps</SelectItem>
+                          <SelectItem value="N/A">N/A (Not Available)</SelectItem>
+                          <SelectItem value="custom">Custom Plan</SelectItem>
                         </SelectContent>
                       </Select>
+                      {field.value === "custom" && (
+                        <Input 
+                          placeholder="Enter custom plan name" 
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="mt-2"
+                        />
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -416,6 +435,24 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                 />
               </div>
 
+              <FormField
+                control={form.control}
+                name="plan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Plan Details</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        rows={2}
+                        placeholder="Additional plan details and notes"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Location Management Section */}
               <div className="space-y-4 pt-6 border-t border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Location Management</h3>
@@ -428,12 +465,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                       <FormItem>
                         <FormLabel>Latitude</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., 28.6139" 
-                            type="number"
-                            step="any"
-                            {...field} 
-                          />
+                          <Input placeholder="12.9716" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -447,12 +479,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                       <FormItem>
                         <FormLabel>Longitude</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., 77.2090" 
-                            type="number"
-                            step="any"
-                            {...field} 
-                          />
+                          <Input placeholder="77.5946" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -469,7 +496,7 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                       <FormControl>
                         <Textarea 
                           rows={2}
-                          placeholder="Additional location details, landmarks, or navigation instructions"
+                          placeholder="Additional location information"
                           {...field}
                         />
                       </FormControl>
@@ -482,42 +509,40 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                   control={form.control}
                   name="locationVerified"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="rounded border-gray-300"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Location Verified</FormLabel>
-                        <p className="text-sm text-gray-500">
-                          Mark this if the customer location has been physically verified
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Location Verified</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Mark if the location has been verified
                         </p>
                       </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
 
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+              <div className="flex justify-end space-x-4 pt-6">
                 <Button type="button" variant="outline" onClick={handleClose}>
-                  {customer && !isEditing ? "Close" : "Cancel"}
+                  Cancel
                 </Button>
-                {(!customer || isEditing) && (
-                  <Button 
-                    type="submit" 
-                    disabled={createCustomerMutation.isPending || updateCustomerMutation.isPending}
-                    className="bg-primary hover:bg-blue-700"
-                  >
-                    {isEditing 
-                      ? (updateCustomerMutation.isPending ? "Updating..." : "Update Customer")
-                      : (createCustomerMutation.isPending ? "Adding..." : "Add Customer")
-                    }
-                  </Button>
-                )}
+                <Button
+                  type="submit"
+                  disabled={
+                    createCustomerMutation.isPending || updateCustomerMutation.isPending
+                  }
+                >
+                  {createCustomerMutation.isPending || updateCustomerMutation.isPending
+                    ? "Saving..."
+                    : isEditing
+                      ? "Update Customer"
+                      : "Create Customer"}
+                </Button>
               </div>
             </form>
           </Form>

@@ -39,7 +39,7 @@ export default function Portal() {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/tasks"],
+    queryKey: ["/api/tasks/my-tasks"],
     enabled: !!user,
   });
 
@@ -82,9 +82,8 @@ export default function Portal() {
     }
   };
 
-  const myTasks = tasksArray.filter(task => 
-    task.assignedTo === user?.id || task.fieldEngineerId === user?.id
-  );
+  // No need to filter since the API already filters by user
+  const myTasks = tasksArray;
 
   const statsData = {
     total: myTasks.length,

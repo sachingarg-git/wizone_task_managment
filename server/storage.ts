@@ -466,7 +466,7 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(eq(tasks.assignedTo, userId))
+      .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
       .orderBy(desc(tasks.createdAt));
     
     return result.map(row => ({
@@ -797,7 +797,7 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .where(eq(users.isActive, true))
-      .orderBy(desc(performanceMetrics.performanceScore))
+      .orderBy(desc(sql`COALESCE(${performanceMetrics.performanceScore}, 0)`))
       .limit(limit);
 
     return topPerformers.map(row => ({
@@ -810,20 +810,22 @@ export class DatabaseStorage implements IStorage {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     
-    // Get user's tasks for the current month
+    // Get user's tasks for the current month (both assigned and field engineer)
     const userTasks = await db
       .select()
       .from(tasks)
       .where(
         and(
-          eq(tasks.assignedTo, userId),
+          or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)),
           sql`EXTRACT(MONTH FROM ${tasks.createdAt}) = ${currentMonth}`,
           sql`EXTRACT(YEAR FROM ${tasks.createdAt}) = ${currentYear}`
         )
       );
 
     const totalTasks = userTasks.length;
-    const completedTasks = userTasks.filter(task => task.status === 'completed').length;
+    const completedTasks = userTasks.filter(task => 
+      task.status === 'completed' || task.status === 'resolved'
+    ).length;
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
     
     // Calculate average response time
