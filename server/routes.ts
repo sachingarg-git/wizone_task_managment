@@ -845,12 +845,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Engineer portal route - filter tasks by logged-in user
   app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any).id;
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        console.error("Error fetching task: User ID is undefined");
+        return res.status(400).json({ message: "User ID not found" });
+      }
+      console.log("Fetching tasks for user:", userId);
       const userTasks = await storage.getTasksByUser(userId);
       res.json(userTasks);
     } catch (error) {
-      console.error("Error fetching user tasks:", error);
-      res.status(500).json({ message: "Failed to fetch user tasks" });
+      console.error("Error fetching task:", error);
+      res.status(500).json({ message: "Failed to fetch task" });
     }
   });
 

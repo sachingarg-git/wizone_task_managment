@@ -457,6 +457,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      console.error("Invalid userId provided to getTasksByUser:", userId);
+      throw new Error("Valid user ID is required");
+    }
+    
     const result = await db
       .select({
         task: tasks,
