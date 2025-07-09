@@ -863,7 +863,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
       }
       
+      console.log("=== MY-TASKS API CALL ===");
+      console.log("User ID:", userId);
+      console.log("User object:", JSON.stringify(req.user, null, 2));
+      
       const userTasks = await storage.getTasksByUser(userId);
+      console.log("Tasks retrieved:", userTasks.length);
+      console.log("=== MY-TASKS API END ===");
+      
       res.json(userTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);

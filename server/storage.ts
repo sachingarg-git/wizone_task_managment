@@ -413,6 +413,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
+    if (!id || isNaN(id)) {
+      console.error("Invalid task ID provided to getTask:", id);
+      return undefined;
+    }
+    
     const [result] = await db
       .select()
       .from(tasks)
@@ -461,6 +466,8 @@ export class DatabaseStorage implements IStorage {
       console.error("Invalid userId provided to getTasksByUser:", userId);
       return []; // Return empty array instead of throwing error
     }
+    
+    console.log("Building query for userId:", userId, "type:", typeof userId);
     
     const result = await db
       .select({
