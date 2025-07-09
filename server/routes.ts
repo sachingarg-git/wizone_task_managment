@@ -978,6 +978,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export customers to CSV (must be before /:id route)
+  app.get('/api/customers/export', isAuthenticated, async (req, res) => {
+    try {
+      const customers = await storage.getAllCustomers();
+      
+      // Create CSV content
+      const csvHeader = 'customerId,name,email,contactPerson,mobilePhone,address,city,state,latitude,longitude,connectionType,planType,monthlyFee,status\n';
+      
+      const csvContent = customers.map(customer => {
+        const escapeCSV = (field: any) => {
+          if (field === null || field === undefined) return '';
+          const str = String(field);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+        
+        return [
+          escapeCSV(customer.customerId),
+          escapeCSV(customer.name),
+          escapeCSV(customer.email),
+          escapeCSV(customer.contactPerson),
+          escapeCSV(customer.mobilePhone),
+          escapeCSV(customer.address),
+          escapeCSV(customer.city),
+          escapeCSV(customer.state),
+          escapeCSV(customer.latitude),
+          escapeCSV(customer.longitude),
+          escapeCSV(customer.connectionType),
+          escapeCSV(customer.planType),
+          escapeCSV(customer.monthlyFee),
+          escapeCSV(customer.status)
+        ].join(',');
+      }).join('\n');
+      
+      const csv = csvHeader + csvContent;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="customers-export-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting customers:", error);
+      res.status(500).json({ message: "Failed to export customers" });
+    }
+  });
+
   // Customer import endpoint
   app.post('/api/customers/import', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
@@ -1004,6 +1051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let imported = 0;
+      let updated = 0;
       let errors = 0;
       const errorDetails = [];
 
@@ -1027,28 +1075,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           // Validate required fields
-          if (!customerData.name || !customerData.email) {
+          if (!customerData.name) {
             errors++;
-            errorDetails.push(`Row ${imported + errors}: Missing required fields (name, email)`);
+            errorDetails.push(`Row ${imported + updated + errors}: Missing required field: name`);
             continue;
           }
 
-          // Check if customer exists by email
+          // Generate unique email if not provided
+          if (!customerData.email) {
+            customerData.email = `customer${customerData.customerId}@example.com`;
+          }
+
+          // Check if customer exists by customerId (primary identifier)
           const customers = await storage.getAllCustomers();
-          const existingCustomer = customers.find(c => c.email === customerData.email);
+          const existingCustomer = customers.find(c => c.customerId === customerData.customerId);
           
           if (existingCustomer) {
             // Update existing customer
             await storage.updateCustomer(existingCustomer.id, customerData);
+            updated++;
           } else {
             // Create new customer
             await storage.createCustomer(customerData);
+            imported++;
           }
           
-          imported++;
         } catch (error) {
           errors++;
-          errorDetails.push(`Row ${imported + errors}: ${error.message}`);
+          errorDetails.push(`Row ${imported + updated + errors}: ${error.message}`);
         }
       }
 
@@ -1057,6 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         imported,
+        updated,
         errors,
         total: records.length,
         errorDetails: errorDetails.slice(0, 10) // Return first 10 errors
@@ -1135,59 +1190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export customers to CSV
-  app.get('/api/customers/export', isAuthenticated, async (req, res) => {
-    try {
-      const customers = await storage.getAllCustomers();
-      
-      // Create CSV content
-      const csvHeader = 'Customer ID,Name,Contact Person,Email,Mobile Phone,Address,City,State,Service Plan,Connected Tower,Wireless IP,Wireless AP IP,Port,Plan,Status,Portal Access,Latitude,Longitude,Location Notes,Created At,Updated At\n';
-      
-      const csvContent = customers.map(customer => {
-        const escapeCSV = (field: any) => {
-          if (field === null || field === undefined) return '';
-          const str = String(field);
-          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`;
-          }
-          return str;
-        };
-        
-        return [
-          escapeCSV(customer.customerId),
-          escapeCSV(customer.name),
-          escapeCSV(customer.contactPerson),
-          escapeCSV(customer.email),
-          escapeCSV(customer.mobilePhone),
-          escapeCSV(customer.address),
-          escapeCSV(customer.city),
-          escapeCSV(customer.state),
-          escapeCSV(customer.servicePlan),
-          escapeCSV(customer.connectedTower),
-          escapeCSV(customer.wirelessIp),
-          escapeCSV(customer.wirelessApIp),
-          escapeCSV(customer.port),
-          escapeCSV(customer.plan),
-          escapeCSV(customer.status),
-          escapeCSV(customer.portalAccess ? 'Yes' : 'No'),
-          escapeCSV(customer.latitude),
-          escapeCSV(customer.longitude),
-          escapeCSV(customer.locationNotes),
-          escapeCSV(customer.createdAt ? new Date(customer.createdAt).toISOString().split('T')[0] : ''),
-          escapeCSV(customer.updatedAt ? new Date(customer.updatedAt).toISOString().split('T')[0] : '')
-        ].join(',');
-      }).join('\n');
-      
-      const csv = csvHeader + csvContent;
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="customers-export-${new Date().toISOString().split('T')[0]}.csv"`);
-      res.send(csv);
-    } catch (error) {
-      console.error("Error exporting customers:", error);
-      res.status(500).json({ message: "Failed to export customers" });
-    }
-  });
+
 
   // Performance routes
   app.get('/api/performance/top-performers', isAuthenticated, async (req, res) => {

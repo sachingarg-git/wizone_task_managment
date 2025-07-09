@@ -118,7 +118,7 @@ export default function Customers() {
       setImportFile(null);
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${data.imported} customers. ${data.errors || 0} errors occurred.`,
+        description: `Successfully imported ${data.imported} new customers, updated ${data.updated || 0} existing customers. ${data.errors || 0} errors occurred.`,
       });
     },
     onError: (error: Error) => {
