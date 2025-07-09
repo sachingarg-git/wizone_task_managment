@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId,
         status: "pending",
         assignedTo: null, // Will be assigned by admin later
-        createdBy: `customer_${customerId}` // Track that this was created by customer
+        createdBy: "WIZONE0001" // Use admin user ID for customer-created tasks
       };
       
       console.log("Customer creating task:", { customerId, title, priority, issueType });
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add the update record using valid system user for customer updates
       await storage.createTaskUpdate({
         taskId,
-        updatedBy: 'admin001', // Use system admin for customer updates
+        updatedBy: 'WIZONE0001', // Use system admin for customer updates
         updateType: 'note_added',
         note: `[Customer Update] ${comment || `Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`}`
       });
@@ -262,28 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new task (customer portal)
-  app.post('/api/customer-portal/tasks', isCustomerAuthenticated, async (req, res) => {
-    try {
-      const customerId = (req.session as any).customer.id;
-      const taskData = {
-        ...req.body,
-        customerId,
-        status: 'open',
-        priority: req.body.priority || 'medium',
-        assignedTo: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      const validatedData = insertTaskSchema.parse(taskData);
-      const task = await storage.createTask(validatedData);
-      res.json(task);
-    } catch (error) {
-      console.error("Error creating task:", error);
-      res.status(500).json({ message: "Failed to create task" });
-    }
-  });
+
 
   // Authentication middleware
   const isAuthenticated = (req: any, res: any, next: any) => {
