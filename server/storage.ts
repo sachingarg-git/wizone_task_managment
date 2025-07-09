@@ -48,8 +48,12 @@ import {
   InsertOfficeLocationSuggestion,
   EngineerTrackingHistory,
   InsertEngineerTrackingHistory,
+  BotConfiguration,
+  InsertBotConfiguration,
+  NotificationLog,
+  InsertNotificationLog,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory } from "./db.js";
+import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory, botConfigurations, notificationLogs } from "./db.js";
 import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count, gte, lte } from "drizzle-orm";
@@ -183,6 +187,19 @@ export interface IStorage {
   getLiveUserLocations(): Promise<UserLocationWithRelations[]>;
   createUserLocation(locationData: InsertUserLocation): Promise<UserLocation>;
   checkGeofenceEvents(userId: string, latitude: number, longitude: number): Promise<void>;
+  
+  // Bot configuration operations
+  getAllBotConfigurations(): Promise<BotConfiguration[]>;
+  getBotConfiguration(id: number): Promise<BotConfiguration | undefined>;
+  createBotConfiguration(config: InsertBotConfiguration): Promise<BotConfiguration>;
+  updateBotConfiguration(id: number, config: Partial<InsertBotConfiguration>): Promise<BotConfiguration>;
+  deleteBotConfiguration(id: number): Promise<void>;
+  testBotConfiguration(id: number): Promise<{ success: boolean; message: string; }>;
+  
+  // Notification log operations
+  getNotificationLogs(limit?: number, offset?: number): Promise<NotificationLog[]>;
+  createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
+  updateNotificationLogStatus(id: number, status: string, responseData?: any, errorMessage?: string): Promise<NotificationLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2055,6 +2072,178 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  // Bot configuration operations
+  async getAllBotConfigurations(): Promise<BotConfiguration[]> {
+    return await db.select().from(botConfigurations).orderBy(desc(botConfigurations.createdAt));
+  }
+
+  async getBotConfiguration(id: number): Promise<BotConfiguration | undefined> {
+    const [config] = await db.select().from(botConfigurations).where(eq(botConfigurations.id, id));
+    return config;
+  }
+
+  async createBotConfiguration(configData: InsertBotConfiguration): Promise<BotConfiguration> {
+    const [config] = await db
+      .insert(botConfigurations)
+      .values(configData)
+      .returning();
+    return config;
+  }
+
+  async updateBotConfiguration(id: number, configData: Partial<InsertBotConfiguration>): Promise<BotConfiguration> {
+    const [config] = await db
+      .update(botConfigurations)
+      .set({ ...configData, updatedAt: new Date() })
+      .where(eq(botConfigurations.id, id))
+      .returning();
+    return config;
+  }
+
+  async deleteBotConfiguration(id: number): Promise<void> {
+    // Delete related notification logs first
+    await db.delete(notificationLogs).where(eq(notificationLogs.configId, id));
+    
+    // Then delete the configuration
+    await db.delete(botConfigurations).where(eq(botConfigurations.id, id));
+  }
+
+  async testBotConfiguration(id: number): Promise<{ success: boolean; message: string; }> {
+    const config = await this.getBotConfiguration(id);
+    if (!config) {
+      return { success: false, message: "Configuration not found" };
+    }
+
+    try {
+      let testResult = { success: false, message: "" };
+      
+      if (config.botType === 'telegram' && config.telegramBotToken && config.telegramChatId) {
+        // Test Telegram bot
+        const telegramUrl = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+        const response = await fetch(telegramUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: config.telegramChatId,
+            text: config.testMessage || "🔧 Wizone IT Support Portal - Bot Configuration Test",
+            parse_mode: config.telegramParseMode || 'HTML'
+          })
+        });
+        
+        if (response.ok) {
+          testResult = { success: true, message: "Telegram bot test successful" };
+        } else {
+          const errorData = await response.json().catch(() => ({ description: "Unknown error" }));
+          testResult = { success: false, message: `Telegram error: ${errorData.description}` };
+        }
+      } else if (config.botType === 'whatsapp' && config.whatsappApiUrl && config.whatsappApiKey) {
+        // Test WhatsApp API
+        const response = await fetch(config.whatsappApiUrl, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.whatsappApiKey}`
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: config.whatsappPhoneNumber,
+            type: "text",
+            text: { body: config.testMessage || "🔧 Wizone IT Support Portal - Bot Configuration Test" }
+          })
+        });
+        
+        if (response.ok) {
+          testResult = { success: true, message: "WhatsApp API test successful" };
+        } else {
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+          testResult = { success: false, message: `WhatsApp error: ${errorData.error}` };
+        }
+      } else if (config.webhookUrl) {
+        // Test generic webhook
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (config.webhookAuth) {
+          headers['Authorization'] = `Bearer ${config.webhookAuth}`;
+        }
+        if (config.webhookHeaders) {
+          Object.assign(headers, config.webhookHeaders);
+        }
+        
+        const response = await fetch(config.webhookUrl, {
+          method: config.webhookMethod || 'POST',
+          headers,
+          body: JSON.stringify({
+            message: config.testMessage || "🔧 Wizone IT Support Portal - Bot Configuration Test",
+            timestamp: new Date().toISOString(),
+            source: "wizone_bot_test"
+          })
+        });
+        
+        if (response.ok) {
+          testResult = { success: true, message: "Webhook test successful" };
+        } else {
+          testResult = { success: false, message: `Webhook error: ${response.status} ${response.statusText}` };
+        }
+      } else {
+        testResult = { success: false, message: "Missing required configuration for bot type" };
+      }
+      
+      // Update test result in database
+      await db
+        .update(botConfigurations)
+        .set({ 
+          lastTestResult: testResult.success ? 'success' : 'failed',
+          lastTestTime: new Date() 
+        })
+        .where(eq(botConfigurations.id, id));
+      
+      return testResult;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      
+      // Update test result in database
+      await db
+        .update(botConfigurations)
+        .set({ 
+          lastTestResult: 'failed',
+          lastTestTime: new Date() 
+        })
+        .where(eq(botConfigurations.id, id));
+      
+      return { success: false, message: errorMessage };
+    }
+  }
+
+  // Notification log operations
+  async getNotificationLogs(limit: number = 50, offset: number = 0): Promise<NotificationLog[]> {
+    return await db
+      .select()
+      .from(notificationLogs)
+      .orderBy(desc(notificationLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async createNotificationLog(logData: InsertNotificationLog): Promise<NotificationLog> {
+    const [log] = await db
+      .insert(notificationLogs)
+      .values(logData)
+      .returning();
+    return log;
+  }
+
+  async updateNotificationLogStatus(id: number, status: string, responseData?: any, errorMessage?: string): Promise<NotificationLog> {
+    const updateData: any = { status };
+    if (responseData) updateData.responseData = responseData;
+    if (errorMessage) updateData.errorMessage = errorMessage;
+    if (status === 'sent') updateData.sentAt = new Date();
+    
+    const [log] = await db
+      .update(notificationLogs)
+      .set(updateData)
+      .where(eq(notificationLogs.id, id))
+      .returning();
+    return log;
   }
 
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

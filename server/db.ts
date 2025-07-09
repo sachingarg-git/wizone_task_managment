@@ -37,4 +37,6 @@ export const {
   officeLocations,
   officeLocationSuggestions,
   engineerTrackingHistory,
+  botConfigurations,
+  notificationLogs,
 } = schema;

@@ -16,7 +16,8 @@ import {
   MessageCircle,
   MapPin,
   Clock,
-  Building2
+  Building2,
+  Bot
 } from "lucide-react";
 import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
@@ -49,6 +50,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Domain Management", href: "/domains", icon: Globe },
       { name: "SQL Connections", href: "/sql-connections", icon: Database },
+      { name: "Bot Configuration", href: "/bot-configuration", icon: Bot },
       { name: "Tracking History", href: "/tracking-history", icon: Clock },
       { name: "Office Management", href: "/office-management", icon: Building2 },
       { name: "Engineer Chat", href: "/chat", icon: MessageCircle },

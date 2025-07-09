@@ -10,7 +10,9 @@ import {
   insertSqlConnectionSchema,
   insertChatRoomSchema,
   insertChatMessageSchema,
-  insertChatParticipantSchema
+  insertChatParticipantSchema,
+  insertBotConfigurationSchema,
+  insertNotificationLogSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
@@ -2123,6 +2125,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function toRadians(degrees: number): number {
     return degrees * (Math.PI/180);
   }
+
+  // Bot Configuration Routes
+  app.get("/api/bot-configurations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can view bot configurations" });
+      }
+
+      const configurations = await storage.getAllBotConfigurations();
+      res.json(configurations);
+    } catch (error) {
+      console.error("Error fetching bot configurations:", error);
+      res.status(500).json({ message: "Failed to fetch bot configurations" });
+    }
+  });
+
+  app.post("/api/bot-configurations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can create bot configurations" });
+      }
+
+      const configData = { ...req.body, createdBy: userId };
+      const configuration = await storage.createBotConfiguration(configData);
+      res.json(configuration);
+    } catch (error) {
+      console.error("Error creating bot configuration:", error);
+      res.status(500).json({ message: "Failed to create bot configuration" });
+    }
+  });
+
+  app.put("/api/bot-configurations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can update bot configurations" });
+      }
+
+      const configId = parseInt(req.params.id);
+      const configuration = await storage.updateBotConfiguration(configId, req.body);
+      res.json(configuration);
+    } catch (error) {
+      console.error("Error updating bot configuration:", error);
+      res.status(500).json({ message: "Failed to update bot configuration" });
+    }
+  });
+
+  app.delete("/api/bot-configurations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can delete bot configurations" });
+      }
+
+      const configId = parseInt(req.params.id);
+      await storage.deleteBotConfiguration(configId);
+      res.json({ message: "Bot configuration deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bot configuration:", error);
+      res.status(500).json({ message: "Failed to delete bot configuration" });
+    }
+  });
+
+  app.post("/api/bot-configurations/:id/test", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can test bot configurations" });
+      }
+
+      const configId = parseInt(req.params.id);
+      const testResult = await storage.testBotConfiguration(configId);
+      res.json(testResult);
+    } catch (error) {
+      console.error("Error testing bot configuration:", error);
+      res.status(500).json({ message: "Failed to test bot configuration" });
+    }
+  });
+
+  // Notification logs routes
+  app.get("/api/notification-logs", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return res.status(403).json({ message: "Only administrators can view notification logs" });
+      }
+
+      const { limit, offset } = req.query;
+      const logs = await storage.getNotificationLogs(
+        limit ? parseInt(limit as string) : 50,
+        offset ? parseInt(offset as string) : 0
+      );
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching notification logs:", error);
+      res.status(500).json({ message: "Failed to fetch notification logs" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

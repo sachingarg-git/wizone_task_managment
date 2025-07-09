@@ -620,6 +620,86 @@ export const tripTracking = pgTable("trip_tracking", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Bot configuration for notifications (Telegram, WhatsApp, etc.)
+export const botConfigurations = pgTable("bot_configurations", {
+  id: serial("id").primaryKey(),
+  configName: varchar("config_name").notNull(),
+  botType: varchar("bot_type").notNull(), // telegram, whatsapp, slack, discord
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Telegram Configuration
+  telegramBotToken: varchar("telegram_bot_token"),
+  telegramChatId: varchar("telegram_chat_id"),
+  telegramParseMode: varchar("telegram_parse_mode").default("HTML"), // HTML, Markdown, MarkdownV2
+  
+  // WhatsApp Configuration (via WhatsApp Business API)
+  whatsappApiUrl: varchar("whatsapp_api_url"),
+  whatsappApiKey: varchar("whatsapp_api_key"),
+  whatsappPhoneNumber: varchar("whatsapp_phone_number"),
+  whatsappBusinessId: varchar("whatsapp_business_id"),
+  
+  // Generic Webhook Configuration
+  webhookUrl: varchar("webhook_url"),
+  webhookMethod: varchar("webhook_method").default("POST"), // GET, POST, PUT
+  webhookHeaders: json("webhook_headers"), // Additional headers as JSON
+  webhookAuth: varchar("webhook_auth"), // Bearer token or API key
+  
+  // Notification Settings
+  notifyOnTaskCreate: boolean("notify_on_task_create").default(true),
+  notifyOnTaskUpdate: boolean("notify_on_task_update").default(true),
+  notifyOnTaskComplete: boolean("notify_on_task_complete").default(true),
+  notifyOnTaskAssign: boolean("notify_on_task_assign").default(true),
+  notifyOnTaskStatusChange: boolean("notify_on_task_status_change").default(true),
+  notifyOnHighPriority: boolean("notify_on_high_priority").default(true),
+  
+  // Message Templates
+  taskCreateTemplate: text("task_create_template"),
+  taskUpdateTemplate: text("task_update_template"),
+  taskCompleteTemplate: text("task_complete_template"),
+  taskAssignTemplate: text("task_assign_template"),
+  statusChangeTemplate: text("status_change_template"),
+  
+  // Filtering Options
+  filterByPriority: text("filter_by_priority").array(), // ["high", "medium", "low"]
+  filterByStatus: text("filter_by_status").array(), // ["pending", "in_progress", "completed"]
+  filterByDepartment: text("filter_by_department").array(), // ["IT", "Technical", "Support"]
+  filterByUser: text("filter_by_user").array(), // User IDs to filter notifications
+  
+  // Rate Limiting
+  maxNotificationsPerHour: integer("max_notifications_per_hour").default(100),
+  lastNotificationSent: timestamp("last_notification_sent"),
+  
+  // Retry Settings
+  retryCount: integer("retry_count").default(3),
+  retryDelay: integer("retry_delay").default(5), // seconds
+  
+  // Status and Testing
+  lastTestResult: varchar("last_test_result"), // success, failed, pending
+  lastTestTime: timestamp("last_test_time"),
+  testMessage: text("test_message"),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Notification logs to track sent messages
+export const notificationLogs = pgTable("notification_logs", {
+  id: serial("id").primaryKey(),
+  configId: integer("config_id").references(() => botConfigurations.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  notificationType: varchar("notification_type").notNull(), // task_create, task_update, status_change, etc.
+  recipientId: varchar("recipient_id"), // Chat ID, Phone number, etc.
+  message: text("message").notNull(),
+  messageData: json("message_data"), // Original data sent
+  status: varchar("status").notNull().default("pending"), // pending, sent, failed, retrying
+  responseData: json("response_data"), // API response
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas for geofencing and tracking
 export const insertOfficeLocationSchema = createInsertSchema(officeLocations);
 export const insertOfficeLocationSuggestionSchema = createInsertSchema(officeLocationSuggestions);
@@ -628,6 +708,18 @@ export const insertGeofenceZoneSchema = createInsertSchema(geofenceZones);
 export const insertGeofenceEventSchema = createInsertSchema(geofenceEvents);
 export const insertEngineerTrackingHistorySchema = createInsertSchema(engineerTrackingHistory);
 export const insertTripTrackingSchema = createInsertSchema(tripTracking);
+
+// Insert schemas for bot configuration
+export const insertBotConfigurationSchema = createInsertSchema(botConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationLogSchema = createInsertSchema(notificationLogs).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Types for geofencing and tracking
 export type UserLocation = typeof userLocations.$inferSelect;
@@ -650,6 +742,13 @@ export type InsertOfficeLocationSuggestion = z.infer<typeof insertOfficeLocation
 
 export type EngineerTrackingHistory = typeof engineerTrackingHistory.$inferSelect;
 export type InsertEngineerTrackingHistory = z.infer<typeof insertEngineerTrackingHistorySchema>;
+
+// Bot configuration types
+export type BotConfiguration = typeof botConfigurations.$inferSelect;
+export type InsertBotConfiguration = z.infer<typeof insertBotConfigurationSchema>;
+
+export type NotificationLog = typeof notificationLogs.$inferSelect;
+export type InsertNotificationLog = z.infer<typeof insertNotificationLogSchema>;
 
 // Extended types with relations
 export type UserLocationWithRelations = UserLocation & {
