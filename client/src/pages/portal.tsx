@@ -77,7 +77,7 @@ export default function Portal() {
   // Task update mutation
   const updateTaskMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => 
-      apiRequest(`/api/tasks/${id}`, "PATCH", data),
+      apiRequest(`/api/tasks/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/my-tasks"] });
       queryClient.invalidateQueries({ queryKey: [`/api/tasks/${selectedTaskId}/updates`] });
@@ -87,10 +87,11 @@ export default function Portal() {
         description: "Task has been updated successfully",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Update task error:", error);
       toast({
         title: "Error",
-        description: "Failed to update task",
+        description: error?.message || "Failed to update task",
         variant: "destructive",
       });
     },

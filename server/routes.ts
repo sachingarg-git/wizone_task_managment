@@ -621,11 +621,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.id;
+      
+      console.log("=== TASK UPDATE REQUEST ===");
+      console.log("Task ID:", id);
+      console.log("User ID:", userId);
+      console.log("Request body:", JSON.stringify(req.body, null, 2));
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid task ID" });
+      }
+      
       const updateData = insertTaskSchema.partial().parse(req.body);
+      console.log("Parsed update data:", JSON.stringify(updateData, null, 2));
       
       // Get the current task to check status changes
       const currentTask = await storage.getTask(id);
       if (!currentTask) {
+        console.log("Task not found for ID:", id);
         return res.status(404).json({ message: "Task not found" });
       }
       
@@ -729,13 +741,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.calculateUserPerformance(task.assignedTo);
       }
       
+      console.log("Task updated successfully:", task.id);
+      console.log("=== TASK UPDATE COMPLETE ===");
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Task validation errors:", error.errors);
+        console.error("Request body that failed validation:", req.body);
         return res.status(400).json({ message: "Invalid task data", errors: error.errors });
       }
       console.error("Error updating task:", error);
-      res.status(500).json({ message: "Failed to update task" });
+      res.status(500).json({ message: "Failed to update task", error: error.message });
     }
   });
 
