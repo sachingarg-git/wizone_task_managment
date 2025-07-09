@@ -77,7 +77,7 @@ export default function Portal() {
   // Task update mutation
   const updateTaskMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => 
-      apiRequest(`/api/tasks/${id}`, "PUT", data),
+      apiRequest("PUT", `/api/tasks/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/my-tasks"] });
       queryClient.invalidateQueries({ queryKey: [`/api/tasks/${selectedTaskId}/updates`] });
@@ -99,7 +99,7 @@ export default function Portal() {
 
   // Sync mutation for refreshing data
   const syncTasksMutation = useMutation({
-    mutationFn: () => apiRequest("/api/tasks/sync", "POST", {}),
+    mutationFn: () => apiRequest("POST", "/api/tasks/sync", {}),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/my-tasks"] });
       toast({
