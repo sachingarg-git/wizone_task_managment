@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId,
         status: "pending",
         assignedTo: null, // Will be assigned by admin later
-        createdBy: "WIZONE0001" // Use admin user ID for customer-created tasks
+        createdBy: "admin001" // Use admin user ID for customer-created tasks
       };
       
       console.log("Customer creating task:", { customerId, title, priority, issueType });
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add the update record using valid system user for customer updates
       await storage.createTaskUpdate({
         taskId,
-        updatedBy: 'WIZONE0001', // Use system admin for customer updates
+        updatedBy: 'admin001', // Use system admin for customer updates
         updateType: 'note_added',
         note: `[Customer Update] ${comment || `Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`}`
       });
