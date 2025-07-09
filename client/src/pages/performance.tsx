@@ -241,6 +241,7 @@ export default function Performance() {
                       <TableHead>Performance %</TableHead>
                       <TableHead>Total Tasks</TableHead>
                       <TableHead>Completed</TableHead>
+                      <TableHead>Resolved</TableHead>
                       <TableHead>Avg Response</TableHead>
                       <TableHead>Score</TableHead>
                       <TableHead>Trend</TableHead>
@@ -252,6 +253,9 @@ export default function Performance() {
                       const score = getPerformanceScore(user);
                       const totalTasks = latestMetrics?.totalTasks || 0;
                       const completedTasks = latestMetrics?.completedTasks || 0;
+                      
+                      // Calculate actual resolved tasks separately
+                      const resolvedTasks = user.resolvedTasksCount || 0;
                       const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
                       const avgResponse = latestMetrics?.averageResponseTime ? parseFloat(latestMetrics.averageResponseTime) : 0;
                       
@@ -295,6 +299,7 @@ export default function Performance() {
                           </TableCell>
                           <TableCell>{totalTasks}</TableCell>
                           <TableCell>{completedTasks}</TableCell>
+                          <TableCell>{resolvedTasks}</TableCell>
                           <TableCell>{avgResponse.toFixed(1)}h</TableCell>
                           <TableCell>
                             <span className={`text-lg font-bold ${getPerformanceColor(score)}`}>

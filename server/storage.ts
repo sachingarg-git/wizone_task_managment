@@ -248,7 +248,30 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return Array.from(userMap.values());
+    // Add resolved tasks count for each user
+    const usersList = Array.from(userMap.values());
+    
+    for (const user of usersList) {
+      // Count resolved tasks for this user (current month)
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const [resolvedTasksResult] = await db
+        .select({ count: count() })
+        .from(tasks)
+        .where(
+          and(
+            or(eq(tasks.assignedTo, user.id), eq(tasks.fieldEngineerId, user.id)),
+            eq(tasks.status, 'resolved'),
+            sql`EXTRACT(MONTH FROM ${tasks.createdAt}) = ${currentMonth}`,
+            sql`EXTRACT(YEAR FROM ${tasks.createdAt}) = ${currentYear}`
+          )
+        );
+      
+      (user as any).resolvedTasksCount = resolvedTasksResult?.count || 0;
+    }
+    
+    return usersList;
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
@@ -835,10 +858,10 @@ export class DatabaseStorage implements IStorage {
       );
 
     const totalTasks = userTasks.length;
-    const completedTasks = userTasks.filter(task => 
-      task.status === 'completed' || task.status === 'resolved'
-    ).length;
-    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    const completedTasks = userTasks.filter(task => task.status === 'completed').length;
+    const resolvedTasks = userTasks.filter(task => task.status === 'resolved').length;
+    const totalFinishedTasks = completedTasks + resolvedTasks;
+    const completionRate = totalTasks > 0 ? (totalFinishedTasks / totalTasks) * 100 : 0;
     
     // Calculate average response time
     const responseTimes = userTasks
@@ -868,7 +891,7 @@ export class DatabaseStorage implements IStorage {
       month: currentMonth,
       year: currentYear,
       totalTasks,
-      completedTasks,
+      completedTasks: totalFinishedTasks, // Use total finished tasks for completed count
       averageResponseTime: avgResponseTime.toString(),
       performanceScore: performanceScore.toString(),
       customerSatisfactionRating: "4.5", // Default - can be updated later
