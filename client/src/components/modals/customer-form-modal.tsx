@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -65,26 +65,82 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
-      customerId: customer?.customerId || "",
-      name: customer?.name || "",
-      contactPerson: customer?.contactPerson || "",
-      address: customer?.address || "",
-      city: customer?.city || "",
-      state: customer?.state || "",
-      mobilePhone: customer?.mobilePhone || "",
-      email: customer?.email || "",
-      servicePlan: customer?.servicePlan || "",
-      connectedTower: customer?.connectedTower || "",
-      wirelessIp: customer?.wirelessIp || "",
-      wirelessApIp: customer?.wirelessApIp || "",
-      port: customer?.port || "",
-      plan: customer?.plan || "",
-      latitude: customer?.latitude || "",
-      longitude: customer?.longitude || "",
-      locationNotes: customer?.locationNotes || "",
-      locationVerified: customer?.locationVerified || false,
+      customerId: "",
+      name: "",
+      contactPerson: "",
+      address: "",
+      city: "",
+      state: "",
+      mobilePhone: "",
+      email: "",
+      servicePlan: "",
+      connectedTower: "",
+      wirelessIp: "",
+      wirelessApIp: "",
+      port: "",
+      plan: "",
+      latitude: "",
+      longitude: "",
+      locationNotes: "",
+      locationVerified: false,
     },
   });
+
+  // Update form values when customer prop changes
+  useEffect(() => {
+    if (customer) {
+      // Check if we need to show custom plan input
+      const isCustomPlan = customer.servicePlan && 
+        !["Basic - 25 Mbps", "Standard - 50 Mbps", "Premium - 100 Mbps", 
+          "Enterprise - 200 Mbps", "Business Pro - 500 Mbps", "N/A"].includes(customer.servicePlan);
+      
+      setShowCustomPlanInput(isCustomPlan);
+      
+      form.reset({
+        customerId: customer.customerId || "",
+        name: customer.name || "",
+        contactPerson: customer.contactPerson || "",
+        address: customer.address || "",
+        city: customer.city || "",
+        state: customer.state || "",
+        mobilePhone: customer.mobilePhone || "",
+        email: customer.email || "",
+        servicePlan: customer.servicePlan || "",
+        connectedTower: customer.connectedTower || "",
+        wirelessIp: customer.wirelessIp || "",
+        wirelessApIp: customer.wirelessApIp || "",
+        port: customer.port || "",
+        plan: customer.plan || "",
+        latitude: customer.latitude?.toString() || "",
+        longitude: customer.longitude?.toString() || "",
+        locationNotes: customer.locationNotes || "",
+        locationVerified: customer.locationVerified || false,
+      });
+    } else {
+      // Reset to empty form for new customer
+      setShowCustomPlanInput(false);
+      form.reset({
+        customerId: "",
+        name: "",
+        contactPerson: "",
+        address: "",
+        city: "",
+        state: "",
+        mobilePhone: "",
+        email: "",
+        servicePlan: "",
+        connectedTower: "",
+        wirelessIp: "",
+        wirelessApIp: "",
+        port: "",
+        plan: "",
+        latitude: "",
+        longitude: "",
+        locationNotes: "",
+        locationVerified: false,
+      });
+    }
+  }, [customer, form]);
 
   // Create customer mutation
   const createCustomerMutation = useMutation({
