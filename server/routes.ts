@@ -541,6 +541,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Engineer portal route - filter tasks by logged-in user (must be before /api/tasks/:id)
+  app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN' || userId === undefined) {
+        return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
+      }
+      
+      console.log("=== MY-TASKS API CALL ===");
+      console.log("User ID:", userId);
+      console.log("User role:", (req.user as any)?.role);
+      
+      const userTasks = await storage.getTasksByUser(userId);
+      console.log("Tasks retrieved:", userTasks.length);
+      
+      if (userTasks.length > 0) {
+        console.log("First task:", JSON.stringify(userTasks[0], null, 2));
+      }
+      console.log("=== MY-TASKS API END ===");
+      
+      res.json(userTasks);
+    } catch (error) {
+      console.error("Error fetching my-tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
+    }
+  });
+
   app.get('/api/tasks/:id', isAuthenticated, async (req, res) => {
     try {
       console.log("GET /api/tasks/:id called with ID:", req.params.id);
@@ -864,32 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Engineer portal route - filter tasks by logged-in user
-  app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN' || userId === undefined) {
-        return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
-      }
-      
-      console.log("=== MY-TASKS API CALL ===");
-      console.log("User ID:", userId);
-      console.log("User role:", (req.user as any)?.role);
-      
-      const userTasks = await storage.getTasksByUser(userId);
-      console.log("Tasks retrieved:", userTasks.length);
-      
-      if (userTasks.length > 0) {
-        console.log("First task:", JSON.stringify(userTasks[0], null, 2));
-      }
-      console.log("=== MY-TASKS API END ===");
-      
-      res.json(userTasks);
-    } catch (error) {
-      console.error("Error fetching my-tasks:", error);
-      res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
-    }
-  });
+
 
   // Sync endpoint for field engineers to refresh their task data
   app.post('/api/tasks/sync', isAuthenticated, async (req, res) => {
