@@ -99,6 +99,57 @@ export default function Tasks() {
     queryKey: ["/api/tasks/stats"],
   });
 
+  const { data: backendEngineers } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const users = await response.json();
+      return users.filter((user: any) => user.role === 'backend_engineer' || user.role === 'admin');
+    }
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/user");
+      if (!response.ok) throw new Error('Failed to fetch current user');
+      return response.json();
+    }
+  });
+
+  const quickAssignMutation = useMutation({
+    mutationFn: async ({ taskId, userId }: { taskId: number; userId: string }) => {
+      await apiRequest("PUT", `/api/tasks/${taskId}`, { assignedTo: userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      toast({
+        title: "Success",
+        description: "Task assigned successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to assign task",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       await apiRequest("PUT", `/api/tasks/${id}`, data);
@@ -433,6 +484,15 @@ export default function Tasks() {
     });
   };
 
+  const handleQuickAssign = (taskId: number, userId: string) => {
+    quickAssignMutation.mutate({ taskId, userId });
+  };
+
+  const isCustomerCreatedTask = (task: any) => {
+    // Check if task is unassigned and created by admin (customer portal)
+    return !task.assignedTo && (task.createdByUser?.username === 'admin' || task.createdByUser?.id === 'admin001');
+  };
+
   return (
     <div className="min-h-screen">
       <Header 
@@ -667,6 +727,33 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            {/* Quick Assignment Buttons for Customer-Created Unassigned Tasks */}
+                            {isCustomerCreatedTask(task) && backendEngineers && (
+                              <div className="flex space-x-1">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleQuickAssign(task.id, currentUser?.id)}
+                                  title="Assign to Me"
+                                  className="text-xs px-2 py-1"
+                                  disabled={!currentUser?.id}
+                                >
+                                  Assign to Me
+                                </Button>
+                                <Select onValueChange={(userId) => handleQuickAssign(task.id, userId)}>
+                                  <SelectTrigger className="h-8 w-32 text-xs">
+                                    <SelectValue placeholder="Backend" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {backendEngineers?.map((engineer: any) => (
+                                      <SelectItem key={engineer.id} value={engineer.id}>
+                                        {engineer.firstName} {engineer.lastName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="sm"
