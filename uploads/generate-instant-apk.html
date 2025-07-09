@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone APK Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .method {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .method h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button.secondary {
+            background: #2196F3;
+        }
+        .button.secondary:hover {
+            background: #1976D2;
+        }
+        .url-box {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 25px;
+        }
+        .feature-list li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Wizone IT Support Portal APK</h1>
+        
+        <div class="method">
+            <h3>🚀 Method 1: Instant APK Generation (Recommended)</h3>
+            <p>Generate your APK file in 2-3 minutes using online converters:</p>
+            
+            <div class="url-box">
+                App URL: https://29f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev
+            </div>
+            
+            <a href="https://website2apk.com" target="_blank" class="button">Website2APK.com</a>
+            <a href="https://appsgeyser.com" target="_blank" class="button">AppsGeyser.com</a>
+            <a href="https://webintoapp.com" target="_blank" class="button">WebIntoApp.com</a>
+            
+            <p><strong>Steps:</strong></p>
+            <ol>
+                <li>Click any of the above links</li>
+                <li>Enter the App URL (copy from box above)</li>
+                <li>App Name: <strong>Wizone IT Support Portal</strong></li>
+                <li>Package Name: <strong>com.wizone.itsupport</strong></li>
+                <li>Click "Generate APK" and download</li>
+            </ol>
+        </div>
+
+        <div class="method">
+            <h3>📁 Method 2: Android Studio Project</h3>
+            <p>Download the complete Android Studio project files:</p>
+            
+            <a href="/downloads/wizone-android-apk-project.tar.gz" class="button secondary">Download Project Files</a>
+            
+            <p><strong>Build Instructions:</strong></p>
+            <ol>
+                <li>Extract the downloaded file</li>
+                <li>Open Android Studio</li>
+                <li>Import the project</li>
+                <li>Build → Generate Signed Bundle / APK</li>
+            </ol>
+        </div>
+
+        <div class="method">
+            <h3>🌐 Method 3: Progressive Web App (PWA)</h3>
+            <p>Install directly from browser - works like a native app:</p>
+            
+            <ol>
+                <li>Open Chrome/Edge on Android device</li>
+                <li>Visit the app URL</li>
+                <li>Tap menu (⋮) → "Add to Home screen"</li>
+                <li>App installs instantly</li>
+            </ol>
+        </div>
+
+        <div class="method">
+            <h3>✨ App Features</h3>
+            <ul class="feature-list">
+                <li>Complete task management system</li>
+                <li>Real-time chat and messaging</li>
+                <li>Customer portal access</li>
+                <li>Performance analytics dashboard</li>
+                <li>Location tracking for field engineers</li>
+                <li>Offline data caching (PWA)</li>
+                <li>Push notifications support</li>
+                <li>Native mobile app experience</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <p><strong>Recommended:</strong> Use Method 1 for fastest APK generation!</p>
+            <p>Package: com.wizone.itsupport | Version: 1.0.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-copy URL when clicked
+        document.querySelector('.url-box').addEventListener('click', function() {
+            navigator.clipboard.writeText(this.textContent.replace('App URL: ', ''));
+            this.style.background = 'rgba(76, 175, 80, 0.3)';
+            setTimeout(() => {
+                this.style.background = 'rgba(0, 0, 0, 0.2)';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
