@@ -213,6 +213,8 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
   });
 
   const onSubmit = (data: CustomerFormData) => {
+    console.log("Form submit:", { isEditing, customer: customer?.id, customerData: customer });
+    
     // Transform empty string coordinates to null for database compatibility
     const transformedData = {
       ...data,
@@ -220,9 +222,11 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
       longitude: data.longitude && data.longitude.trim() !== "" ? data.longitude : undefined,
     };
 
-    if (isEditing && customer) {
+    if (isEditing && customer && customer.id) {
+      console.log("Updating customer:", customer.id);
       updateCustomerMutation.mutate(transformedData);
     } else {
+      console.log("Creating new customer");
       createCustomerMutation.mutate(transformedData);
     }
   };
