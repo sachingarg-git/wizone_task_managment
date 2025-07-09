@@ -350,6 +350,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCustomer(id: number): Promise<void> {
+    // Delete all related records first to avoid foreign key constraint violations
+    
+    // Delete customer comments
+    await db.delete(customerComments).where(eq(customerComments.customerId, id));
+    
+    // Delete customer system details  
+    await db.delete(customerSystemDetails).where(eq(customerSystemDetails.customerId, id));
+    
+    // Delete geofence zones for this customer
+    await db.delete(geofenceZones).where(eq(geofenceZones.customerId, id));
+    
+    // Delete task updates for tasks belonging to this customer
+    const customerTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.customerId, id));
+    if (customerTasks.length > 0) {
+      const taskIds = customerTasks.map(task => task.id);
+      await db.delete(taskUpdates).where(inArray(taskUpdates.taskId, taskIds));
+    }
+    
+    // Delete tasks for this customer
+    await db.delete(tasks).where(eq(tasks.customerId, id));
+    
+    // Finally delete the customer
     await db.delete(customers).where(eq(customers.id, id));
   }
 
