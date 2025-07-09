@@ -153,10 +153,17 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
   });
 
   const onSubmit = (data: CustomerFormData) => {
+    // Transform empty string coordinates to null for database compatibility
+    const transformedData = {
+      ...data,
+      latitude: data.latitude && data.latitude.trim() !== "" ? data.latitude : undefined,
+      longitude: data.longitude && data.longitude.trim() !== "" ? data.longitude : undefined,
+    };
+
     if (isEditing && customer) {
-      updateCustomerMutation.mutate(data);
+      updateCustomerMutation.mutate(transformedData);
     } else {
-      createCustomerMutation.mutate(data);
+      createCustomerMutation.mutate(transformedData);
     }
   };
 
@@ -367,8 +374,14 @@ export default function CustomerFormModal({ isOpen, onClose, customer, isEditing
                       {field.value === "custom" && (
                         <Input 
                           placeholder="Enter custom plan name" 
-                          onChange={(e) => field.onChange(e.target.value)}
+                          value=""
+                          onChange={(e) => {
+                            const customValue = e.target.value;
+                            // Directly set the custom value, replacing "custom"
+                            field.onChange(customValue);
+                          }}
                           className="mt-2"
+                          autoFocus
                         />
                       )}
                       <FormMessage />

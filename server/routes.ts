@@ -1152,7 +1152,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/customers', isAuthenticated, async (req, res) => {
     try {
-      const validatedData = insertCustomerSchema.parse(req.body);
+      // Transform empty coordinate strings to undefined for database compatibility
+      const transformedBody = {
+        ...req.body,
+        latitude: req.body.latitude && req.body.latitude.trim() !== "" ? req.body.latitude : undefined,
+        longitude: req.body.longitude && req.body.longitude.trim() !== "" ? req.body.longitude : undefined,
+      };
+      
+      const validatedData = insertCustomerSchema.parse(transformedBody);
       const customer = await storage.createCustomer(validatedData);
       res.status(201).json(customer);
     } catch (error) {
@@ -1167,7 +1174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/customers/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertCustomerSchema.partial().parse(req.body);
+      
+      // Transform empty coordinate strings to undefined for database compatibility
+      const transformedBody = {
+        ...req.body,
+        latitude: req.body.latitude && req.body.latitude.trim() !== "" ? req.body.latitude : undefined,
+        longitude: req.body.longitude && req.body.longitude.trim() !== "" ? req.body.longitude : undefined,
+      };
+      
+      const validatedData = insertCustomerSchema.partial().parse(transformedBody);
       const customer = await storage.updateCustomer(id, validatedData);
       res.json(customer);
     } catch (error) {
