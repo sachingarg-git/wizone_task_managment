@@ -335,6 +335,37 @@ export default function BotConfiguration() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate Telegram-specific fields
+    if (formData.botType === 'telegram') {
+      if (!formData.telegramBotToken) {
+        toast({
+          title: "Validation Error",
+          description: "Telegram Bot Token is required for Telegram configuration",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!formData.telegramChatId) {
+        toast({
+          title: "Validation Error", 
+          description: "Chat ID is required for Telegram notifications to work",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!/^-?\d+$/.test(formData.telegramChatId)) {
+        toast({
+          title: "Validation Error",
+          description: "Chat ID must be numeric (e.g., -1001234567890 or 123456789)",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    console.log("Submitting form data:", formData);
+    
     if (selectedConfig) {
       updateConfigMutation.mutate({ id: selectedConfig.id, data: formData });
     } else {
@@ -582,7 +613,7 @@ export default function BotConfiguration() {
                             <li>4. For Chat ID: Add bot to group or get your chat ID from @userinfobot</li>
                           </ol>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                           <div>
                             <Label htmlFor="telegramBotToken">Bot Token</Label>
                             <Input
@@ -603,29 +634,47 @@ export default function BotConfiguration() {
                               </p>
                             )}
                           </div>
-                          <div>
-                            <Label htmlFor="telegramChatId">Chat ID</Label>
-                            <Input
-                              id="telegramChatId"
-                              placeholder="-1001234567890"
-                              value={formData.telegramChatId}
-                              onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
-                              className={
-                                formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId)
-                                  ? "border-red-500"
-                                  : ""
-                              }
-                              data-testid="telegram-chat-id"
-                            />
-                            {formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId) && (
-                              <p className="text-sm text-red-500 mt-1">
-                                Chat ID must be numeric (e.g., -1001234567890 or 123456789)
-                              </p>
-                            )}
-                            <p className="text-sm text-gray-500 mt-1">
-                              For groups/channels, use negative ID starting with -100
+                        <div>
+                          <Label htmlFor="telegramChatId" className="text-base font-semibold text-red-600 dark:text-red-400">
+                            Chat ID (Required) *
+                          </Label>
+                          <Input
+                            id="telegramChatId"
+                            placeholder="-1001234567890 (group) or 123456789 (private)"
+                            value={formData.telegramChatId}
+                            onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
+                            className={
+                              !formData.telegramChatId || (formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId))
+                                ? "border-red-500 border-2"
+                                : "border-green-500 border-2"
+                            }
+                            data-testid="telegram-chat-id"
+                            required
+                          />
+                          {!formData.telegramChatId && (
+                            <p className="text-sm text-red-600 mt-1 font-medium">
+                              ⚠️ Chat ID is required for Telegram notifications to work!
+                            </p>
+                          )}
+                          {formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId) && (
+                            <p className="text-sm text-red-500 mt-1">
+                              Chat ID must be numeric (e.g., -1001234567890 or 123456789)
+                            </p>
+                          )}
+                          {formData.telegramChatId && /^-?\d+$/.test(formData.telegramChatId) && (
+                            <p className="text-sm text-green-600 mt-1">
+                              ✅ Valid Chat ID format
+                            </p>
+                          )}
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 mt-2">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              <strong>How to get Chat ID:</strong><br/>
+                              • For private chat: Message @userinfobot and copy your ID<br/>
+                              • For groups: Add bot to group, then use @userinfobot to get group ID<br/>
+                              • Group IDs start with -100 (e.g., -1001234567890)
                             </p>
                           </div>
+                        </div>
                         </div>
                         <div>
                           <Label htmlFor="telegramParseMode">Parse Mode</Label>
