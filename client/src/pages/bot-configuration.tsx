@@ -51,6 +51,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function BotConfiguration() {
+  console.log("BotConfiguration component rendering...");
+  
   const [selectedConfig, setSelectedConfig] = useState<any>(null);
   const [showConfigForm, setShowConfigForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -107,14 +109,17 @@ export default function BotConfiguration() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: botConfigs, isLoading } = useQuery({
+  const { data: botConfigs, isLoading, error } = useQuery({
     queryKey: ["/api/bot-configurations"],
     queryFn: async () => {
+      console.log("Fetching bot configurations...");
       const response = await fetch("/api/bot-configurations");
       if (!response.ok) throw new Error("Failed to fetch bot configurations");
       return response.json();
     },
   });
+
+  console.log("Bot configs:", { botConfigs, isLoading, error });
 
   const { data: notificationLogs } = useQuery({
     queryKey: ["/api/notification-logs"],
@@ -370,6 +375,33 @@ export default function BotConfiguration() {
   const formatDateTime = (date: string) => {
     return new Date(date).toLocaleString();
   };
+
+  // Add error boundary for debugging
+  if (error) {
+    console.error("Bot configuration error:", error);
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-red-600 mb-2">Error Loading Bot Configuration</h2>
+          <p className="text-gray-600">{error.message}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading bot configurations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
