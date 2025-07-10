@@ -409,6 +409,15 @@ export default function BotConfiguration() {
             <Button onClick={() => {
               setSelectedConfig(null);
               resetForm();
+              setFormData(prev => ({ ...prev, botType: "telegram" }));
+              setShowConfigForm(true);
+            }}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Add Telegram Bot
+            </Button>
+            <Button onClick={() => {
+              setSelectedConfig(null);
+              resetForm();
               setFormData(prev => ({ ...prev, botType: "webhook" }));
               setShowConfigForm(true);
             }} variant="outline">
@@ -419,7 +428,7 @@ export default function BotConfiguration() {
               setSelectedConfig(null);
               resetForm();
               setShowConfigForm(true);
-            }}>
+            }} variant="outline">
               <Plus className="w-4 h-4 mr-2" />
               Add Bot Configuration
             </Button>
@@ -457,9 +466,12 @@ export default function BotConfiguration() {
                       </div>
                       <div>
                         <Label htmlFor="botType">Bot Type</Label>
-                        <Select value={formData.botType} onValueChange={(value) => setFormData({ ...formData, botType: value })}>
+                        <Select value={formData.botType} onValueChange={(value) => {
+                          console.log("Bot type changed to:", value);
+                          setFormData({ ...formData, botType: value });
+                        }}>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select bot type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="telegram">
@@ -550,6 +562,11 @@ export default function BotConfiguration() {
                   </TabsContent>
                   
                   <TabsContent value="config" className="space-y-4">
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Current bot type: <span className="font-medium">{formData.botType}</span>
+                      </p>
+                    </div>
                     {formData.botType === 'telegram' && (
                       <div className="space-y-4">
                         <h3 className="text-lg font-semibold flex items-center">
