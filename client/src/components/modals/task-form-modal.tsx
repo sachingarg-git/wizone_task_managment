@@ -35,7 +35,7 @@ const taskFormSchema = z.object({
   issueType: z.string().min(1, "Issue type is required"),
   description: z.string().min(1, "Description is required"),
   contactPerson: z.string().optional(),
-  visitCharges: z.string().optional(),
+  visitCharges: z.union([z.string(), z.number()]).optional().transform((val) => val?.toString()),
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -122,7 +122,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       const payload = {
         ...data,
         ticketNumber: generateTicketId(),
-        visitCharges: data.visitCharges && data.visitCharges.trim() !== "" ? parseFloat(data.visitCharges) : undefined,
+        visitCharges: data.visitCharges && data.visitCharges.toString().trim() !== "" ? data.visitCharges.toString() : undefined,
         customerId: data.customerId || undefined,
         assignedTo: data.assignedTo || undefined,
       };
