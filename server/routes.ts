@@ -26,11 +26,18 @@ import multer from "multer";
 // Notification helper function
 async function sendTaskNotification(task: any, eventType: string) {
   try {
+    console.log(`=== SENDING NOTIFICATION ===`);
+    console.log(`Event Type: ${eventType}`);
+    console.log(`Task ID: ${task.id}`);
+    console.log(`Task Title: ${task.title}`);
+    
     // Get all active bot configurations
     const botConfigs = await storage.getAllBotConfigurations();
+    console.log(`Found ${botConfigs.length} bot configurations`);
     
     // Filter for enabled configurations based on event type
     const enabledConfigs = botConfigs.filter(config => {
+      console.log(`Checking config ${config.id}: isActive=${config.isActive}, notifyOnTaskCreate=${config.notifyOnTaskCreate}, notifyOnTaskUpdate=${config.notifyOnTaskUpdate}`);
       if (!config.isActive) return false;
       
       switch (eventType) {
@@ -46,6 +53,8 @@ async function sendTaskNotification(task: any, eventType: string) {
           return false;
       }
     });
+    
+    console.log(`Found ${enabledConfigs.length} enabled configurations for event ${eventType}`);
     
     // Send notification for each enabled configuration
     for (const config of enabledConfigs) {
@@ -738,7 +747,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send automatic notifications for task creation
       try {
+        console.log("Sending task creation notification...");
         await sendTaskNotification(task, 'task_create');
+        console.log("Task creation notification sent successfully");
       } catch (notificationError) {
         console.error('Error sending task creation notification:', notificationError);
         // Don't fail the task creation if notification fails
@@ -878,6 +889,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update performance metrics if status changed to completed
       if (updateData.status === 'completed' && task.assignedTo) {
         await storage.calculateUserPerformance(task.assignedTo);
+      }
+      
+      // Send notification for task update
+      try {
+        console.log("Sending task update notification...");
+        if (newStatus && oldStatus !== newStatus) {
+          await sendTaskNotification(task, newStatus === 'completed' ? 'task_complete' : 'task_update');
+        } else if (notes) {
+          await sendTaskNotification(task, 'task_update');
+        }
+        console.log("Task update notification sent successfully");
+      } catch (notificationError) {
+        console.error('Error sending task update notification:', notificationError);
       }
       
       console.log("Task updated successfully:", task.id);
