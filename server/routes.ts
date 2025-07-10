@@ -63,16 +63,46 @@ async function sendTaskNotification(task: any, eventType: string) {
           const customer = await storage.getCustomer(task.customerId);
           const assignedUser = await storage.getUser(task.assignedTo);
           
-          // Create notification message
-          let message = `🔔 *New Task Created*\n\n`;
+          // Create notification message based on event type
+          let message = '';
+          
+          switch (eventType) {
+            case 'task_create':
+              message = `🔔 *New Task Created*\n\n`;
+              break;
+            case 'task_update':
+              message = `📝 *Task Updated*\n\n`;
+              break;
+            case 'task_complete':
+              message = `✅ *Task Completed*\n\n`;
+              break;
+            case 'task_assign':
+              message = `👨‍💻 *Task Assigned*\n\n`;
+              break;
+            default:
+              message = `🔔 *Task Notification*\n\n`;
+          }
+          
           message += `📋 *Task:* ${task.title}\n`;
           message += `🎫 *Ticket:* ${task.ticketNumber}\n`;
           message += `👤 *Customer:* ${customer?.name || 'Unknown'}\n`;
           message += `👨‍💻 *Assigned To:* ${assignedUser?.firstName} ${assignedUser?.lastName}\n`;
           message += `⚡ *Priority:* ${task.priority?.toUpperCase()}\n`;
-          message += `🔧 *Issue Type:* ${task.issueType}\n`;
-          message += `📝 *Description:* ${task.description}\n`;
-          message += `📅 *Created:* ${new Date(task.createdAt).toLocaleString()}`;
+          
+          if (eventType === 'task_create') {
+            message += `🔧 *Issue Type:* ${task.issueType}\n`;
+            message += `📝 *Description:* ${task.description}\n`;
+            message += `📅 *Created:* ${new Date(task.createdAt).toLocaleString()}`;
+          } else if (eventType === 'task_update') {
+            message += `📊 *Current Status:* ${task.status?.toUpperCase()}\n`;
+            message += `📅 *Last Updated:* ${new Date(task.updatedAt || task.createdAt).toLocaleString()}`;
+          } else if (eventType === 'task_complete') {
+            message += `📊 *Status:* COMPLETED\n`;
+            message += `✅ *Completed:* ${new Date().toLocaleString()}`;
+            if (task.resolution) {
+              message += `\n📄 *Resolution:* ${task.resolution}`;
+            }
+          }
           
           // Send to Telegram
           const response = await fetch(`https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`, {
