@@ -555,6 +555,15 @@ export default function BotConfiguration() {
                           <MessageSquare className="w-5 h-5 mr-2 text-blue-500" />
                           Telegram Bot Configuration
                         </h3>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">How to get Bot Token:</h4>
+                          <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                            <li>1. Message @BotFather on Telegram</li>
+                            <li>2. Send /newbot and follow instructions</li>
+                            <li>3. Copy the token (format: 123456789:ABCdefGHI...)</li>
+                            <li>4. For Chat ID: Add bot to group or get your chat ID from @userinfobot</li>
+                          </ol>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="telegramBotToken">Bot Token</Label>
@@ -564,7 +573,17 @@ export default function BotConfiguration() {
                               placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxyz"
                               value={formData.telegramBotToken}
                               onChange={(e) => setFormData({ ...formData, telegramBotToken: e.target.value })}
+                              className={
+                                formData.telegramBotToken && !/^\d{8,10}:[A-Za-z0-9_-]{35}$/.test(formData.telegramBotToken)
+                                  ? "border-red-500"
+                                  : ""
+                              }
                             />
+                            {formData.telegramBotToken && !/^\d{8,10}:[A-Za-z0-9_-]{35}$/.test(formData.telegramBotToken) && (
+                              <p className="text-sm text-red-500 mt-1">
+                                Invalid token format. Expected: 123456789:ABCdefGHIjklMNOpqrSTUvwxyz
+                              </p>
+                            )}
                           </div>
                           <div>
                             <Label htmlFor="telegramChatId">Chat ID</Label>
@@ -573,7 +592,20 @@ export default function BotConfiguration() {
                               placeholder="-1001234567890"
                               value={formData.telegramChatId}
                               onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
+                              className={
+                                formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId)
+                                  ? "border-red-500"
+                                  : ""
+                              }
                             />
+                            {formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId) && (
+                              <p className="text-sm text-red-500 mt-1">
+                                Chat ID must be numeric (e.g., -1001234567890 or 123456789)
+                              </p>
+                            )}
+                            <p className="text-sm text-gray-500 mt-1">
+                              For groups/channels, use negative ID starting with -100
+                            </p>
                           </div>
                         </div>
                         <div>

@@ -2119,23 +2119,47 @@ export class DatabaseStorage implements IStorage {
       let testResult = { success: false, message: "" };
       
       if (config.botType === 'telegram' && config.telegramBotToken && config.telegramChatId) {
-        // Test Telegram bot
-        const telegramUrl = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
-        const response = await fetch(telegramUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: config.telegramChatId,
-            text: config.testMessage || "🔧 Wizone IT Support Portal - Bot Configuration Test",
-            parse_mode: config.telegramParseMode || 'HTML'
-          })
-        });
-        
-        if (response.ok) {
-          testResult = { success: true, message: "Telegram bot test successful" };
+        // Validate bot token format (should be numeric:alphanumeric)
+        const tokenPattern = /^\d{8,10}:[A-Za-z0-9_-]{35}$/;
+        if (!tokenPattern.test(config.telegramBotToken)) {
+          testResult = { success: false, message: "Invalid bot token format. Expected format: 123456789:ABCdefGHIjklMNOpqrSTUvwxyz" };
         } else {
-          const errorData = await response.json().catch(() => ({ description: "Unknown error" }));
-          testResult = { success: false, message: `Telegram error: ${errorData.description}` };
+          // Test Telegram bot
+          const telegramUrl = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+          
+          try {
+            const response = await fetch(telegramUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: config.telegramChatId,
+                text: config.testMessage || "🔧 Wizone IT Support Portal - Bot Configuration Test",
+                parse_mode: config.telegramParseMode || 'HTML'
+              }),
+              signal: AbortSignal.timeout(10000) // 10 second timeout
+            });
+            
+            if (response.ok) {
+              testResult = { success: true, message: "Telegram bot test successful" };
+            } else {
+              const errorData = await response.json().catch(() => ({ description: "Unknown error" }));
+              if (response.status === 400) {
+                testResult = { success: false, message: `Invalid request: ${errorData.description || 'Check bot token and chat ID'}` };
+              } else if (response.status === 401) {
+                testResult = { success: false, message: "Unauthorized: Invalid bot token" };
+              } else if (response.status === 404) {
+                testResult = { success: false, message: "Bot not found: Check bot token" };
+              } else {
+                testResult = { success: false, message: `Telegram API error (${response.status}): ${errorData.description}` };
+              }
+            }
+          } catch (fetchError: any) {
+            if (fetchError.name === 'AbortError') {
+              testResult = { success: false, message: "Request timeout: Check your internet connection" };
+            } else {
+              testResult = { success: false, message: `Network error: ${fetchError.message}` };
+            }
+          }
         }
       } else if (config.botType === 'whatsapp' && config.whatsappApiUrl && config.whatsappApiKey) {
         // Test WhatsApp API
