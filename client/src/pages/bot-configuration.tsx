@@ -287,6 +287,7 @@ export default function BotConfiguration() {
   };
 
   const handleEdit = (config: any) => {
+    console.log("Editing config:", config); // Debug log
     setSelectedConfig(config);
     setFormData({
       configName: config.configName || "",
@@ -427,7 +428,7 @@ export default function BotConfiguration() {
       />
 
       <Dialog open={showConfigForm} onOpenChange={setShowConfigForm}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle>
               {selectedConfig ? 'Edit Bot Configuration' : 'Add New Bot Configuration'}
@@ -564,7 +565,7 @@ export default function BotConfiguration() {
                             <li>4. For Chat ID: Add bot to group or get your chat ID from @userinfobot</li>
                           </ol>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="telegramBotToken">Bot Token</Label>
                             <Input
@@ -597,6 +598,7 @@ export default function BotConfiguration() {
                                   ? "border-red-500"
                                   : ""
                               }
+                              data-testid="telegram-chat-id"
                             />
                             {formData.telegramChatId && !/^-?\d+$/.test(formData.telegramChatId) && (
                               <p className="text-sm text-red-500 mt-1">
