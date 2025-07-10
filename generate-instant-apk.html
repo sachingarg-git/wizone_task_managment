@@ -91,8 +91,8 @@
             <h3>🚀 Method 1: Instant APK Generation (Recommended)</h3>
             <p>Generate your APK file in 2-3 minutes using online converters:</p>
             
-            <div class="url-box">
-                App URL: https://task-score-tracker-sachin160.replit.app
+            <div class="url-box" id="app-url">
+                App URL: Loading current URL...
             </div>
             
             <a href="https://website2apk.com" target="_blank" class="button">Website2APK.com</a>
@@ -157,9 +157,17 @@
     </div>
 
     <script>
+        // Get current URL and update the display
+        window.addEventListener('load', function() {
+            const currentUrl = window.location.origin;
+            const urlBox = document.getElementById('app-url');
+            urlBox.textContent = 'App URL: ' + currentUrl;
+        });
+        
         // Auto-copy URL when clicked
         document.querySelector('.url-box').addEventListener('click', function() {
-            navigator.clipboard.writeText(this.textContent.replace('App URL: ', ''));
+            const url = this.textContent.replace('App URL: ', '');
+            navigator.clipboard.writeText(url);
             this.style.background = 'rgba(76, 175, 80, 0.3)';
             setTimeout(() => {
                 this.style.background = 'rgba(0, 0, 0, 0.2)';

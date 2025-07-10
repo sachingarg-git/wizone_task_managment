@@ -21,7 +21,7 @@ export default function APKDownload() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const { toast } = useToast();
 
-  const appUrl = "https://task-score-tracker-sachin160.replit.app";
+  const appUrl = window.location.origin;
   const appName = "Wizone IT Support Portal";
   const packageName = "com.wizone.itsupport";
 
