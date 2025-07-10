@@ -1058,6 +1058,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const task = await storage.assignTaskToFieldEngineer(taskId, fieldEngineerId, userId);
+      
+      // Send notification for field engineer assignment
+      try {
+        console.log("Sending field assignment notification...");
+        await sendTaskNotification(task, 'task_update');
+        console.log("Field assignment notification sent successfully");
+      } catch (notificationError) {
+        console.error('Error sending field assignment notification:', notificationError);
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Error assigning field engineer:", error);
@@ -1077,6 +1087,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await storage.assignMultipleFieldEngineers(taskId, fieldEngineerIds, userId);
+      
+      // Send notification for each assigned task
+      try {
+        console.log("Sending field assignment notifications...");
+        for (const task of result.tasks) {
+          await sendTaskNotification(task, 'task_update');
+        }
+        console.log("Field assignment notifications sent successfully");
+      } catch (notificationError) {
+        console.error('Error sending field assignment notifications:', notificationError);
+      }
+      
       res.json(result);
     } catch (error) {
       console.error("Error assigning multiple field engineers:", error);
@@ -1095,6 +1117,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const task = await storage.updateFieldTaskStatus(taskId, status, userId, note);
+      
+      // Send notification for field status update
+      try {
+        console.log("Sending field status update notification...");
+        await sendTaskNotification(task, 'task_update');
+        console.log("Field status update notification sent successfully");
+      } catch (notificationError) {
+        console.error('Error sending field status update notification:', notificationError);
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Error updating field task status:", error);

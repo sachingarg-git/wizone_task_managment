@@ -284,6 +284,16 @@ TaskFlow is a comprehensive task management and performance tracking system buil
   - Deployment now serves the full application interface instead of blank screen
   - Resolved bot configuration page white screen issue with improved error handling and dialog sizing
   - Enhanced bot configuration interface with better responsive design and user experience
+- July 10, 2025. Field engineer notification system completely fixed:
+  - Resolved issue where field engineer assignments were not triggering Telegram notifications
+  - Added notification triggers to all field engineer assignment endpoints
+  - Fixed notification logic to show field engineer names for any task with field engineer assigned
+  - Enhanced notification messages to display both backend engineer and field engineer names
+  - Added special indicators for field-related task statuses in notifications
+  - Improved status formatting in notifications (removed underscores, proper capitalization)
+  - Added comprehensive debug logging for field engineer assignment tracking
+  - All field engineer workflows now send proper notifications to Telegram group channel
+  - Notifications now work for: single field assignment, multiple field assignments, field status updates
 
 ## User Preferences
 
