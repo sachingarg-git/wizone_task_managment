@@ -69,6 +69,9 @@ async function sendTaskNotification(task: any, eventType: string) {
             fieldEngineer = await storage.getUser(task.fieldEngineerId);
           }
           
+          console.log(`Task ${task.id} - fieldEngineerId: ${task.fieldEngineerId}, status: ${task.status}`);
+          console.log(`Field Engineer:`, fieldEngineer ? `${fieldEngineer.firstName} ${fieldEngineer.lastName}` : 'None');
+          
           // Create notification message based on event type
           let message = '';
           
@@ -99,8 +102,8 @@ async function sendTaskNotification(task: any, eventType: string) {
           message += `🎫 *Ticket:* ${escapeMarkdown(task.ticketNumber)}\n`;
           message += `👤 *Customer:* ${escapeMarkdown(customer?.name || 'Unknown')}\n`;
           
-          // Show field engineer if task is assigned to field
-          if (fieldEngineer && task.status === 'assigned_to_field') {
+          // Show field engineer if task has field engineer assigned
+          if (fieldEngineer) {
             message += `👨‍💻 *Backend Engineer:* ${escapeMarkdown(assignedUser?.firstName)} ${escapeMarkdown(assignedUser?.lastName)}\n`;
             message += `🔧 *Field Engineer:* ${escapeMarkdown(fieldEngineer?.firstName)} ${escapeMarkdown(fieldEngineer?.lastName)}\n`;
           } else {
@@ -118,8 +121,8 @@ async function sendTaskNotification(task: any, eventType: string) {
             message += `📅 *Last Updated:* ${escapeMarkdown(new Date(task.updatedAt || task.createdAt).toLocaleString())}`;
             
             // Add special message for field assignments
-            if (task.status === 'assigned_to_field' && fieldEngineer) {
-              message += `\n🚀 *Task moved to field engineer for on-site work*`;
+            if (fieldEngineer && (task.status === 'assigned_to_field' || task.status === 'start_task' || task.status.includes('field'))) {
+              message += `\n🚀 *Task is being handled by field engineer*`;
             }
           } else if (eventType === 'task_complete') {
             message += `📊 *Status:* COMPLETED\n`;
