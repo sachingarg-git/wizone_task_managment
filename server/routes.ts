@@ -83,24 +83,30 @@ async function sendTaskNotification(task: any, eventType: string) {
               message = `🔔 *Task Notification*\n\n`;
           }
           
-          message += `📋 *Task:* ${task.title}\n`;
-          message += `🎫 *Ticket:* ${task.ticketNumber}\n`;
-          message += `👤 *Customer:* ${customer?.name || 'Unknown'}\n`;
-          message += `👨‍💻 *Assigned To:* ${assignedUser?.firstName} ${assignedUser?.lastName}\n`;
-          message += `⚡ *Priority:* ${task.priority?.toUpperCase()}\n`;
+          // Escape special characters for Markdown
+          const escapeMarkdown = (text) => {
+            if (!text) return text;
+            return text.toString().replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+          };
+          
+          message += `📋 *Task:* ${escapeMarkdown(task.title)}\n`;
+          message += `🎫 *Ticket:* ${escapeMarkdown(task.ticketNumber)}\n`;
+          message += `👤 *Customer:* ${escapeMarkdown(customer?.name || 'Unknown')}\n`;
+          message += `👨‍💻 *Assigned To:* ${escapeMarkdown(assignedUser?.firstName)} ${escapeMarkdown(assignedUser?.lastName)}\n`;
+          message += `⚡ *Priority:* ${escapeMarkdown(task.priority?.toUpperCase())}\n`;
           
           if (eventType === 'task_create') {
-            message += `🔧 *Issue Type:* ${task.issueType}\n`;
-            message += `📝 *Description:* ${task.description}\n`;
-            message += `📅 *Created:* ${new Date(task.createdAt).toLocaleString()}`;
+            message += `🔧 *Issue Type:* ${escapeMarkdown(task.issueType)}\n`;
+            message += `📝 *Description:* ${escapeMarkdown(task.description)}\n`;
+            message += `📅 *Created:* ${escapeMarkdown(new Date(task.createdAt).toLocaleString())}`;
           } else if (eventType === 'task_update') {
-            message += `📊 *Current Status:* ${task.status?.toUpperCase()}\n`;
-            message += `📅 *Last Updated:* ${new Date(task.updatedAt || task.createdAt).toLocaleString()}`;
+            message += `📊 *Current Status:* ${escapeMarkdown(task.status?.toUpperCase())}\n`;
+            message += `📅 *Last Updated:* ${escapeMarkdown(new Date(task.updatedAt || task.createdAt).toLocaleString())}`;
           } else if (eventType === 'task_complete') {
             message += `📊 *Status:* COMPLETED\n`;
-            message += `✅ *Completed:* ${new Date().toLocaleString()}`;
+            message += `✅ *Completed:* ${escapeMarkdown(new Date().toLocaleString())}`;
             if (task.resolution) {
-              message += `\n📄 *Resolution:* ${task.resolution}`;
+              message += `\n📄 *Resolution:* ${escapeMarkdown(task.resolution)}`;
             }
           }
           
@@ -127,7 +133,7 @@ async function sendTaskNotification(task: any, eventType: string) {
             customerId: task.customerId,
             userId: task.assignedTo,
             messageText: message,
-            messageTemplateUsed: 'default_task_create',
+            messageTemplateUsed: `default_${eventType}`,
             status: result.ok ? 'sent' : 'failed',
             responseData: result,
             errorMessage: result.ok ? undefined : result.description,
@@ -135,6 +141,9 @@ async function sendTaskNotification(task: any, eventType: string) {
           });
           
           console.log(`Telegram notification sent for task ${task.ticketNumber}:`, result.ok ? 'SUCCESS' : 'FAILED');
+          if (!result.ok) {
+            console.error(`Telegram API Error:`, result);
+          }
         }
       } catch (configError) {
         console.error(`Error sending notification for config ${config.id}:`, configError);
