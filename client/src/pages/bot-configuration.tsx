@@ -51,8 +51,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function BotConfiguration() {
-  console.log("BotConfiguration component rendering...");
-  
   const [selectedConfig, setSelectedConfig] = useState<any>(null);
   const [showConfigForm, setShowConfigForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -112,14 +110,11 @@ export default function BotConfiguration() {
   const { data: botConfigs, isLoading, error } = useQuery({
     queryKey: ["/api/bot-configurations"],
     queryFn: async () => {
-      console.log("Fetching bot configurations...");
       const response = await fetch("/api/bot-configurations");
       if (!response.ok) throw new Error("Failed to fetch bot configurations");
       return response.json();
     },
   });
-
-  console.log("Bot configs:", { botConfigs, isLoading, error });
 
   const { data: notificationLogs } = useQuery({
     queryKey: ["/api/notification-logs"],
@@ -432,7 +427,7 @@ export default function BotConfiguration() {
       />
 
       <Dialog open={showConfigForm} onOpenChange={setShowConfigForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedConfig ? 'Edit Bot Configuration' : 'Add New Bot Configuration'}
