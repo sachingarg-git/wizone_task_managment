@@ -63,6 +63,12 @@ async function sendTaskNotification(task: any, eventType: string) {
           const customer = await storage.getCustomer(task.customerId);
           const assignedUser = await storage.getUser(task.assignedTo);
           
+          // Get field engineer if task is assigned to field
+          let fieldEngineer = null;
+          if (task.fieldEngineerId) {
+            fieldEngineer = await storage.getUser(task.fieldEngineerId);
+          }
+          
           // Create notification message based on event type
           let message = '';
           
@@ -92,7 +98,15 @@ async function sendTaskNotification(task: any, eventType: string) {
           message += `📋 *Task:* ${escapeMarkdown(task.title)}\n`;
           message += `🎫 *Ticket:* ${escapeMarkdown(task.ticketNumber)}\n`;
           message += `👤 *Customer:* ${escapeMarkdown(customer?.name || 'Unknown')}\n`;
-          message += `👨‍💻 *Assigned To:* ${escapeMarkdown(assignedUser?.firstName)} ${escapeMarkdown(assignedUser?.lastName)}\n`;
+          
+          // Show field engineer if task is assigned to field
+          if (fieldEngineer && task.status === 'assigned_to_field') {
+            message += `👨‍💻 *Backend Engineer:* ${escapeMarkdown(assignedUser?.firstName)} ${escapeMarkdown(assignedUser?.lastName)}\n`;
+            message += `🔧 *Field Engineer:* ${escapeMarkdown(fieldEngineer?.firstName)} ${escapeMarkdown(fieldEngineer?.lastName)}\n`;
+          } else {
+            message += `👨‍💻 *Assigned To:* ${escapeMarkdown(assignedUser?.firstName)} ${escapeMarkdown(assignedUser?.lastName)}\n`;
+          }
+          
           message += `⚡ *Priority:* ${escapeMarkdown(task.priority?.toUpperCase())}\n`;
           
           if (eventType === 'task_create') {
@@ -100,8 +114,13 @@ async function sendTaskNotification(task: any, eventType: string) {
             message += `📝 *Description:* ${escapeMarkdown(task.description)}\n`;
             message += `📅 *Created:* ${escapeMarkdown(new Date(task.createdAt).toLocaleString())}`;
           } else if (eventType === 'task_update') {
-            message += `📊 *Current Status:* ${escapeMarkdown(task.status?.toUpperCase())}\n`;
+            message += `📊 *Current Status:* ${escapeMarkdown(task.status?.replace(/_/g, ' ').toUpperCase())}\n`;
             message += `📅 *Last Updated:* ${escapeMarkdown(new Date(task.updatedAt || task.createdAt).toLocaleString())}`;
+            
+            // Add special message for field assignments
+            if (task.status === 'assigned_to_field' && fieldEngineer) {
+              message += `\n🚀 *Task moved to field engineer for on-site work*`;
+            }
           } else if (eventType === 'task_complete') {
             message += `📊 *Status:* COMPLETED\n`;
             message += `✅ *Completed:* ${escapeMarkdown(new Date().toLocaleString())}`;
