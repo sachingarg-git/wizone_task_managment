@@ -16,6 +16,7 @@ import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
 import BotConfiguration from "@/pages/bot-configuration";
+import APKDownload from "@/pages/apk-download";
 
 import TrackingHistory from "@/pages/tracking-history";
 import OfficeManagement from "@/pages/office-management";
@@ -118,6 +119,7 @@ function Router() {
           <Route path="/domains" component={Domains} />
           <Route path="/sql-connections" component={SqlConnections} />
           <Route path="/bot-configuration" component={BotConfiguration} />
+          <Route path="/apk-download" component={APKDownload} />
 
           <Route path="/tracking-history" component={TrackingHistory} />
           <Route path="/office-management" component={OfficeManagement} />

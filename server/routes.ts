@@ -220,6 +220,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Serve APK generation page
+  app.get("/generate-apk", (req, res) => {
+    res.sendFile(path.join(process.cwd(), "generate-instant-apk.html"));
+  });
+
   // Serve static files from uploads directory for downloads
   app.use('/downloads', express.static('uploads'));
 
