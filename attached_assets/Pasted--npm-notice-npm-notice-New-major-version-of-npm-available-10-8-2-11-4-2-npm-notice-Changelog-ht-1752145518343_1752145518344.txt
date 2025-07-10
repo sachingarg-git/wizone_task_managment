@@ -1,0 +1,40 @@
+
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.4.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+npm notice To update run: npm install -g npm@11.4.2
+npm notice
+
+2025-07-10T10:59:41Z info: Pushing pid1 binary layer...
+2025-07-10T10:59:42Z info: Pushing Repl layer...
+2025-07-10T10:59:42Z info: Pushing hosting layer...
+2025-07-10T10:59:42Z info: Retrieved cached nix layer
+2025-07-10T10:59:42Z info: Created hosting layer
+2025-07-10T10:59:43Z info: Created pid1 binary layer
+2025-07-10T11:00:26Z info: Created Repl layer
+2025-07-10T11:00:27Z info: Pushed image manifest
+2025-07-10T11:00:27Z info: Pushed soci index manifest
+2025-07-10T11:00:31Z info: Creating Autoscale service
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+Default user setup complete
+> NODE_ENV=production node dist/index.js
+forwarding local port 5000 to external port 80 (mapped as 1104)
+> rest-express@1.0.0 start
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+starting up user application
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+Setting up default user credentials...
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+🌱 Starting database seeding...
+Setting up Vite development server for deployment compatibility
+11:02:03 AM [express] serving on port 5000
+Environment: production
+error proxying request error=context canceled
+Re-optimizing dependencies because vite config has changed
+error proxying request error=context canceled
+2025-07-10T11:02:10Z info: Waiting for service to be ready
+2025-07-10T11:02:12Z info: Deployment successful
