@@ -23,6 +23,101 @@ import { promisify } from "util";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
 
+// Notification helper function
+async function sendTaskNotification(task: any, eventType: string) {
+  try {
+    // Get all active bot configurations
+    const botConfigs = await storage.getAllBotConfigurations();
+    
+    // Filter for enabled configurations based on event type
+    const enabledConfigs = botConfigs.filter(config => {
+      if (!config.isActive) return false;
+      
+      switch (eventType) {
+        case 'task_create':
+          return config.notifyOnTaskCreate;
+        case 'task_update':
+          return config.notifyOnTaskUpdate;
+        case 'task_complete':
+          return config.notifyOnTaskComplete;
+        case 'task_assign':
+          return config.notifyOnTaskAssign;
+        default:
+          return false;
+      }
+    });
+    
+    // Send notification for each enabled configuration
+    for (const config of enabledConfigs) {
+      try {
+        if (config.botType === 'telegram' && config.telegramBotToken && config.telegramChatId) {
+          const customer = await storage.getCustomer(task.customerId);
+          const assignedUser = await storage.getUser(task.assignedTo);
+          
+          // Create notification message
+          let message = `🔔 *New Task Created*\n\n`;
+          message += `📋 *Task:* ${task.title}\n`;
+          message += `🎫 *Ticket:* ${task.ticketNumber}\n`;
+          message += `👤 *Customer:* ${customer?.name || 'Unknown'}\n`;
+          message += `👨‍💻 *Assigned To:* ${assignedUser?.firstName} ${assignedUser?.lastName}\n`;
+          message += `⚡ *Priority:* ${task.priority?.toUpperCase()}\n`;
+          message += `🔧 *Issue Type:* ${task.issueType}\n`;
+          message += `📝 *Description:* ${task.description}\n`;
+          message += `📅 *Created:* ${new Date(task.createdAt).toLocaleString()}`;
+          
+          // Send to Telegram
+          const response = await fetch(`https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: config.telegramChatId,
+              text: message,
+              parse_mode: 'Markdown',
+            }),
+          });
+          
+          const result = await response.json();
+          
+          // Log the notification
+          await storage.createNotificationLog({
+            configId: config.id,
+            eventType: eventType,
+            taskId: task.id,
+            customerId: task.customerId,
+            userId: task.assignedTo,
+            messageText: message,
+            messageTemplateUsed: 'default_task_create',
+            status: result.ok ? 'sent' : 'failed',
+            responseData: result,
+            errorMessage: result.ok ? undefined : result.description,
+            sentAt: result.ok ? new Date() : undefined,
+          });
+          
+          console.log(`Telegram notification sent for task ${task.ticketNumber}:`, result.ok ? 'SUCCESS' : 'FAILED');
+        }
+      } catch (configError) {
+        console.error(`Error sending notification for config ${config.id}:`, configError);
+        
+        // Log failed notification
+        await storage.createNotificationLog({
+          configId: config.id,
+          eventType: eventType,
+          taskId: task.id,
+          customerId: task.customerId,
+          userId: task.assignedTo,
+          messageText: 'Failed to send notification',
+          status: 'failed',
+          errorMessage: configError.message,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error in sendTaskNotification:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configure multer for file uploads
   const upload = multer({
@@ -639,6 +734,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update performance metrics for the assigned user
       if (task.assignedTo) {
         await storage.calculateUserPerformance(task.assignedTo);
+      }
+      
+      // Send automatic notifications for task creation
+      try {
+        await sendTaskNotification(task, 'task_create');
+      } catch (notificationError) {
+        console.error('Error sending task creation notification:', notificationError);
+        // Don't fail the task creation if notification fails
       }
       
       res.status(201).json(task);
