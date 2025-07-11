@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,10 +22,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
+import { 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { X, Plus, Search, Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -51,6 +64,8 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const [customIssueTypes, setCustomIssueTypes] = useState<string[]>([]);
   const [showAddIssueType, setShowAddIssueType] = useState(false);
   const [newIssueType, setNewIssueType] = useState("");
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearchValue, setCustomerSearchValue] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -166,6 +181,8 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const handleClose = () => {
     form.reset();
     setSelectedPriority("medium");
+    setCustomerSearchOpen(false);
+    setCustomerSearchValue("");
     onClose();
   };
 
@@ -194,6 +211,26 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       default: return 'bg-gray-100 text-gray-700';
     }
   };
+
+  // Filter customers based on search
+  const filteredCustomers = useMemo(() => {
+    if (!customers || !Array.isArray(customers)) return [];
+    if (!customerSearchValue) return customers;
+    
+    return customers.filter((customer: any) =>
+      customer.name?.toLowerCase().includes(customerSearchValue.toLowerCase()) ||
+      customer.customerId?.toLowerCase().includes(customerSearchValue.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(customerSearchValue.toLowerCase())
+    );
+  }, [customers, customerSearchValue]);
+
+  // Get selected customer name for display
+  const selectedCustomer = useMemo(() => {
+    const customerId = form.watch("customerId");
+    if (!customerId || !customers) return "";
+    const customer = customers.find((c: any) => c.id === customerId);
+    return customer ? customer.name : "";
+  }, [form.watch("customerId"), customers]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -268,25 +305,67 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                   control={form.control}
                   name="customerId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Customer Name *</FormLabel>
-                      <Select 
-                        onValueChange={(value) => field.onChange(parseInt(value))} 
-                        disabled={customersLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Customer" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {customers?.map((customer: any) => (
-                            <SelectItem key={customer.id} value={customer.id.toString()}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={customerSearchOpen}
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={customersLoading}
+                            >
+                              {field.value ? selectedCustomer : "Search and select customer..."}
+                              <div className="flex items-center space-x-1">
+                                <Search className="h-4 w-4 opacity-50" />
+                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                              </div>
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput 
+                              placeholder="Search customers..." 
+                              value={customerSearchValue}
+                              onValueChange={setCustomerSearchValue}
+                            />
+                            <CommandEmpty>No customers found.</CommandEmpty>
+                            <CommandGroup className="max-h-64 overflow-auto">
+                              {filteredCustomers.map((customer: any) => (
+                                <CommandItem
+                                  key={customer.id}
+                                  value={`${customer.name} ${customer.customerId} ${customer.email || ''}`}
+                                  onSelect={() => {
+                                    field.onChange(customer.id);
+                                    setCustomerSearchOpen(false);
+                                    setCustomerSearchValue("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === customer.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{customer.name}</span>
+                                    <span className="text-sm text-gray-500">
+                                      ID: {customer.customerId} 
+                                      {customer.email && ` • ${customer.email}`}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
