@@ -1042,8 +1042,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(tasks)
       .where(and(
-        sql`${tasks.createdAt} >= ${startDate}`,
-        sql`${tasks.createdAt} <= ${endDate}`
+        sql`${tasks.createdAt} >= ${startDate.toISOString()}`,
+        sql`${tasks.createdAt} <= ${endDate.toISOString()}`
       ));
 
     // Get completion rate
@@ -1059,8 +1059,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(tasks)
       .where(and(
-        sql`${tasks.createdAt} >= ${startDate}`,
-        sql`${tasks.createdAt} <= ${endDate}`
+        sql`${tasks.createdAt} >= ${startDate.toISOString()}`,
+        sql`${tasks.createdAt} <= ${endDate.toISOString()}`
       ))
       .groupBy(tasks.priority);
 
@@ -1183,8 +1183,8 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .leftJoin(tasks, and(
         eq(tasks.assignedTo, users.id),
-        sql`${tasks.createdAt} >= ${startDate}`,
-        sql`${tasks.createdAt} <= ${endDate}`
+        sql`${tasks.createdAt} >= ${startDate.toISOString()}`,
+        sql`${tasks.createdAt} <= ${endDate.toISOString()}`
       ))
       .groupBy(users.id, users.firstName, users.lastName, users.email);
 
@@ -1208,8 +1208,8 @@ export class DatabaseStorage implements IStorage {
       .from(customers)
       .leftJoin(tasks, and(
         eq(tasks.customerId, customers.id),
-        sql`${tasks.createdAt} >= ${startDate}`,
-        sql`${tasks.createdAt} <= ${endDate}`
+        sql`${tasks.createdAt} >= ${startDate.toISOString()}`,
+        sql`${tasks.createdAt} <= ${endDate.toISOString()}`
       ))
       .groupBy(customers.id, customers.name, customers.city)
       .having(sql`count(${tasks.id}) > 0`);
