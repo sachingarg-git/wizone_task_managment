@@ -1,0 +1,14 @@
+{
+  "watch": ["server/**/*"],
+  "ext": "ts,js,json",
+  "ignore": ["server/**/*.test.ts", "server/**/*.spec.ts"],
+  "exec": "tsx server/index.ts",
+  "env": {
+    "NODE_ENV": "development",
+    "HOST": "localhost",
+    "PORT": "5000"
+  },
+  "delay": 1000,
+  "restartable": "rs",
+  "verbose": true
+}

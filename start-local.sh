@@ -2,7 +2,11 @@
 
 # Wizone IT Support Portal - Local Development Startup Script
 
-echo "🚀 Starting Wizone IT Support Portal..."
+echo "🚀 Starting Wizone IT Support Portal on localhost..."
+echo "📍 Frontend: http://localhost:3000"
+echo "📍 Backend API: http://localhost:5000"
+echo "📍 Database Studio: http://localhost:4983"
+echo ""
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
