@@ -14,6 +14,9 @@
 git clone <repository-url>
 cd wizone-it-support-portal
 
+# Copy the local package.json configuration
+cp package-local.json package.json
+
 # Install all dependencies
 npm install
 ```
@@ -107,7 +110,8 @@ npm start
 ## Available Scripts
 
 ```bash
-# Development
+# Setup & Development
+npm run setup        # Run initial setup script
 npm run dev          # Start development server with HMR
 npm run dev:server   # Start only the Express server
 npm run dev:client   # Start only the Vite dev server
@@ -121,11 +125,13 @@ npm run db:check     # Check database connection
 npm run build        # Build application for production
 npm run build:client # Build only the frontend
 npm run build:server # Build only the backend
-npm start           # Start production server
+npm run start        # Start production server
+npm run preview      # Preview production build
 
-# Utilities
-npm run lint        # Run ESLint
-npm run type-check  # Run TypeScript type checking
+# Code Quality
+npm run check        # Run TypeScript type checking
+npm run lint         # Run ESLint with auto-fix
+npm run clean        # Clean build cache and node_modules
 ```
 
 ## Local URLs

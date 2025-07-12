@@ -39,6 +39,12 @@ EOL
     exit 1
 fi
 
+# Copy local package.json if needed
+if [ ! -f "package.json" ] || ! grep -q "wizone-it-support-portal" package.json; then
+    echo "📋 Setting up local package.json..."
+    cp package-local.json package.json
+fi
+
 # Install dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
