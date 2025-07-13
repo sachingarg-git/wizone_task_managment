@@ -705,29 +705,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
-    if (!id || isNaN(id)) {
-      console.error("Invalid task ID provided to getTask:", id);
+    try {
+      if (!id || isNaN(id)) {
+        console.error("Invalid task ID provided to getTask:", id);
+        return undefined;
+      }
+      
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      
+      const result = await request.query(`
+        SELECT t.*, c.name as customer_name, c.email as customer_email, 
+               u.firstName as assigned_user_firstName, u.lastName as assigned_user_lastName
+        FROM tasks t 
+        LEFT JOIN customers c ON t.customer_id = c.id 
+        LEFT JOIN users u ON t.assigned_to = u.id 
+        WHERE t.id = @id
+      `);
+      
+      if (!result.recordset[0]) return undefined;
+      
+      const task = result.recordset[0];
+      const updates = await this.getTaskUpdates(id);
+      
+      return {
+        ...task,
+        customer: task.customer_name ? { 
+          name: task.customer_name, 
+          email: task.customer_email 
+        } : undefined,
+        assignedUser: task.assigned_user_firstName ? { 
+          firstName: task.assigned_user_firstName, 
+          lastName: task.assigned_user_lastName 
+        } : undefined,
+        updates,
+      };
+    } catch (error) {
+      console.error('Error getting task:', error);
       return undefined;
     }
-    
-    const [result] = await db
-      .select()
-      .from(tasks)
-      .leftJoin(customers, eq(tasks.customerId, customers.id))
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(eq(tasks.id, id));
-    
-    if (!result) return undefined;
-    
-    // Get task updates with user details
-    const updates = await this.getTaskUpdates(id);
-    
-    return {
-      ...result.tasks,
-      customer: result.customers || undefined,
-      assignedUser: result.users || undefined,
-      updates,
-    };
   }
 
   async createTask(task: InsertTask): Promise<Task> {
@@ -738,7 +755,7 @@ export class DatabaseStorage implements IStorage {
       // Generate ticket number
       const ticketNumber = `WIZ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       
-      // Add parameters to request using exact database column names
+      // Use basic required columns only
       request.input('ticket_number', ticketNumber);
       request.input('title', task.title || '');
       request.input('description', task.description || '');
@@ -749,15 +766,11 @@ export class DatabaseStorage implements IStorage {
       request.input('field_engineer_id', task.fieldEngineerId || null);
       request.input('issue_type', task.issueType || '');
       request.input('visit_charges', task.visitCharges || 0);
-      request.input('contact_person', ''); // This column exists in DB
-      request.input('created_by', 'admin001'); // Default created_by
-      request.input('created_at', new Date());
-      request.input('updated_at', new Date());
       
       const result = await request.query(`
-        INSERT INTO tasks (ticket_number, title, description, priority, status, customer_id, assigned_to, field_engineer_id, issue_type, visit_charges, contact_person, created_by, created_at, updated_at)
+        INSERT INTO tasks (ticket_number, title, description, priority, status, customer_id, assigned_to, field_engineer_id, issue_type, visit_charges)
         OUTPUT INSERTED.*
-        VALUES (@ticket_number, @title, @description, @priority, @status, @customer_id, @assigned_to, @field_engineer_id, @issue_type, @visit_charges, @contact_person, @created_by, @created_at, @updated_at)
+        VALUES (@ticket_number, @title, @description, @priority, @status, @customer_id, @assigned_to, @field_engineer_id, @issue_type, @visit_charges)
       `);
       
       return result.recordset[0];
