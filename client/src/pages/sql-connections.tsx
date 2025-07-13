@@ -572,7 +572,6 @@ export default function SqlConnectionsPage() {
                       <TableCell>
                         <div className="text-sm">
                           <div>{connection.host}</div>
-                          <div className="text-gray-500">:{connection.port}</div>
                         </div>
                       </TableCell>
                       <TableCell>{connection.database}</TableCell>

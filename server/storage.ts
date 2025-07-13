@@ -1478,11 +1478,10 @@ export class DatabaseStorage implements IStorage {
       // Update test status to pending
       await this.updateConnectionTestResult(id, 'pending', 'Testing connection...');
       
-      // Try to actually connect to the SQL Server
+      // Try to actually connect to the SQL Server  
       const sql = await import('mssql');
       const testConfig = {
-        server: connection.host || "14.102.70.90",
-        port: connection.port || 1443,
+        server: connection.host || "14.102.70.90,1443",
         user: connection.username || "sa", 
         password: connection.password === "***hidden***" ? "ss123456" : connection.password,
         database: connection.database_name || "master",
@@ -1495,9 +1494,9 @@ export class DatabaseStorage implements IStorage {
         requestTimeout: 10000,
       };
 
-      console.log(`Testing connection to ${testConfig.server}:${testConfig.port}...`);
+      console.log(`Testing connection to ${testConfig.server}...`);
       
-      const testPool = new sql.ConnectionPool(testConfig);
+      const testPool = new sql.default.ConnectionPool(testConfig);
       await testPool.connect();
       
       // Test with a simple query
