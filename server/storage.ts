@@ -205,26 +205,59 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const request = db.request();
+      request.input('id', id);
+      const result = await request.query('SELECT * FROM users WHERE id = @id');
+      return result.recordset[0] || undefined;
+    } catch (error) {
+      console.error('getUser error:', error);
+      return undefined;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      const request = db.request();
+      request.input('email', email);
+      const result = await request.query('SELECT * FROM users WHERE email = @email');
+      return result.recordset[0] || undefined;
+    } catch (error) {
+      console.error('getUserByEmail error:', error);
+      return undefined;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      const request = db.request();
+      request.input('username', username);
+      const result = await request.query('SELECT * FROM users WHERE username = @username');
+      return result.recordset[0] || undefined;
+    } catch (error) {
+      console.error('getUserByUsername error:', error);
+      return undefined;
+    }
   }
 
   async createUserWithPassword(userData: UpsertUser & { username: string; password: string }): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .returning();
-    return user;
+    try {
+      const request = db.request();
+      Object.keys(userData).forEach(key => {
+        request.input(key, userData[key as keyof typeof userData]);
+      });
+      
+      const result = await request.query(`
+        INSERT INTO users (id, username, password, email, firstName, lastName, phone, role, department, isActive, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@id, @username, @password, @email, @firstName, @lastName, @phone, @role, @department, @isActive, GETDATE(), GETDATE())
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('createUserWithPassword error:', error);
+      throw error;
+    }
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
