@@ -615,9 +615,32 @@ export default function BotConfiguration() {
                   <TabsContent value="config" className="space-y-4">
                     <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Current bot type: <span className="font-medium">{formData.botType}</span>
+                        Current bot type: <span className="font-medium">{formData.botType || "Not selected"}</span>
                       </p>
                     </div>
+                    
+                    {!formData.botType && (
+                      <div className="text-center py-8">
+                        <Bot className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Select Bot Type First
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          Please go back to "Basic Settings" tab and select a bot type to configure.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            // Switch to Basic Settings tab - we'll need to add this functionality
+                            const basicTab = document.querySelector('[data-state="inactive"][value="basic"]') as HTMLElement;
+                            if (basicTab) basicTab.click();
+                          }}
+                        >
+                          Go to Basic Settings
+                        </Button>
+                      </div>
+                    )}
+                    
                     {formData.botType === 'telegram' && (
                       <div className="space-y-4">
                         <h3 className="text-lg font-semibold flex items-center">
