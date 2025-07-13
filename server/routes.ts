@@ -1944,8 +1944,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw importError;
           }
           
+          // Parse comma-separated host and port for SQL Server
+          const serverHostPort = "14.102.70.90,1443";
+          const [serverHost, serverPortStr] = serverHostPort.split(',');
+          const serverPort = parseInt(serverPortStr.trim()) || 1443;
+          
           const testConfig = {
-            server: "14.102.70.90,1443",
+            server: serverHost.trim(),
+            port: serverPort,
             user: "sa",
             password: "ss123456",
             database: "master",
@@ -1958,7 +1964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requestTimeout: 15000,
           };
 
-          console.log(`Attempting connection to ${testConfig.server}...`);
+          console.log(`Attempting connection to ${serverHost.trim()}:${serverPort}...`);
           console.log("Creating ConnectionPool with mssql:", typeof mssql?.ConnectionPool);
           const testPool = new mssql.ConnectionPool(testConfig);
           await testPool.connect();

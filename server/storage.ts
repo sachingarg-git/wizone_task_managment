@@ -1480,8 +1480,20 @@ export class DatabaseStorage implements IStorage {
       
       // Try to actually connect to the SQL Server  
       const sql = await import('mssql');
+      
+      // Parse comma-separated host and port for SQL Server
+      let serverHost = connection.host || "14.102.70.90,1443";
+      let serverPort = 1433; // default port
+      
+      if (serverHost.includes(',')) {
+        const [host, port] = serverHost.split(',');
+        serverHost = host.trim();
+        serverPort = parseInt(port.trim()) || 1433;
+      }
+      
       const testConfig = {
-        server: connection.host || "14.102.70.90,1443",
+        server: serverHost,
+        port: serverPort,
         user: connection.username || "sa", 
         password: connection.password === "***hidden***" ? "ss123456" : connection.password,
         database: connection.database_name || "master",
@@ -1494,7 +1506,7 @@ export class DatabaseStorage implements IStorage {
         requestTimeout: 10000,
       };
 
-      console.log(`Testing connection to ${testConfig.server}...`);
+      console.log(`Testing connection to ${serverHost}:${serverPort}...`);
       
       const testPool = new sql.default.ConnectionPool(testConfig);
       await testPool.connect();
