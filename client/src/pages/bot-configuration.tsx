@@ -336,6 +336,25 @@ export default function BotConfiguration() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.configName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Configuration name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.botType) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a bot type",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate Telegram-specific fields
     if (formData.botType === 'telegram') {
       if (!formData.telegramBotToken) {
@@ -458,6 +477,7 @@ export default function BotConfiguration() {
             <Button onClick={() => {
               setSelectedConfig(null);
               resetForm();
+              setFormData(prev => ({ ...prev, botType: "" })); // No pre-selected bot type
               setShowConfigForm(true);
             }} variant="outline">
               <Plus className="w-4 h-4 mr-2" />
