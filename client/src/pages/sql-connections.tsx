@@ -200,12 +200,12 @@ export default function SqlConnectionsPage() {
       description: connection.description || "",
       host: connection.host,
       port: connection.port,
-      database: connection.database,
+      database: (connection as any).database_name,
       username: connection.username,
       password: "", // Don't populate password for security
-      connectionType: connection.connectionType,
-      sslEnabled: connection.sslEnabled || false,
-      isActive: connection.isActive,
+      connectionType: (connection as any).connection_type,
+      sslEnabled: (connection as any).ssl_enabled || false,
+      isActive: (connection as any).is_active,
     });
     setIsFormOpen(true);
   };
@@ -219,6 +219,7 @@ export default function SqlConnectionsPage() {
   const getStatusIcon = (status?: string) => {
     switch (status) {
       case 'success':
+      case 'connected':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'failed':
         return <XCircle className="w-4 h-4 text-red-600" />;
@@ -232,6 +233,7 @@ export default function SqlConnectionsPage() {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'success':
+      case 'connected':
         return <Badge variant="default" className="bg-green-100 text-green-800">Connected</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
@@ -496,7 +498,7 @@ export default function SqlConnectionsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">SSL Enabled</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {connections?.filter(c => c.sslEnabled).length || 0}
+                  {connections?.filter(c => (c as any).ssl_enabled).length || 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -512,7 +514,7 @@ export default function SqlConnectionsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Connected</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {connections?.filter(c => c.testStatus === 'success').length || 0}
+                  {connections?.filter(c => (c as any).test_status === 'success' || (c as any).test_status === 'connected').length || 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
@@ -577,12 +579,12 @@ export default function SqlConnectionsPage() {
                       <TableCell>{connection.database}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          {getStatusIcon(connection.testStatus || 'never_tested')}
-                          {getStatusBadge(connection.testStatus || 'never_tested')}
+                          {getStatusIcon((connection as any).test_status || 'never_tested')}
+                          {getStatusBadge((connection as any).test_status || 'never_tested')}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {connection.sslEnabled ? (
+                        {(connection as any).ssl_enabled ? (
                           <Shield className="w-4 h-4 text-green-600" />
                         ) : (
                           <div className="w-4 h-4" />
@@ -599,7 +601,7 @@ export default function SqlConnectionsPage() {
                           >
                             <Play className="w-3 h-3" />
                           </Button>
-                          {connection.testStatus === 'success' && connection.connectionType === 'mssql' && (
+                          {((connection as any).test_status === 'success' || (connection as any).test_status === 'connected') && (connection as any).connection_type === 'mssql' && (
                             <>
                               <Button
                                 size="sm"
