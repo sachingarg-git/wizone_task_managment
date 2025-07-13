@@ -330,6 +330,17 @@ TaskFlow is a comprehensive task management and performance tracking system buil
   - Configured health checks and monitoring for production environment
   - Created production-ready package with all dependencies compiled for live deployment
   - Application ready for desktop installation and live hosting on any server
+- July 13, 2025. Complete migration from PostgreSQL to SQL Server only:
+  - Removed all PostgreSQL dependencies (@neondatabase/serverless, postgres, connect-pg-simple)
+  - Replaced database layer with direct SQL Server connection using mssql package
+  - Updated authentication to use MemoryStore instead of PostgreSQL session storage
+  - Created automatic table creation system that runs on first startup
+  - Added comprehensive SQL Server schema (wizone_sqlserver_schema.sql) with all tables
+  - Updated configuration to use SQL_SERVER_* environment variables instead of DATABASE_URL
+  - Created SQL Server-specific installation guides and documentation
+  - Application now requires only SQL Server Express (free) instead of PostgreSQL
+  - Simplified deployment with automatic database setup and table creation
+  - Production package now SQL Server-only: wizone-portal-sqlserver-only.tar.gz (382KB)
 - July 13, 2025. Field engineer interface completely isolated:
   - Completely removed dashboard access for field engineers in navigation sidebar
   - Added automatic redirection from dashboard to portal for field engineers accessing "/" route

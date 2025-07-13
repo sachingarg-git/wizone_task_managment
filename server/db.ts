@@ -1,19 +1,80 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import sql from "mssql";
 import * as schema from "../shared/schema.js";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required");
+// SQL Server connection configuration
+const config = {
+  server: process.env.SQL_SERVER_HOST || "localhost",
+  port: parseInt(process.env.SQL_SERVER_PORT || "1433"),
+  user: process.env.SQL_SERVER_USER || "sa",
+  password: process.env.SQL_SERVER_PASSWORD || "",
+  database: process.env.SQL_SERVER_DATABASE || "wizone_db",
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
+    enableArithAbort: true,
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
+};
+
+// Create connection pool
+const pool = new sql.ConnectionPool(config);
+
+// Connect to SQL Server and create tables if needed
+let isConnected = false;
+
+try {
+  await pool.connect();
+  console.log("Connected to SQL Server successfully");
+  isConnected = true;
+  
+  // Auto-create tables on first connection
+  await createTablesIfNotExists();
+} catch (err) {
+  console.warn("SQL Server connection failed:", err.message);
+  console.log("Application will run in demo mode without database persistence");
+  isConnected = false;
 }
 
-// Create the PostgreSQL connection with SSL
-const sql = postgres(process.env.DATABASE_URL, {
-  ssl: 'require',
-  max: 1,
-});
+// Function to create tables automatically
+async function createTablesIfNotExists() {
+  try {
+    const request = pool.request();
+    
+    // Check if users table exists
+    const tableCheck = await request.query(`
+      SELECT COUNT(*) as count 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = 'users'
+    `);
+    
+    if (tableCheck.recordset[0].count === 0) {
+      console.log("Creating database tables...");
+      
+      // Read and execute the schema file
+      const fs = await import('fs');
+      const path = await import('path');
+      const schemaPath = path.join(process.cwd(), 'wizone_sqlserver_schema.sql');
+      
+      if (fs.existsSync(schemaPath)) {
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        await request.query(schemaSql);
+        console.log("Database tables created successfully");
+      } else {
+        console.log("Schema file not found, tables need to be created manually");
+      }
+    }
+  } catch (error) {
+    console.error("Error creating tables:", error);
+  }
+}
 
-// Create the database instance with schema
-export const db = drizzle(sql, { schema });
+// Export the pool for direct SQL queries and connection status
+export const db = pool;
+export const isDbConnected = () => isConnected;
 
 // Export schema elements for convenience
 export const {

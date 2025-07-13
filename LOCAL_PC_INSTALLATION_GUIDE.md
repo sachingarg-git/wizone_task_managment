@@ -12,13 +12,20 @@ node --version
 npm --version
 ```
 
-### 2. Install PostgreSQL Database
-- Download from: https://www.postgresql.org/download/
-- Choose your OS (Windows/Mac/Linux)
+### 2. Install SQL Server Database
+**Option A: SQL Server Express (Recommended)**
+- Download from: https://www.microsoft.com/en-us/sql-server/sql-server-downloads
+- Choose "Express" edition (free)
 - During installation:
-  - Set password for 'postgres' user (remember this!)
-  - Default port: 5432
-  - Install pgAdmin (database management tool)
+  - Enable "Mixed Mode Authentication"
+  - Set password for 'sa' user (remember this!)
+  - Default port: 1433
+
+**Option B: Docker SQL Server (Cross-platform)**
+```bash
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
+   -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
+```
 
 ### 3. Install Git (Optional but Recommended)
 - Download from: https://git-scm.com/
@@ -46,25 +53,19 @@ npm install
 
 ### Step 3: Setup Database
 1. **Create Database**:
-```bash
-# Open PostgreSQL command line
-psql -U postgres
-
-# Create database
+```sql
+-- Using SQL Server Management Studio or sqlcmd
 CREATE DATABASE wizone_db;
-
-# Exit PostgreSQL
-\q
 ```
 
-2. **Import Database Schema**:
-```bash
-# Import table structure
-psql -U postgres -d wizone_db -f wizone_database_schema.sql
+2. **Automatic Setup**:
+The application will automatically:
+- Connect to your SQL Server
+- Create all required tables 
+- Insert sample data
+- Set up default users
 
-# Import sample data (optional)
-psql -U postgres -d wizone_db -f wizone_sample_data.sql
-```
+No manual table creation needed!
 
 ### Step 4: Configure Environment
 1. Copy environment template:
@@ -74,8 +75,12 @@ cp .env.example .env
 
 2. Edit `.env` file with your database details:
 ```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/wizone_db
+# SQL Server Database Configuration
+SQL_SERVER_HOST=localhost
+SQL_SERVER_PORT=1433
+SQL_SERVER_USER=sa
+SQL_SERVER_PASSWORD=YOUR_PASSWORD
+SQL_SERVER_DATABASE=wizone_db
 
 # Session Security
 SESSION_SECRET=your-super-secret-session-key-change-this
@@ -85,7 +90,7 @@ PORT=5000
 NODE_ENV=production
 ```
 
-**Important**: Replace `YOUR_PASSWORD` with your PostgreSQL password!
+**Important**: Replace `YOUR_PASSWORD` with your SQL Server 'sa' password!
 
 ### Step 5: Start the Application
 ```bash
