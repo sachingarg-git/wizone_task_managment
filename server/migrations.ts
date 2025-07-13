@@ -132,7 +132,8 @@ interface DatabaseConnection {
 
 export async function createTablesInExternalDatabase(connection: DatabaseConnection): Promise<{ success: boolean; message: string; }> {
   try {
-    if (connection.connectionType !== 'mssql') {
+    const connType = connection.connectionType || connection.connection_type;
+    if (connType !== 'mssql') {
       return { success: false, message: 'Migration only implemented for SQL Server' };
     }
     
@@ -327,7 +328,8 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
 
 export async function seedDefaultData(connection: DatabaseConnection): Promise<{ success: boolean; message: string; }> {
   try {
-    if (connection.connectionType !== 'mssql') {
+    const connType = connection.connectionType || connection.connection_type;
+    if (connType !== 'mssql') {
       return { success: false, message: 'Seeding only implemented for SQL Server' };
     }
     

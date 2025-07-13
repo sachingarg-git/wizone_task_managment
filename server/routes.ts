@@ -1929,7 +1929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For direct testing of the real SQL Server provided by user (any ID when in demo mode)
       if (id > 100000 || req.body.directTest) {
-        console.log("Testing direct connection to 14.102.70.90:1443...");
+        console.log("Testing direct connection to 14.102.70.90:1433...");
         
         try {
           // Import mssql for connection testing - try different import patterns
@@ -1944,10 +1944,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw importError;
           }
           
-          // Parse comma-separated host and port for SQL Server
-          const serverHostPort = "14.102.70.90,1443";
+          // Parse comma-separated host and port for SQL Server (sa:ss123456@14.102.70.90,1433)
+          const serverHostPort = "14.102.70.90,1433";
           const [serverHost, serverPortStr] = serverHostPort.split(',');
-          const serverPort = parseInt(serverPortStr.trim()) || 1443;
+          const serverPort = parseInt(serverPortStr.trim()) || 1433;
           
           const testConfig = {
             server: serverHost.trim(),
@@ -1974,7 +1974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await testPool.close();
           
           console.log("Direct connection test successful!");
-          res.json({ success: true, message: "Connection successful - can connect to 14.102.70.90:1443" });
+          res.json({ success: true, message: "Connection successful - can connect to 14.102.70.90:1433" });
           return;
         } catch (directError) {
           console.error("Direct connection test failed:", directError.message);
@@ -2015,11 +2015,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const migrationResult = await createTablesInExternalDatabase({
         host: connection.host,
         port: connection.port,
-        database: connection.database,
+        database: connection.database_name || connection.database,
         username: connection.username,
         password: connection.password,
-        connectionType: connection.connectionType,
-        sslEnabled: connection.sslEnabled || false
+        connectionType: connection.connection_type || connection.connectionType,
+        sslEnabled: connection.ssl_enabled || connection.sslEnabled || false
       });
       
       res.json(migrationResult);
@@ -2041,11 +2041,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const seedResult = await seedDefaultData({
         host: connection.host,
         port: connection.port,
-        database: connection.database,
+        database: connection.database_name || connection.database,
         username: connection.username,
         password: connection.password,
-        connectionType: connection.connectionType,
-        sslEnabled: connection.sslEnabled || false
+        connectionType: connection.connection_type || connection.connectionType,
+        sslEnabled: connection.ssl_enabled || connection.sslEnabled || false
       });
       
       res.json(seedResult);

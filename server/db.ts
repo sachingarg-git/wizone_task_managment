@@ -1,10 +1,10 @@
 import sql from "mssql";
 import * as schema from "../shared/schema.js";
 
-// Parse SQL Server comma format for host and port (sa:ss123456@14.102.70.90,1443)
-const serverHostPort = process.env.SQL_SERVER_HOST || "14.102.70.90,1443";
+// Parse SQL Server comma format for host and port (sa:ss123456@14.102.70.90,1433)
+const serverHostPort = process.env.SQL_SERVER_HOST || "14.102.70.90,1433";
 let serverHost = "14.102.70.90";
-let serverPort = 1443;
+let serverPort = 1433;
 
 if (serverHostPort.includes(',')) {
   const [host, port] = serverHostPort.split(',');
