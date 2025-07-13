@@ -1504,10 +1504,14 @@ export class DatabaseStorage implements IStorage {
       // Test with a simple query
       const request = testPool.request();
       await request.query('SELECT 1 as test');
+      
+      // Create database and tables if successful connection
+      await this.createDatabaseAndTables(testPool, connection.database_name || 'wizone_production');
+      
       await testPool.close();
       
-      await this.updateConnectionTestResult(id, 'success', 'Connection successful');
-      return { success: true, message: 'Connection successful' };
+      await this.updateConnectionTestResult(id, 'connected', 'Connection successful and tables created');
+      return { success: true, message: 'Connection successful and tables created' };
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -1524,13 +1528,12 @@ export class DatabaseStorage implements IStorage {
       
       request.input('id', id);
       request.input('testStatus', testStatus);
-      request.input('testResult', testResult);
-      request.input('lastTested', new Date());
+      request.input('lastTestAt', new Date());
       request.input('updatedAt', new Date());
       
       const result = await request.query(`
         UPDATE sql_connections 
-        SET test_status = @testStatus, test_result = @testResult, last_tested = @lastTested, updatedAt = @updatedAt
+        SET test_status = @testStatus, last_test_at = @lastTestAt, updatedAt = @updatedAt
         OUTPUT INSERTED.*
         WHERE id = @id
       `);
@@ -1556,6 +1559,128 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
         last_test_at: new Date()
       };
+    }
+  }
+
+  // Create database and tables on external SQL Server
+  async createDatabaseAndTables(connectionPool: any, databaseName: string): Promise<void> {
+    try {
+      const request = connectionPool.request();
+      
+      // Create database if it doesn't exist
+      await request.query(`
+        IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${databaseName}')
+        CREATE DATABASE [${databaseName}]
+      `);
+      
+      // Switch to the target database
+      await request.query(`USE [${databaseName}]`);
+      
+      // Create all required tables
+      await request.query(`
+        -- Create users table
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
+        CREATE TABLE users (
+          id NVARCHAR(50) PRIMARY KEY,
+          username NVARCHAR(100) UNIQUE,
+          password NVARCHAR(255),
+          email NVARCHAR(255) UNIQUE NOT NULL,
+          firstName NVARCHAR(100) NOT NULL,
+          lastName NVARCHAR(100) NOT NULL,
+          phone NVARCHAR(20),
+          profileImageUrl NVARCHAR(500),
+          role NVARCHAR(50) DEFAULT 'engineer',
+          department NVARCHAR(100),
+          isActive BIT DEFAULT 1,
+          createdAt DATETIME2 DEFAULT GETDATE(),
+          updatedAt DATETIME2 DEFAULT GETDATE()
+        );
+        
+        -- Create customers table
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='customers' AND xtype='U')
+        CREATE TABLE customers (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          customerId NVARCHAR(50) UNIQUE,
+          name NVARCHAR(255) NOT NULL,
+          email NVARCHAR(255),
+          phone NVARCHAR(20),
+          address NTEXT,
+          city NVARCHAR(100),
+          state NVARCHAR(50),
+          zipCode NVARCHAR(20),
+          country NVARCHAR(100) DEFAULT 'USA',
+          serviceType NVARCHAR(100),
+          contractStartDate DATE,
+          contractEndDate DATE,
+          monthlyFee DECIMAL(10,2),
+          isActive BIT DEFAULT 1,
+          createdAt DATETIME2 DEFAULT GETDATE(),
+          updatedAt DATETIME2 DEFAULT GETDATE()
+        );
+        
+        -- Create tasks table
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='tasks' AND xtype='U')
+        CREATE TABLE tasks (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          title NVARCHAR(255) NOT NULL,
+          description NTEXT,
+          status NVARCHAR(50) DEFAULT 'pending',
+          priority NVARCHAR(20) DEFAULT 'medium',
+          assignedTo NVARCHAR(50),
+          customerId INT,
+          createdBy NVARCHAR(50),
+          createdAt DATETIME2 DEFAULT GETDATE(),
+          updatedAt DATETIME2 DEFAULT GETDATE(),
+          resolvedAt DATETIME2,
+          FOREIGN KEY (assignedTo) REFERENCES users(id),
+          FOREIGN KEY (customerId) REFERENCES customers(id),
+          FOREIGN KEY (createdBy) REFERENCES users(id)
+        );
+        
+        -- Create sql_connections table
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='sql_connections' AND xtype='U')
+        CREATE TABLE sql_connections (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          name NVARCHAR(255) NOT NULL,
+          description NTEXT,
+          host NVARCHAR(255) NOT NULL,
+          port INT DEFAULT 1433,
+          username NVARCHAR(100) NOT NULL,
+          password NVARCHAR(255) NOT NULL,
+          database_name NVARCHAR(100),
+          connection_type NVARCHAR(50) DEFAULT 'mssql',
+          ssl_enabled BIT DEFAULT 0,
+          test_status NVARCHAR(50) DEFAULT 'never_tested',
+          created_by NVARCHAR(50),
+          createdAt DATETIME2 DEFAULT GETDATE(),
+          updatedAt DATETIME2 DEFAULT GETDATE(),
+          last_test_at DATETIME2
+        );
+      `);
+      
+      // Insert admin user if doesn't exist
+      await request.query(`
+        IF NOT EXISTS (SELECT * FROM users WHERE id = 'admin001')
+        INSERT INTO users (id, username, password, email, firstName, lastName, role, department, isActive, createdAt, updatedAt)
+        VALUES (
+          'admin001', 
+          'admin', 
+          '32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1',
+          'admin@wizoneit.com', 
+          'Admin', 
+          'User', 
+          'admin', 
+          'WIZONE HELP DESK', 
+          1, 
+          GETDATE(), 
+          GETDATE()
+        )
+      `);
+      
+      console.log(`✅ Database ${databaseName} and tables created successfully on external SQL Server!`);
+    } catch (error) {
+      console.error('Error creating database and tables:', error);
+      throw error;
     }
   }
 
