@@ -114,8 +114,7 @@ function Router() {
             const { user } = useAuth();
             // Redirect field engineers to portal instead of dashboard
             if (user?.role === 'field_engineer') {
-              // Use proper navigation instead of returning Portal component
-              window.location.replace('/portal');
+              window.location.href = '/portal';
               return null;
             }
             return <Dashboard {...props} />;

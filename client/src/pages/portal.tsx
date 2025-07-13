@@ -60,7 +60,6 @@ export default function Portal() {
   const [taskStatus, setTaskStatus] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadNotes, setUploadNotes] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -151,21 +150,14 @@ export default function Portal() {
     }
   };
 
-  // Filter tasks based on status filter
-  const myTasks = statusFilter === "all" 
-    ? tasksArray 
-    : tasksArray.filter((task: any) => {
-        if (statusFilter === "completed") {
-          return ['completed', 'resolved'].includes(task.status);
-        }
-        return task.status === statusFilter;
-      });
+  // No need to filter since the API already filters by user
+  const myTasks = tasksArray;
 
   const statsData = {
-    total: tasksArray.length,
-    pending: tasksArray.filter(t => t.status === 'pending').length,
-    inProgress: tasksArray.filter(t => t.status === 'in_progress').length,
-    completed: tasksArray.filter(t => t.status === 'completed' || t.status === 'resolved').length,
+    total: myTasks.length,
+    pending: myTasks.filter(t => t.status === 'pending').length,
+    inProgress: myTasks.filter(t => t.status === 'in_progress').length,
+    completed: myTasks.filter(t => t.status === 'completed' || t.status === 'resolved').length,
   };
 
   const handleTaskIdClick = (task: any) => {
@@ -274,117 +266,84 @@ export default function Portal() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen">
       <Header 
-        title={`Welcome, ${user?.firstName || user?.username || 'User'}`}
+        title={`Welcome, ${user?.firstName || 'User'}`}
         subtitle="Your Personal Task Portal"
       >
-        <div className="flex items-center space-x-4 text-sm">
-          <div className="flex items-center bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm">
-            <User className="w-4 h-4 mr-2 text-white" />
-            <span className="text-white font-semibold">{user?.role?.replace('_', ' ').toUpperCase()}</span>
+        <div className="flex items-center space-x-4 text-sm text-gray-600">
+          <div className="flex items-center">
+            <User className="w-4 h-4 mr-1" />
+            {user?.role?.replace('_', ' ').toUpperCase()}
+          </div>
+          <div className="flex items-center">
+            <Mail className="w-4 h-4 mr-1" />
+            {user?.email}
           </div>
         </div>
       </Header>
 
       <div className="p-6 space-y-8">
-        {/* Task Stats - Clickable Cards */}
+        {/* Task Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card 
-            className={`border-l-4 border-l-blue-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
-              statusFilter === "all" ? "ring-2 ring-blue-400 bg-blue-50" : ""
-            }`}
-            onClick={() => setStatusFilter("all")}
-          >
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">All Tasks</p>
-                  <p className="text-3xl font-bold text-gray-900">{statsData.total}</p>
+                  <p className="text-sm font-medium text-gray-600">My Tasks</p>
+                  <p className="text-2xl font-bold text-gray-900">{statsData.total}</p>
                 </div>
-                <FileText className="w-6 h-6 text-blue-600" />
+                <FileText className="w-5 h-5 text-primary" />
               </div>
             </CardContent>
           </Card>
 
-          <Card 
-            className={`border-l-4 border-l-yellow-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
-              statusFilter === "pending" ? "ring-2 ring-yellow-400 bg-yellow-50" : ""
-            }`}
-            onClick={() => setStatusFilter("pending")}
-          >
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">Pending</p>
-                  <p className="text-3xl font-bold text-yellow-700">{statsData.pending}</p>
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600">{statsData.pending}</p>
                 </div>
-                <Clock className="w-6 h-6 text-yellow-600" />
+                <Clock className="w-5 h-5 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card 
-            className={`border-l-4 border-l-purple-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
-              statusFilter === "in_progress" ? "ring-2 ring-purple-400 bg-purple-50" : ""
-            }`}
-            onClick={() => setStatusFilter("in_progress")}
-          >
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">In Progress</p>
-                  <p className="text-3xl font-bold text-purple-700">{statsData.inProgress}</p>
+                  <p className="text-sm font-medium text-gray-600">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-600">{statsData.inProgress}</p>
                 </div>
-                <AlertCircle className="w-6 h-6 text-purple-600" />
+                <AlertCircle className="w-5 h-5 text-blue-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card 
-            className={`border-l-4 border-l-green-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
-              statusFilter === "completed" ? "ring-2 ring-green-400 bg-green-50" : ""
-            }`}
-            onClick={() => setStatusFilter("completed")}
-          >
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">Completed</p>
-                  <p className="text-3xl font-bold text-green-700">{statsData.completed}</p>
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold text-green-600">{statsData.completed}</p>
                 </div>
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-green-500" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tasks Table */}
-        <Card className="shadow-lg bg-white border-t-4 border-t-blue-500">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Card>
+          <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-bold text-gray-800">
-                My Assigned Tasks
-                {statusFilter !== "all" && (
-                  <span className="text-sm font-normal text-gray-600 ml-2">
-                    - {statusFilter.replace('_', ' ')} only
-                  </span>
-                )}
-              </CardTitle>
+              <CardTitle>My Assigned Tasks</CardTitle>
               <div className="flex items-center space-x-2">
-                <Badge variant="outline" className="text-sm bg-blue-100 text-blue-800 border-blue-300">
-                  {myTasks.length} tasks {statusFilter === "all" ? "total" : statusFilter.replace('_', ' ')}
+                <Badge variant="outline" className="text-sm">
+                  {myTasks.length} tasks assigned to you
                 </Badge>
-                {statusFilter !== "all" && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setStatusFilter("all")}
-                    className="text-xs"
-                  >
-                    Show All
-                  </Button>
-                )}
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -420,42 +379,41 @@ export default function Portal() {
                   </TableHeader>
                   <TableBody>
                     {myTasks.map((task: any) => (
-                      <TableRow key={task.id} className="hover:bg-blue-50 transition-colors">
+                      <TableRow key={task.id}>
                         <TableCell>
                           <button 
                             onClick={() => handleTaskIdClick(task)}
-                            className="text-blue-600 hover:text-blue-800 font-semibold underline hover:no-underline transition-all"
+                            className="text-primary hover:text-blue-700 font-medium underline"
                           >
                             {task.ticketNumber}
                           </button>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-semibold text-gray-800">{task.customer?.name || 'Unknown'}</p>
-                            <p className="text-sm text-gray-600">{task.customer?.city}</p>
+                            <p className="font-medium">{task.customer?.name || 'Unknown'}</p>
+                            <p className="text-sm text-gray-500">{task.customer?.city}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium text-gray-700">{task.issueType}</TableCell>
+                        <TableCell>{task.issueType}</TableCell>
                         <TableCell>
-                          <Badge className={getPriorityColor(task.priority) + " font-semibold"}>
+                          <Badge className={getPriorityColor(task.priority)}>
                             {task.priority}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(task.status) + " font-semibold"}>
+                          <Badge className={getStatusColor(task.status)}>
                             {task.status?.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium text-gray-700">
+                        <TableCell>
                           {task.createdAt ? format(new Date(task.createdAt), 'MMM dd, yyyy') : 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button 
-                              variant="outline" 
+                              variant="ghost" 
                               size="sm"
                               onClick={() => handleTaskIdClick(task)}
-                              className="hover:bg-blue-100 hover:border-blue-300"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -467,10 +425,10 @@ export default function Portal() {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-dashed border-blue-200">
-                <FileText className="w-16 h-16 mx-auto mb-4 text-blue-400" />
-                <p className="text-xl font-semibold mb-2 text-gray-800">No tasks assigned</p>
-                <p className="text-gray-600 max-w-md mx-auto">You don't have any tasks assigned to you at the moment. New tasks will appear here when they are assigned.</p>
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium mb-2">No tasks assigned</p>
+                <p>You don't have any tasks assigned to you at the moment.</p>
               </div>
             )}
           </CardContent>

@@ -50,24 +50,24 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-2xl border-b border-blue-500/30 px-6 py-4 backdrop-blur-sm">
+    <header className="bg-gradient-to-r from-slate-800 to-slate-900 shadow-2xl border-b border-slate-700/50 px-6 py-4 backdrop-blur-sm">
       <div className="flex items-center justify-between">
         <div className="page-enter">
-          <h1 className="text-2xl font-bold text-white drop-shadow-sm">{title}</h1>
-          <p className="text-blue-100 font-medium">{subtitle}</p>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">{title}</h1>
+          <p className="text-gray-400">{subtitle}</p>
         </div>
         <div className="flex items-center space-x-4">
-          {actions || children}
+          {children}
           <Popover open={showNotifications} onOpenChange={setShowNotifications}>
             <PopoverTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="btn-animate relative text-white hover:text-blue-100 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/20 p-2"
+                className="btn-animate relative text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 rounded-lg transition-all duration-300"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center pulse-glow border border-white z-10">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center pulse-glow">
                     {unreadCount}
                   </span>
                 )}
@@ -98,20 +98,7 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                       {notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          onClick={() => {
-                            // Handle notification click based on type
-                            if (notification.type === 'task') {
-                              // Use window.location for proper navigation
-                              window.location.href = '/portal';
-                            } else if (notification.type === 'completion') {
-                              window.location.href = '/portal';
-                            } else if (notification.type === 'system') {
-                              // Handle system notifications
-                              window.location.href = '/portal';
-                            }
-                            setShowNotifications(false);
-                          }}
-                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
                             !notification.read ? 'bg-blue-50' : ''
                           }`}
                         >
@@ -162,10 +149,6 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                         variant="ghost" 
                         size="sm" 
                         className="w-full text-center text-blue-600 hover:text-blue-700"
-                        onClick={() => {
-                          window.location.href = '/portal';
-                          setShowNotifications(false);
-                        }}
                       >
                         View All Notifications
                       </Button>

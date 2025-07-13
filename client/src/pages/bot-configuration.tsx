@@ -58,14 +58,6 @@ export default function BotConfiguration() {
     botType: "telegram",
     isActive: true,
     
-    // Notification events
-    notifyOnTaskCreate: true,
-    notifyOnTaskUpdate: true,
-    notifyOnTaskComplete: true,
-    notifyOnTaskAssign: true,
-    notifyOnTaskStatusChange: true,
-    notifyOnHighPriority: true,
-    
     // Telegram
     telegramBotToken: "",
     telegramChatId: "",
@@ -82,6 +74,14 @@ export default function BotConfiguration() {
     webhookMethod: "POST",
     webhookAuth: "",
     webhookHeaders: {},
+    
+    // Notification Settings
+    notifyOnTaskCreate: true,
+    notifyOnTaskUpdate: true,
+    notifyOnTaskComplete: true,
+    notifyOnTaskAssign: true,
+    notifyOnTaskStatusChange: true,
+    notifyOnHighPriority: true,
     
     // Templates - Enhanced for automatic notifications
     taskCreateTemplate: "🆕 New Task Created - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n📧 Email: {customerEmail}\n📱 Contact: {customerPhone}\n⚡ Priority: {priority}\n📝 Description: {description}\n👷 Assigned to: {assignedTo}\n🏢 Department: {department}\n📅 Created: {createdAt}\n\n🔗 View Task: {taskUrl}",
@@ -336,25 +336,6 @@ export default function BotConfiguration() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.configName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Configuration name is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.botType) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a bot type",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Validate Telegram-specific fields
     if (formData.botType === 'telegram') {
       if (!formData.telegramBotToken) {
@@ -477,7 +458,6 @@ export default function BotConfiguration() {
             <Button onClick={() => {
               setSelectedConfig(null);
               resetForm();
-              setFormData(prev => ({ ...prev, botType: "" })); // No pre-selected bot type
               setShowConfigForm(true);
             }} variant="outline">
               <Plus className="w-4 h-4 mr-2" />
@@ -615,32 +595,9 @@ export default function BotConfiguration() {
                   <TabsContent value="config" className="space-y-4">
                     <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Current bot type: <span className="font-medium">{formData.botType || "Not selected"}</span>
+                        Current bot type: <span className="font-medium">{formData.botType}</span>
                       </p>
                     </div>
-                    
-                    {!formData.botType && (
-                      <div className="text-center py-8">
-                        <Bot className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                          Select Bot Type First
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          Please go back to "Basic Settings" tab and select a bot type to configure.
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            // Switch to Basic Settings tab - we'll need to add this functionality
-                            const basicTab = document.querySelector('[data-state="inactive"][value="basic"]') as HTMLElement;
-                            if (basicTab) basicTab.click();
-                          }}
-                        >
-                          Go to Basic Settings
-                        </Button>
-                      </div>
-                    )}
-                    
                     {formData.botType === 'telegram' && (
                       <div className="space-y-4">
                         <h3 className="text-lg font-semibold flex items-center">

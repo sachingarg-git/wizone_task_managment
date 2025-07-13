@@ -200,12 +200,12 @@ export default function SqlConnectionsPage() {
       description: connection.description || "",
       host: connection.host,
       port: connection.port,
-      database: (connection as any).database_name,
+      database: connection.database,
       username: connection.username,
       password: "", // Don't populate password for security
-      connectionType: (connection as any).connection_type,
-      sslEnabled: (connection as any).ssl_enabled || false,
-      isActive: (connection as any).is_active,
+      connectionType: connection.connectionType,
+      sslEnabled: connection.sslEnabled || false,
+      isActive: connection.isActive,
     });
     setIsFormOpen(true);
   };
@@ -219,7 +219,6 @@ export default function SqlConnectionsPage() {
   const getStatusIcon = (status?: string) => {
     switch (status) {
       case 'success':
-      case 'connected':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'failed':
         return <XCircle className="w-4 h-4 text-red-600" />;
@@ -233,7 +232,6 @@ export default function SqlConnectionsPage() {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'success':
-      case 'connected':
         return <Badge variant="default" className="bg-green-100 text-green-800">Connected</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
@@ -307,41 +305,59 @@ export default function SqlConnectionsPage() {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="connectionType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Database Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="connectionType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Database Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select database type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                            <SelectItem value="mysql">MySQL</SelectItem>
+                            <SelectItem value="mssql">SQL Server</SelectItem>
+                            <SelectItem value="sqlite">SQLite</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="port"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Port</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select database type" />
-                          </SelectTrigger>
+                          <Input 
+                            type="number" 
+                            placeholder="5432"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="postgresql">PostgreSQL</SelectItem>
-                          <SelectItem value="mysql">MySQL</SelectItem>
-                          <SelectItem value="mssql">SQL Server</SelectItem>
-                          <SelectItem value="sqlite">SQLite</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
                   name="host"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Host (Server:Port)</FormLabel>
+                      <FormLabel>Host</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="For SQL Server: 14.102.70.90,1443 (comma format) | Others: localhost:5432"
-                          {...field} 
-                        />
+                        <Input placeholder="localhost or database.example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -498,7 +514,7 @@ export default function SqlConnectionsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">SSL Enabled</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {connections?.filter(c => (c as any).ssl_enabled).length || 0}
+                  {connections?.filter(c => c.sslEnabled).length || 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -514,7 +530,7 @@ export default function SqlConnectionsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Connected</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {connections?.filter(c => (c as any).test_status === 'success' || (c as any).test_status === 'connected').length || 0}
+                  {connections?.filter(c => c.testStatus === 'success').length || 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
@@ -574,17 +590,18 @@ export default function SqlConnectionsPage() {
                       <TableCell>
                         <div className="text-sm">
                           <div>{connection.host}</div>
+                          <div className="text-gray-500">:{connection.port}</div>
                         </div>
                       </TableCell>
                       <TableCell>{connection.database}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          {getStatusIcon((connection as any).test_status || 'never_tested')}
-                          {getStatusBadge((connection as any).test_status || 'never_tested')}
+                          {getStatusIcon(connection.testStatus || 'never_tested')}
+                          {getStatusBadge(connection.testStatus || 'never_tested')}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {(connection as any).ssl_enabled ? (
+                        {connection.sslEnabled ? (
                           <Shield className="w-4 h-4 text-green-600" />
                         ) : (
                           <div className="w-4 h-4" />
@@ -601,7 +618,7 @@ export default function SqlConnectionsPage() {
                           >
                             <Play className="w-3 h-3" />
                           </Button>
-                          {((connection as any).test_status === 'success' || (connection as any).test_status === 'connected') && (connection as any).connection_type === 'mssql' && (
+                          {connection.testStatus === 'success' && connection.connectionType === 'mssql' && (
                             <>
                               <Button
                                 size="sm"

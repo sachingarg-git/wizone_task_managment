@@ -20,20 +20,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
-
-  // Redirect field engineers to portal if they somehow access dashboard
-  useEffect(() => {
-    if (user?.role === 'field_engineer') {
-      window.location.replace('/portal');
-      return;
-    }
-  }, [user]);
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],

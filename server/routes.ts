@@ -1560,7 +1560,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         phone,
         role: role || 'engineer',
-        department: 'IT Support', // Default department
         isActive: true,
       };
       
@@ -1927,64 +1926,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/sql-connections/:id/test', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      
-      // For direct testing of the real SQL Server provided by user (any ID when in demo mode)
-      if (id > 100000 || req.body.directTest) {
-        console.log("Testing direct connection to 14.102.70.90:1433...");
-        
-        try {
-          // Import mssql for connection testing - try different import patterns
-          let mssql;
-          try {
-            const imported = await import('mssql');
-            console.log("MSSQL import keys:", Object.keys(imported));
-            mssql = imported.default || imported;
-            console.log("MSSQL object:", typeof mssql, Object.keys(mssql));
-          } catch (importError) {
-            console.error("MSSQL import failed:", importError);
-            throw importError;
-          }
-          
-          // Parse comma-separated host and port for SQL Server (sa:ss123456@14.102.70.90,1433)
-          const serverHostPort = "14.102.70.90,1433";
-          const [serverHost, serverPortStr] = serverHostPort.split(',');
-          const serverPort = parseInt(serverPortStr.trim()) || 1433;
-          
-          const testConfig = {
-            server: serverHost.trim(),
-            port: serverPort,
-            user: "sa",
-            password: "ss123456",
-            database: "master",
-            options: {
-              encrypt: false,
-              trustServerCertificate: true,
-              enableArithAbort: true,
-            },
-            connectionTimeout: 15000,
-            requestTimeout: 15000,
-          };
-
-          console.log(`Attempting connection to ${serverHost.trim()}:${serverPort}...`);
-          console.log("Creating ConnectionPool with mssql:", typeof mssql?.ConnectionPool);
-          const testPool = new mssql.ConnectionPool(testConfig);
-          await testPool.connect();
-          
-          const request = testPool.request();
-          await request.query('SELECT 1 as test');
-          await testPool.close();
-          
-          console.log("Direct connection test successful!");
-          res.json({ success: true, message: "Connection successful - can connect to 14.102.70.90:1433" });
-          return;
-        } catch (directError) {
-          console.error("Direct connection test failed:", directError.message);
-          res.json({ success: false, message: `Connection failed: ${directError.message}` });
-          return;
-        }
-      }
-      
-      // Use storage for other connections
       const testResult = await storage.testSqlConnection(id);
       res.json(testResult);
     } catch (error) {
@@ -2016,11 +1957,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const migrationResult = await createTablesInExternalDatabase({
         host: connection.host,
         port: connection.port,
-        database: connection.database_name || connection.database,
+        database: connection.database,
         username: connection.username,
         password: connection.password,
-        connectionType: connection.connection_type || connection.connectionType,
-        sslEnabled: connection.ssl_enabled || connection.sslEnabled || false
+        connectionType: connection.connectionType,
+        sslEnabled: connection.sslEnabled || false
       });
       
       res.json(migrationResult);
@@ -2042,11 +1983,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const seedResult = await seedDefaultData({
         host: connection.host,
         port: connection.port,
-        database: connection.database_name || connection.database,
+        database: connection.database,
         username: connection.username,
         password: connection.password,
-        connectionType: connection.connection_type || connection.connectionType,
-        sslEnabled: connection.ssl_enabled || connection.sslEnabled || false
+        connectionType: connection.connectionType,
+        sslEnabled: connection.sslEnabled || false
       });
       
       res.json(seedResult);
