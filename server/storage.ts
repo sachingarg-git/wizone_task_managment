@@ -1481,14 +1481,17 @@ export class DatabaseStorage implements IStorage {
       // Try to actually connect to the SQL Server  
       const sql = await import('mssql');
       
-      // Parse comma-separated host and port for SQL Server
+      // Parse comma-separated host and port for SQL Server (proper format: sa:ss123456@14.102.70.90,1443)
       let serverHost = connection.host || "14.102.70.90,1443";
-      let serverPort = 1433; // default port
+      let serverPort = 1443; // default port for SQL Server
       
       if (serverHost.includes(',')) {
         const [host, port] = serverHost.split(',');
         serverHost = host.trim();
-        serverPort = parseInt(port.trim()) || 1433;
+        serverPort = parseInt(port.trim()) || 1443;
+        console.log(`Parsed SQL Server connection: Host=${serverHost}, Port=${serverPort}`);
+      } else {
+        console.log(`Using direct host without comma parsing: ${serverHost}:${serverPort}`);
       }
       
       const testConfig = {

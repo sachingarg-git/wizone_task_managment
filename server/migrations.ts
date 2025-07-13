@@ -139,14 +139,14 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
     const mssql = await import('mssql');
     const { ConnectionPool } = mssql.default || mssql;
     
-    // Parse comma-separated host and port for SQL Server
+    // Parse comma-separated host and port for SQL Server (format: sa:ss123456@14.102.70.90,1443)
     let serverHost = connection.host.trim();
     let serverPort = connection.port;
     
     if (serverHost.includes(',')) {
       const [host, port] = serverHost.split(',');
       serverHost = host.trim();
-      serverPort = parseInt(port.trim()) || connection.port || 1443;
+      serverPort = parseInt(port.trim()) || 1443;
     }
     
     const config = {
@@ -169,7 +169,7 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
       requestTimeout: 60000,
     };
     
-    console.log('Connecting to SQL Server:', serverHost + ':' + serverPort);
+    console.log('Connecting to SQL Server for migration:', serverHost + ':' + serverPort);
     console.log('Using credentials - Username:', `"${connection.username.trim()}"`, 'Database:', `"${connection.database.trim()}"`);
     const pool = new ConnectionPool(config);
     await pool.connect();
@@ -334,14 +334,14 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
     const mssql = await import('mssql');
     const { ConnectionPool } = mssql.default || mssql;
     
-    // Parse comma-separated host and port for SQL Server
+    // Parse comma-separated host and port for SQL Server (format: sa:ss123456@14.102.70.90,1443)
     let serverHost = connection.host.trim();
     let serverPort = connection.port;
     
     if (serverHost.includes(',')) {
       const [host, port] = serverHost.split(',');
       serverHost = host.trim();
-      serverPort = parseInt(port.trim()) || connection.port || 1443;
+      serverPort = parseInt(port.trim()) || 1443;
     }
     
     const config = {
