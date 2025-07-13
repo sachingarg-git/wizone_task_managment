@@ -417,33 +417,31 @@ export class DatabaseStorage implements IStorage {
       const { createSafeRequest } = await import('./db.js');
       const request = createSafeRequest();
       
-      // Generate customer ID
+      // Generate customer ID  
       const generatedCustomerId = `C${Date.now().toString().slice(-6)}`;
       
-      // Set up parameters manually to avoid duplicates
-      request.input('customerId', generatedCustomerId);
+      // Set up parameters using correct snake_case column names
+      request.input('customer_id', generatedCustomerId);
       request.input('name', customer.name || '');
-      request.input('contactPerson', customer.contactPerson || '');
+      request.input('contact_person', customer.contactPerson || '');
       request.input('email', customer.email || '');
-      request.input('phone', customer.phone || '');
+      request.input('mobile_phone', customer.phone || '');
       request.input('address', customer.address || '');
       request.input('city', customer.city || '');
       request.input('state', customer.state || '');
-      request.input('connectionType', customer.connectionType || '');
-      request.input('planType', customer.planType || '');
-      request.input('monthlyFee', customer.monthlyFee || 0);
+      request.input('service_plan', customer.planType || '');
       request.input('status', customer.status || 'active');
       request.input('latitude', customer.latitude || null);
       request.input('longitude', customer.longitude || null);
-      request.input('createdAt', new Date());
-      request.input('updatedAt', new Date());
+      request.input('created_at', new Date());
+      request.input('updated_at', new Date());
       
       const result = await request.query(`
-        INSERT INTO customers (customerId, name, contactPerson, email, phone, address, city, state, 
-          connectionType, planType, monthlyFee, status, latitude, longitude, createdAt, updatedAt)
+        INSERT INTO customers (customer_id, name, contact_person, email, mobile_phone, address, city, state, 
+          service_plan, status, latitude, longitude, created_at, updated_at)
         OUTPUT INSERTED.*
-        VALUES (@customerId, @name, @contactPerson, @email, @phone, @address, @city, @state,
-          @connectionType, @planType, @monthlyFee, @status, @latitude, @longitude, @createdAt, @updatedAt)
+        VALUES (@customer_id, @name, @contact_person, @email, @mobile_phone, @address, @city, @state,
+          @service_plan, @status, @latitude, @longitude, @created_at, @updated_at)
       `);
       
       return result.recordset[0];
@@ -740,33 +738,26 @@ export class DatabaseStorage implements IStorage {
       // Generate ticket number
       const ticketNumber = `WIZ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       
-      // Set up parameters with default status
-      const taskData = { 
-        ...task, 
-        ticketNumber, 
-        status: task.status || 'pending',
-        createdAt: new Date(), 
-        updatedAt: new Date() 
-      };
-      
-      // Add parameters to request
-      request.input('ticketNumber', taskData.ticketNumber);
-      request.input('title', taskData.title || '');
-      request.input('description', taskData.description || '');
-      request.input('priority', taskData.priority || 'medium');
-      request.input('status', taskData.status);
-      request.input('customerId', taskData.customerId);
-      request.input('assignedTo', taskData.assignedTo || null);
-      request.input('fieldEngineerId', taskData.fieldEngineerId || null);
-      request.input('issueType', taskData.issueType || '');
-      request.input('visitCharges', taskData.visitCharges || 0);
-      request.input('createdAt', taskData.createdAt);
-      request.input('updatedAt', taskData.updatedAt);
+      // Add parameters to request using correct snake_case column names
+      request.input('ticket_number', ticketNumber);
+      request.input('title', task.title || '');
+      request.input('description', task.description || '');
+      request.input('priority', task.priority || 'medium');
+      request.input('status', task.status || 'pending');
+      request.input('customer_id', task.customerId);
+      request.input('assigned_to', task.assignedTo || null);
+      request.input('field_engineer_id', task.fieldEngineerId || null);
+      request.input('issue_type', task.issueType || '');
+      request.input('visit_charges', task.visitCharges || 0);
+      request.input('contact_person', task.contactPerson || '');
+      request.input('created_by', task.createdBy || null);
+      request.input('created_at', new Date());
+      request.input('updated_at', new Date());
       
       const result = await request.query(`
-        INSERT INTO tasks (ticketNumber, title, description, priority, status, customerId, assignedTo, fieldEngineerId, issueType, visitCharges, createdAt, updatedAt)
+        INSERT INTO tasks (ticket_number, title, description, priority, status, customer_id, assigned_to, field_engineer_id, issue_type, visit_charges, contact_person, created_by, created_at, updated_at)
         OUTPUT INSERTED.*
-        VALUES (@ticketNumber, @title, @description, @priority, @status, @customerId, @assignedTo, @fieldEngineerId, @issueType, @visitCharges, @createdAt, @updatedAt)
+        VALUES (@ticket_number, @title, @description, @priority, @status, @customer_id, @assigned_to, @field_engineer_id, @issue_type, @visit_charges, @contact_person, @created_by, @created_at, @updated_at)
       `);
       
       return result.recordset[0];
