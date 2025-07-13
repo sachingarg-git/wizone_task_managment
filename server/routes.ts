@@ -1560,6 +1560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         phone,
         role: role || 'engineer',
+        department: 'IT Support', // Default department
         isActive: true,
       };
       
