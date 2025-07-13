@@ -139,9 +139,19 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
     const mssql = await import('mssql');
     const { ConnectionPool } = mssql.default || mssql;
     
+    // Parse comma-separated host and port for SQL Server
+    let serverHost = connection.host.trim();
+    let serverPort = connection.port;
+    
+    if (serverHost.includes(',')) {
+      const [host, port] = serverHost.split(',');
+      serverHost = host.trim();
+      serverPort = parseInt(port.trim()) || connection.port || 1443;
+    }
+    
     const config = {
-      server: connection.host.trim(),
-      port: connection.port,
+      server: serverHost,
+      port: serverPort,
       database: 'master', // Connect to master first to create database
       user: connection.username.trim(),
       password: connection.password.trim(),
@@ -159,7 +169,7 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
       requestTimeout: 60000,
     };
     
-    console.log('Connecting to SQL Server:', connection.host.trim() + ':' + connection.port);
+    console.log('Connecting to SQL Server:', serverHost + ':' + serverPort);
     console.log('Using credentials - Username:', `"${connection.username.trim()}"`, 'Database:', `"${connection.database.trim()}"`);
     const pool = new ConnectionPool(config);
     await pool.connect();
@@ -324,9 +334,19 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
     const mssql = await import('mssql');
     const { ConnectionPool } = mssql.default || mssql;
     
+    // Parse comma-separated host and port for SQL Server
+    let serverHost = connection.host.trim();
+    let serverPort = connection.port;
+    
+    if (serverHost.includes(',')) {
+      const [host, port] = serverHost.split(',');
+      serverHost = host.trim();
+      serverPort = parseInt(port.trim()) || connection.port || 1443;
+    }
+    
     const config = {
-      server: connection.host.trim(),
-      port: connection.port,
+      server: serverHost,
+      port: serverPort,
       database: connection.database.trim(),
       user: connection.username.trim(),
       password: connection.password.trim(),
@@ -344,7 +364,7 @@ export async function seedDefaultData(connection: DatabaseConnection): Promise<{
       requestTimeout: 60000,
     };
     
-    console.log('Connecting to SQL Server for seeding:', connection.host.trim() + ':' + connection.port);
+    console.log('Connecting to SQL Server for seeding:', serverHost + ':' + serverPort);
     const pool = new ConnectionPool(config);
     await pool.connect();
     

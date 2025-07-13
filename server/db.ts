@@ -1,9 +1,23 @@
 import sql from "mssql";
 import * as schema from "../shared/schema.js";
 
+// Parse SQL Server comma format for host and port
+const serverHostPort = process.env.SQL_SERVER_HOST || "14.102.70.90,1443";
+let serverHost = "14.102.70.90";
+let serverPort = 1443;
+
+if (serverHostPort.includes(',')) {
+  const [host, port] = serverHostPort.split(',');
+  serverHost = host.trim();
+  serverPort = parseInt(port.trim()) || 1443;
+}
+
+console.log(`SQL Server configuration: ${serverHost}:${serverPort}`);
+
 // SQL Server connection configuration
 const config = {
-  server: process.env.SQL_SERVER_HOST || "14.102.70.90,1443",
+  server: serverHost,
+  port: serverPort,
   user: process.env.SQL_SERVER_USER || "sa",
   password: process.env.SQL_SERVER_PASSWORD || "ss123456",
   database: process.env.SQL_SERVER_DATABASE || "wizone_db",
