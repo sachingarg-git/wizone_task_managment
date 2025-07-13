@@ -44,7 +44,12 @@ export default function LoginPage() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      setLocation("/");
+      // Redirect field engineers to portal instead of dashboard
+      if (user.role === 'field_engineer') {
+        setLocation("/portal");
+      } else {
+        setLocation("/");
+      }
     },
     onError: (error: Error) => {
       toast({

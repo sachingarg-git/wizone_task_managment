@@ -110,7 +110,15 @@ function Router() {
       <Sidebar />
       <div className="flex-1 ml-64">
         <Switch>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={(props) => {
+            const { user } = useAuth();
+            // Redirect field engineers to portal instead of dashboard
+            if (user?.role === 'field_engineer') {
+              window.location.href = '/portal';
+              return null;
+            }
+            return <Dashboard {...props} />;
+          }} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/customers" component={Customers} />
           <Route path="/performance" component={Performance} />

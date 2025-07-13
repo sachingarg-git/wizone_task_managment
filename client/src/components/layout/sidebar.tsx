@@ -27,10 +27,9 @@ const getNavigationForUser = (userRole: string) => {
     { name: "Dashboard", href: "/", icon: BarChart3 },
   ];
 
-  // All users get portal access, but different navigation structures
+  // Field engineers only get portal access, no dashboard
   if (userRole === 'field_engineer') {
     return [
-      ...baseNavigation,
       { name: "My Portal", href: "/portal", icon: User },
     ];
   } else if (userRole === 'engineer' || userRole === 'backend_engineer') {
