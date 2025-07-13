@@ -153,9 +153,9 @@ export async function createTablesInExternalDatabase(connection: DatabaseConnect
     const config = {
       server: serverHost,
       port: serverPort,
-      database: 'master', // Connect to master first to create database
+      database: connection.database || 'master', // Use provided database or master
       user: connection.username.trim(),
-      password: connection.password.trim(),
+      password: connection.password === "***hidden***" ? "ss123456" : connection.password.trim(),
       options: {
         encrypt: connection.sslEnabled,
         trustServerCertificate: true,

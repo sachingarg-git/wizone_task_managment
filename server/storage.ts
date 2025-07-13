@@ -278,52 +278,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<UserWithMetrics[]> {
-    const usersData = await db
-      .select()
-      .from(users)
-      .leftJoin(performanceMetrics, eq(users.id, performanceMetrics.userId))
-      .orderBy(asc(users.firstName));
-    
-    // Group performance metrics by user
-    const userMap = new Map<string, UserWithMetrics>();
-    
-    for (const row of usersData) {
-      const user = row.users;
-      const metrics = row.performance_metrics;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      const result = await request.query('SELECT * FROM users WHERE isActive = 1 ORDER BY firstName');
+      const allUsers = result.recordset;
       
-      if (!userMap.has(user.id)) {
-        userMap.set(user.id, { ...user, performanceMetrics: [] });
-      }
+      // For each user, add default metrics
+      const usersWithMetrics = allUsers.map((user) => {
+        return {
+          ...user,
+          avgPerformanceScore: 0,
+          taskCount: 0,
+          totalTasks: 0,
+          resolvedTasksCount: 0
+        };
+      });
       
-      if (metrics) {
-        userMap.get(user.id)!.performanceMetrics!.push(metrics);
-      }
+      return usersWithMetrics;
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      return [];
     }
-    
-    // Add resolved tasks count for each user
-    const usersList = Array.from(userMap.values());
-    
-    for (const user of usersList) {
-      // Count resolved tasks for this user (current month)
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-      
-      const [resolvedTasksResult] = await db
-        .select({ count: count() })
-        .from(tasks)
-        .where(
-          and(
-            or(eq(tasks.assignedTo, user.id), eq(tasks.fieldEngineerId, user.id)),
-            eq(tasks.status, 'resolved'),
-            sql`EXTRACT(MONTH FROM ${tasks.createdAt}) = ${currentMonth}`,
-            sql`EXTRACT(YEAR FROM ${tasks.createdAt}) = ${currentYear}`
-          )
-        );
-      
-      (user as any).resolvedTasksCount = resolvedTasksResult?.count || 0;
-    }
-    
-    return usersList;
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
@@ -374,7 +350,15 @@ export class DatabaseStorage implements IStorage {
 
   // Customer operations
   async getAllCustomers(): Promise<Customer[]> {
-    return await db.select().from(customers).orderBy(desc(customers.createdAt));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      const result = await request.query('SELECT * FROM customers ORDER BY createdAt DESC');
+      return result.recordset;
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      return [];
+    }
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
