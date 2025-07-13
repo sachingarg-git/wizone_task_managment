@@ -2577,10 +2577,11 @@ export class DatabaseStorage implements IStorage {
   // Bot configuration operations
   async getAllBotConfigurations(): Promise<BotConfiguration[]> {
     if (!isDbConnected()) {
+      console.log("Database not connected, returning demo bot configurations");
       return [
         {
           id: 1,
-          name: "Telegram Bot",
+          name: "Demo Telegram Bot",
           botType: "telegram",
           webhookUrl: "https://api.telegram.org/bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
           authToken: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
@@ -2605,7 +2606,24 @@ export class DatabaseStorage implements IStorage {
       return result.recordset;
     } catch (error) {
       console.error("Error fetching bot configurations:", error);
-      return [];
+      // Return demo data on database error
+      return [
+        {
+          id: 1,
+          name: "Demo Telegram Bot",
+          botType: "telegram",
+          webhookUrl: "https://api.telegram.org/bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+          authToken: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+          isActive: true,
+          settings: JSON.stringify({
+            chatId: "-1001234567890",
+            sendTaskUpdates: true,
+            sendFieldEngineerAssignments: true
+          }),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      ];
     }
   }
 
@@ -2630,10 +2648,10 @@ export class DatabaseStorage implements IStorage {
 
     try {
       const request = createSafeRequest();
+      request.input('id', id);
       const result = await request.query(`
         SELECT * FROM bot_configurations WHERE id = @id
       `);
-      request.input('id', id);
       return result.recordset[0];
     } catch (error) {
       console.error("Error fetching bot configuration:", error);
@@ -2653,18 +2671,18 @@ export class DatabaseStorage implements IStorage {
 
     try {
       const request = createSafeRequest();
-      const result = await request.query(`
-        INSERT INTO bot_configurations (name, bot_type, webhook_url, auth_token, is_active, settings)
-        OUTPUT INSERTED.*
-        VALUES (@name, @botType, @webhookUrl, @authToken, @isActive, @settings)
-      `);
-      
       request.input('name', configData.name);
       request.input('botType', configData.botType);
       request.input('webhookUrl', configData.webhookUrl);
       request.input('authToken', configData.authToken);
       request.input('isActive', configData.isActive);
       request.input('settings', configData.settings);
+      
+      const result = await request.query(`
+        INSERT INTO bot_configurations (name, bot_type, webhook_url, auth_token, is_active, settings)
+        OUTPUT INSERTED.*
+        VALUES (@name, @botType, @webhookUrl, @authToken, @isActive, @settings)
+      `);
       
       return result.recordset[0];
     } catch (error) {
@@ -2841,13 +2859,13 @@ export class DatabaseStorage implements IStorage {
 
     try {
       const request = createSafeRequest();
+      request.input('limit', limit);
+      request.input('offset', offset);
       const result = await request.query(`
         SELECT * FROM notification_logs 
         ORDER BY created_at DESC
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
       `);
-      request.input('limit', limit);
-      request.input('offset', offset);
       return result.recordset;
     } catch (error) {
       console.error("Error fetching notification logs:", error);
