@@ -1945,8 +1945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           const testConfig = {
-            server: "14.102.70.90",
-            port: 1443,
+            server: "14.102.70.90,1443",
             user: "sa",
             password: "ss123456",
             database: "master",
@@ -1959,7 +1958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requestTimeout: 15000,
           };
 
-          console.log(`Attempting connection to ${testConfig.server}:${testConfig.port}...`);
+          console.log(`Attempting connection to ${testConfig.server}...`);
           console.log("Creating ConnectionPool with mssql:", typeof mssql?.ConnectionPool);
           const testPool = new mssql.ConnectionPool(testConfig);
           await testPool.connect();
