@@ -362,20 +362,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<User[]> {
-    let whereConditions = and(
-      eq(users.role, "field_engineer"),
-      eq(users.isActive, true)
-    );
-
-    if (region) {
-      whereConditions = and(whereConditions, eq(users.department, region));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      
+      let query = `
+        SELECT * FROM users 
+        WHERE role = 'field_engineer' AND isActive = 1
+      `;
+      
+      if (region) {
+        request.input('region', region);
+        query += ` AND department = @region`;
+      }
+      
+      query += ` ORDER BY firstName`;
+      
+      const result = await request.query(query);
+      return result.recordset;
+    } catch (error) {
+      console.error("Error fetching available field engineers:", error);
+      return [];
     }
-
-    return await db
-      .select()
-      .from(users)
-      .where(whereConditions)
-      .orderBy(asc(users.firstName));
   }
 
   // Customer operations
@@ -392,27 +400,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
-    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
-    return customer;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      const result = await request.query('SELECT * FROM customers WHERE id = @id');
+      return result.recordset[0] || undefined;
+    } catch (error) {
+      console.error('Error fetching customer:', error);
+      return undefined;
+    }
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    // Generate customer ID
-    const customerId = `C${Date.now().toString().slice(-6)}`;
-    const [newCustomer] = await db
-      .insert(customers)
-      .values({ ...customer, customerId })
-      .returning();
-    return newCustomer;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      
+      // Generate customer ID
+      const customerId = `C${Date.now().toString().slice(-6)}`;
+      
+      // Set up all parameters
+      Object.keys(customer).forEach(key => {
+        request.input(key, customer[key as keyof typeof customer]);
+      });
+      request.input('customerId', customerId);
+      request.input('createdAt', new Date());
+      request.input('updatedAt', new Date());
+      
+      const result = await request.query(`
+        INSERT INTO customers (customerId, companyName, contactPerson, email, phone, address, planType, 
+          connectionType, ipAddress, internetSpeed, installationDate, status, notes, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@customerId, @companyName, @contactPerson, @email, @phone, @address, @planType,
+          @connectionType, @ipAddress, @internetSpeed, @installationDate, @status, @notes, @createdAt, @updatedAt)
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      throw error;
+    }
   }
 
   async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> {
-    const [updatedCustomer] = await db
-      .update(customers)
-      .set({ ...customer, updatedAt: new Date() })
-      .where(eq(customers.id, id))
-      .returning();
-    return updatedCustomer;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      
+      // Build dynamic update query
+      const updateFields = Object.keys(customer).map(key => `${key} = @${key}`).join(', ');
+      
+      // Set up parameters
+      Object.keys(customer).forEach(key => {
+        request.input(key, customer[key as keyof typeof customer]);
+      });
+      request.input('id', id);
+      request.input('updatedAt', new Date());
+      
+      const result = await request.query(`
+        UPDATE customers 
+        SET ${updateFields}, updatedAt = @updatedAt
+        OUTPUT INSERTED.*
+        WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      throw error;
+    }
   }
 
   async deleteCustomer(id: number): Promise<void> {
@@ -980,37 +1037,70 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFieldTasksByEngineer(fieldEngineerId: string): Promise<TaskWithRelations[]> {
-    const result = await db
-      .select({
-        task: tasks,
-        customer: customers,
-        assignedUser: users,
-      })
-      .from(tasks)
-      .leftJoin(customers, eq(tasks.customerId, customers.id))
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(eq(tasks.fieldEngineerId, fieldEngineerId))
-      .orderBy(desc(tasks.createdAt));
-    
-    return result.map(row => ({
-      ...row.task,
-      customer: row.customer || undefined,
-      assignedUser: row.assignedUser || undefined,
-    }));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('fieldEngineerId', fieldEngineerId);
+      
+      const result = await request.query(`
+        SELECT t.*, 
+               c.id as customer_id, c.name as customer_name, c.contactPerson as customer_contactPerson,
+               c.email as customer_email, c.phone as customer_phone,
+               u.id as assigned_id, u.firstName as assigned_firstName, u.lastName as assigned_lastName,
+               u.email as assigned_email, u.role as assigned_role
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        LEFT JOIN users u ON t.assignedTo = u.id
+        WHERE t.fieldEngineerId = @fieldEngineerId
+        ORDER BY t.createdAt DESC
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        ...row,
+        customer: row.customer_id ? {
+          id: row.customer_id,
+          name: row.customer_name,
+          contactPerson: row.customer_contactPerson,
+          email: row.customer_email,
+          phone: row.customer_phone
+        } : undefined,
+        assignedUser: row.assigned_id ? {
+          id: row.assigned_id,
+          firstName: row.assigned_firstName,
+          lastName: row.assigned_lastName,
+          email: row.assigned_email,
+          role: row.assigned_role
+        } : undefined
+      }));
+    } catch (error) {
+      console.error("Error fetching field tasks by engineer:", error);
+      return [];
+    }
   }
 
   // Performance operations
   async getPerformanceMetrics(userId: string, month?: number, year?: number): Promise<PerformanceMetrics[]> {
-    let conditions = [eq(performanceMetrics.userId, userId)];
-    
-    if (month !== undefined && year !== undefined) {
-      conditions.push(eq(performanceMetrics.month, month));
-      conditions.push(eq(performanceMetrics.year, year));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('userId', userId);
+      
+      let query = `SELECT * FROM performance_metrics WHERE userId = @userId`;
+      
+      if (month !== undefined && year !== undefined) {
+        request.input('month', month);
+        request.input('year', year);
+        query += ` AND month = @month AND year = @year`;
+      }
+      
+      query += ` ORDER BY year DESC, month DESC`;
+      
+      const result = await request.query(query);
+      return result.recordset;
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      return [];
     }
-    
-    return await db.select().from(performanceMetrics)
-      .where(and(...conditions))
-      .orderBy(desc(performanceMetrics.year), desc(performanceMetrics.month));
   }
 
   async upsertPerformanceMetrics(metrics: InsertPerformanceMetrics): Promise<PerformanceMetrics> {
@@ -1029,28 +1119,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTopPerformers(limit = 10): Promise<UserWithMetrics[]> {
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    
-    const topPerformers = await db
-      .select()
-      .from(users)
-      .leftJoin(
-        performanceMetrics,
-        and(
-          eq(users.id, performanceMetrics.userId),
-          eq(performanceMetrics.month, currentMonth),
-          eq(performanceMetrics.year, currentYear)
-        )
-      )
-      .where(eq(users.isActive, true))
-      .orderBy(desc(sql`COALESCE(${performanceMetrics.performanceScore}, 0)`))
-      .limit(limit);
-
-    return topPerformers.map(row => ({
-      ...row.users,
-      performanceMetrics: row.performance_metrics ? [row.performance_metrics] : [],
-    }));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('limit', limit);
+      
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      request.input('currentMonth', currentMonth);
+      request.input('currentYear', currentYear);
+      
+      const result = await request.query(`
+        SELECT TOP(@limit) u.*, 
+               ISNULL(pm.performanceScore, 0) as avgPerformanceScore,
+               0 as taskCount,
+               0 as totalTasks,
+               0 as resolvedTasksCount
+        FROM users u
+        LEFT JOIN performance_metrics pm ON u.id = pm.userId 
+                                         AND pm.month = @currentMonth 
+                                         AND pm.year = @currentYear
+        WHERE u.isActive = 1
+        ORDER BY ISNULL(pm.performanceScore, 0) DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error("Error fetching top performers:", error);
+      return [];
+    }
   }
 
   async calculateUserPerformance(userId: string): Promise<void> {
@@ -2094,7 +2191,18 @@ export class DatabaseStorage implements IStorage {
 
   // Office location operations
   async getOfficeLocations(): Promise<OfficeLocation[]> {
-    return await db.select().from(officeLocations).orderBy(desc(officeLocations.isMainOffice));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      const result = await request.query(`
+        SELECT * FROM office_locations 
+        ORDER BY isMainOffice DESC, name ASC
+      `);
+      return result.recordset;
+    } catch (error) {
+      console.error("Error fetching office locations:", error);
+      return [];
+    }
   }
 
   async getMainOffice(): Promise<OfficeLocation | undefined> {
