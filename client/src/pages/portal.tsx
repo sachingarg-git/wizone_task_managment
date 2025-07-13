@@ -60,6 +60,7 @@ export default function Portal() {
   const [taskStatus, setTaskStatus] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadNotes, setUploadNotes] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -150,14 +151,21 @@ export default function Portal() {
     }
   };
 
-  // No need to filter since the API already filters by user
-  const myTasks = tasksArray;
+  // Filter tasks based on status filter
+  const myTasks = statusFilter === "all" 
+    ? tasksArray 
+    : tasksArray.filter((task: any) => {
+        if (statusFilter === "completed") {
+          return ['completed', 'resolved'].includes(task.status);
+        }
+        return task.status === statusFilter;
+      });
 
   const statsData = {
-    total: myTasks.length,
-    pending: myTasks.filter(t => t.status === 'pending').length,
-    inProgress: myTasks.filter(t => t.status === 'in_progress').length,
-    completed: myTasks.filter(t => t.status === 'completed' || t.status === 'resolved').length,
+    total: tasksArray.length,
+    pending: tasksArray.filter(t => t.status === 'pending').length,
+    inProgress: tasksArray.filter(t => t.status === 'in_progress').length,
+    completed: tasksArray.filter(t => t.status === 'completed' || t.status === 'resolved').length,
   };
 
   const handleTaskIdClick = (task: any) => {
@@ -271,26 +279,31 @@ export default function Portal() {
         title={`Welcome, ${user?.firstName || user?.username || 'User'}`}
         subtitle="Your Personal Task Portal"
       >
-        <div className="flex items-center space-x-4 text-sm text-gray-600">
-          <div className="flex items-center">
-            <User className="w-4 h-4 mr-1" />
-            {user?.role?.replace('_', ' ').toUpperCase()}
+        <div className="flex items-center space-x-4 text-sm">
+          <div className="flex items-center bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm">
+            <User className="w-4 h-4 mr-2 text-white" />
+            <span className="text-white font-semibold">{user?.role?.replace('_', ' ').toUpperCase()}</span>
           </div>
-          <div className="flex items-center">
-            <Mail className="w-4 h-4 mr-1" />
-            {user?.email}
+          <div className="flex items-center bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm">
+            <Mail className="w-4 h-4 mr-2 text-white" />
+            <span className="text-white font-medium">{user?.email}</span>
           </div>
         </div>
       </Header>
 
       <div className="p-6 space-y-8">
-        {/* Task Stats */}
+        {/* Task Stats - Clickable Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-l-4 border-l-blue-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
+          <Card 
+            className={`border-l-4 border-l-blue-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
+              statusFilter === "all" ? "ring-2 ring-blue-400 bg-blue-50" : ""
+            }`}
+            onClick={() => setStatusFilter("all")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">My Tasks</p>
+                  <p className="text-sm font-semibold text-gray-700">All Tasks</p>
                   <p className="text-3xl font-bold text-gray-900">{statsData.total}</p>
                 </div>
                 <FileText className="w-6 h-6 text-blue-600" />
@@ -298,7 +311,12 @@ export default function Portal() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-yellow-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
+          <Card 
+            className={`border-l-4 border-l-yellow-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
+              statusFilter === "pending" ? "ring-2 ring-yellow-400 bg-yellow-50" : ""
+            }`}
+            onClick={() => setStatusFilter("pending")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -310,7 +328,12 @@ export default function Portal() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
+          <Card 
+            className={`border-l-4 border-l-purple-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
+              statusFilter === "in_progress" ? "ring-2 ring-purple-400 bg-purple-50" : ""
+            }`}
+            onClick={() => setStatusFilter("in_progress")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -322,7 +345,12 @@ export default function Portal() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-green-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
+          <Card 
+            className={`border-l-4 border-l-green-500 shadow-lg bg-white hover:shadow-xl transition-all cursor-pointer ${
+              statusFilter === "completed" ? "ring-2 ring-green-400 bg-green-50" : ""
+            }`}
+            onClick={() => setStatusFilter("completed")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -339,11 +367,28 @@ export default function Portal() {
         <Card className="shadow-lg bg-white border-t-4 border-t-blue-500">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-bold text-gray-800">My Assigned Tasks</CardTitle>
+              <CardTitle className="text-xl font-bold text-gray-800">
+                My Assigned Tasks
+                {statusFilter !== "all" && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    - {statusFilter.replace('_', ' ')} only
+                  </span>
+                )}
+              </CardTitle>
               <div className="flex items-center space-x-2">
                 <Badge variant="outline" className="text-sm bg-blue-100 text-blue-800 border-blue-300">
-                  {myTasks.length} tasks assigned to you
+                  {myTasks.length} tasks {statusFilter === "all" ? "total" : statusFilter.replace('_', ' ')}
                 </Badge>
+                {statusFilter !== "all" && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setStatusFilter("all")}
+                    className="text-xs"
+                  >
+                    Show All
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm"
