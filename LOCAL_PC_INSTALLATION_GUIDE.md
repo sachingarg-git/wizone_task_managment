@@ -89,12 +89,19 @@ NODE_ENV=production
 
 ### Step 5: Start the Application
 ```bash
-# Start the application
+# Method 1: Using npm (recommended)
 npm start
+
+# Method 2: Using the start script directly
+node start.js
+
+# Method 3: Using tsx directly
+npx tsx server/index.ts
 ```
 
 You should see:
 ```
+🚀 Starting Wizone IT Support Portal...
 Environment: production
 Setting up Vite development server for deployment compatibility
 [express] serving on port 5000
