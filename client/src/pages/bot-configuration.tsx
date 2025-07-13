@@ -58,6 +58,14 @@ export default function BotConfiguration() {
     botType: "telegram",
     isActive: true,
     
+    // Notification events
+    notifyOnTaskCreate: true,
+    notifyOnTaskUpdate: true,
+    notifyOnTaskComplete: true,
+    notifyOnTaskAssign: true,
+    notifyOnTaskStatusChange: true,
+    notifyOnHighPriority: true,
+    
     // Telegram
     telegramBotToken: "",
     telegramChatId: "",
