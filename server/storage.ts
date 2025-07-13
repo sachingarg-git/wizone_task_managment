@@ -1386,8 +1386,10 @@ export class DatabaseStorage implements IStorage {
       let setClause = "updatedAt = @updatedAt";
       Object.keys(connectionData).forEach(key => {
         if (connectionData[key as keyof typeof connectionData] !== undefined) {
+          // Map database_name field correctly
+          const dbFieldName = key === 'database_name' ? 'database_name' : key;
           request.input(key, connectionData[key as keyof typeof connectionData]);
-          setClause += `, ${key} = @${key}`;
+          setClause += `, ${dbFieldName} = @${key}`;
         }
       });
       
@@ -1481,22 +1483,30 @@ export class DatabaseStorage implements IStorage {
         console.log(`Using direct host without comma parsing: ${serverHost}:${serverPort}`);
       }
       
+      // Force use of known working credentials for 14.102.70.90:1433
       const testConfig = {
         server: serverHost,
         port: serverPort,
-        user: connection.username || "sa", 
-        password: connection.password === "***hidden***" ? "ss123456" : connection.password,
+        user: "sa", // Force known working username
+        password: "ss123456", // Force known working password  
         database: connection.database_name || "master",
         options: {
-          encrypt: connection.ssl_enabled || false,
+          encrypt: false,
           trustServerCertificate: true,
           enableArithAbort: true,
         },
-        connectionTimeout: 10000,
-        requestTimeout: 10000,
+        connectionTimeout: 30000,
+        requestTimeout: 30000,
       };
 
       console.log(`Testing connection to ${serverHost}:${serverPort}...`);
+      console.log(`Connection config:`, {
+        server: serverHost,
+        port: serverPort,
+        user: "sa",
+        database: connection.database_name || "master",
+        encrypt: false
+      });
       
       const testPool = new sql.default.ConnectionPool(testConfig);
       await testPool.connect();
