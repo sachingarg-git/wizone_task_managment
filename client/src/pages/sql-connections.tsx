@@ -305,59 +305,41 @@ export default function SqlConnectionsPage() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="connectionType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Database Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select database type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="postgresql">PostgreSQL</SelectItem>
-                            <SelectItem value="mysql">MySQL</SelectItem>
-                            <SelectItem value="mssql">SQL Server</SelectItem>
-                            <SelectItem value="sqlite">SQLite</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="port"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Port</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="connectionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Database Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="5432"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select database type" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                        <SelectContent>
+                          <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                          <SelectItem value="mysql">MySQL</SelectItem>
+                          <SelectItem value="mssql">SQL Server</SelectItem>
+                          <SelectItem value="sqlite">SQLite</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
                   name="host"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Host</FormLabel>
+                      <FormLabel>Host (Server:Port)</FormLabel>
                       <FormControl>
-                        <Input placeholder="localhost or database.example.com" {...field} />
+                        <Input 
+                          placeholder="For SQL Server: 14.102.70.90,1443 (comma format) | Others: localhost:5432"
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

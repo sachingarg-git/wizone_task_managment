@@ -381,6 +381,14 @@ TaskFlow is a comprehensive task management and performance tracking system buil
   - Demo mode deletion now properly removes connections from memory instead of just logging
   - Connection creation generates unique IDs and stores complete connection details in memory
   - All SQL connection management features fully functional regardless of database connectivity status
+- July 13, 2025. Frontend SQL connection form updated for comma format:
+  - Updated frontend form to properly handle SQL Server comma format (14.102.70.90,1443)
+  - Removed separate port field and combined host/port into single field with clear instructions
+  - Added helpful placeholder text showing correct format for SQL Server vs other databases
+  - Form now creates connections with proper comma format stored in host field
+  - Connection testing confirmed working with comma format throughout entire system
+  - Frontend and backend now fully synchronized for SQL Server comma port format
+  - User interface clearly guides users to enter correct connection format
 
 ## User Preferences
 
