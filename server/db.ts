@@ -3,10 +3,10 @@ import * as schema from "../shared/schema.js";
 
 // SQL Server connection configuration
 const config = {
-  server: process.env.SQL_SERVER_HOST || "localhost",
-  port: parseInt(process.env.SQL_SERVER_PORT || "1433"),
+  server: process.env.SQL_SERVER_HOST || "14.102.70.90",
+  port: parseInt(process.env.SQL_SERVER_PORT || "1443"),
   user: process.env.SQL_SERVER_USER || "sa",
-  password: process.env.SQL_SERVER_PASSWORD || "",
+  password: process.env.SQL_SERVER_PASSWORD || "ss123456",
   database: process.env.SQL_SERVER_DATABASE || "wizone_db",
   options: {
     encrypt: false,

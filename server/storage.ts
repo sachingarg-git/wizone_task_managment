@@ -1452,19 +1452,39 @@ export class DatabaseStorage implements IStorage {
       // Update test status to pending
       await this.updateConnectionTestResult(id, 'pending', 'Testing connection...');
       
-      // For now, we'll just return a mock test result
-      // In a real implementation, you would test the actual database connection
-      const testResult = { success: true, message: 'Connection successful' };
+      // Try to actually connect to the SQL Server
+      const sql = await import('mssql');
+      const testConfig = {
+        server: connection.host || "14.102.70.90",
+        port: connection.port || 1443,
+        user: connection.username || "sa", 
+        password: connection.password === "***hidden***" ? "ss123456" : connection.password,
+        database: connection.database_name || "master",
+        options: {
+          encrypt: connection.ssl_enabled || false,
+          trustServerCertificate: true,
+          enableArithAbort: true,
+        },
+        connectionTimeout: 10000,
+        requestTimeout: 10000,
+      };
+
+      console.log(`Testing connection to ${testConfig.server}:${testConfig.port}...`);
       
-      await this.updateConnectionTestResult(
-        id, 
-        testResult.success ? 'success' : 'failed', 
-        testResult.message
-      );
+      const testPool = new sql.ConnectionPool(testConfig);
+      await testPool.connect();
       
-      return testResult;
+      // Test with a simple query
+      const request = testPool.request();
+      await request.query('SELECT 1 as test');
+      await testPool.close();
+      
+      await this.updateConnectionTestResult(id, 'success', 'Connection successful');
+      return { success: true, message: 'Connection successful' };
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`SQL Connection test failed: ${errorMessage}`);
       await this.updateConnectionTestResult(id, 'failed', errorMessage);
       return { success: false, message: errorMessage };
     }
