@@ -1484,12 +1484,13 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Force use of known working credentials for 14.102.70.90:1433
+      // Always connect to 'master' first, then create target database
       const testConfig = {
         server: serverHost,
         port: serverPort,
         user: "sa", // Force known working username
         password: "ss123456", // Force known working password  
-        database: connection.database_name || "master",
+        database: "master", // Always connect to master first
         options: {
           encrypt: false,
           trustServerCertificate: true,
@@ -1500,11 +1501,12 @@ export class DatabaseStorage implements IStorage {
       };
 
       console.log(`Testing connection to ${serverHost}:${serverPort}...`);
+      console.log(`Target database: ${connection.database_name || "wizone_production"}`);
       console.log(`Connection config:`, {
         server: serverHost,
         port: serverPort,
         user: "sa",
-        database: connection.database_name || "master",
+        database: "master", // Always connect to master first
         encrypt: false
       });
       
@@ -1573,7 +1575,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Create database and tables on external SQL Server
-  async createDatabaseAndTables(connectionPool: any, databaseName: string): Promise<void> {
+  async createDatabaseAndTables(connectionPool: any, databaseName: string = 'wizone_production'): Promise<void> {
     try {
       const request = connectionPool.request();
       
