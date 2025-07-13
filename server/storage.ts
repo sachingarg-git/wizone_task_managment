@@ -738,7 +738,7 @@ export class DatabaseStorage implements IStorage {
       // Generate ticket number
       const ticketNumber = `WIZ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       
-      // Add parameters to request using correct snake_case column names
+      // Add parameters to request using exact database column names
       request.input('ticket_number', ticketNumber);
       request.input('title', task.title || '');
       request.input('description', task.description || '');
@@ -749,8 +749,8 @@ export class DatabaseStorage implements IStorage {
       request.input('field_engineer_id', task.fieldEngineerId || null);
       request.input('issue_type', task.issueType || '');
       request.input('visit_charges', task.visitCharges || 0);
-      request.input('contact_person', task.contactPerson || '');
-      request.input('created_by', task.createdBy || null);
+      request.input('contact_person', ''); // This column exists in DB
+      request.input('created_by', 'admin001'); // Default created_by
       request.input('created_at', new Date());
       request.input('updated_at', new Date());
       
