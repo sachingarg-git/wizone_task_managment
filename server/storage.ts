@@ -1293,6 +1293,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // SQL Connection operations
+  private sqlConnections: SqlConnection[] = [
+    {
+      id: 1,
+      name: "Demo SQL Server",
+      description: "Demo connection for testing",
+      host: "localhost",
+      port: 1433,
+      username: "sa",
+      password: "***hidden***",
+      database_name: "demo_db",
+      connection_type: "mssql",
+      ssl_enabled: false,
+      test_status: "demo_mode",
+      created_by: "admin001",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      last_test_at: null
+    }
+  ];
+
   async getAllSqlConnections(): Promise<SqlConnection[]> {
     try {
       const { createSafeRequest } = await import('./db.js');
@@ -1301,26 +1321,8 @@ export class DatabaseStorage implements IStorage {
       return result.recordset;
     } catch (error) {
       console.error('getAllSqlConnections error:', error);
-      // Return demo connections for demo mode
-      return [
-        {
-          id: 1,
-          name: "Demo SQL Server",
-          description: "Demo connection for testing",
-          host: "localhost",
-          port: 1433,
-          username: "sa",
-          password: "***hidden***",
-          database_name: "demo_db",
-          connection_type: "mssql",
-          ssl_enabled: false,
-          test_status: "demo_mode",
-          created_by: "admin001",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          last_test_at: null
-        }
-      ];
+      // Return in-memory connections for demo mode
+      return [...this.sqlConnections];
     }
   }
 
@@ -1333,7 +1335,8 @@ export class DatabaseStorage implements IStorage {
       return result.recordset[0] || undefined;
     } catch (error) {
       console.error('getSqlConnection error:', error);
-      return undefined;
+      // Return from in-memory storage for demo mode
+      return this.sqlConnections.find(conn => conn.id === id);
     }
   }
 
@@ -1361,11 +1364,11 @@ export class DatabaseStorage implements IStorage {
       return result.recordset[0];
     } catch (error) {
       console.error('createSqlConnection error:', error);
-      // Return mock connection for demo mode
-      return {
+      // Create in-memory connection for demo mode
+      const newConnection: SqlConnection = {
         id: Math.floor(Math.random() * 1000000),
-        name: connectionData.name || "Demo Connection",
-        description: connectionData.description || "Demo SQL Server connection",
+        name: connectionData.name || "New Connection",
+        description: connectionData.description || "SQL Server connection",
         host: connectionData.host || "localhost",
         port: connectionData.port || 1433,
         username: connectionData.username || "sa",
@@ -1373,12 +1376,15 @@ export class DatabaseStorage implements IStorage {
         database_name: connectionData.database_name || "demo_db",
         connection_type: connectionData.connection_type || "mssql",
         ssl_enabled: connectionData.ssl_enabled || false,
-        test_status: "demo_mode",
+        test_status: "never_tested",
         created_by: connectionData.created_by || "admin001",
         createdAt: new Date(),
         updatedAt: new Date(),
         last_test_at: null
       };
+      
+      this.sqlConnections.push(newConnection);
+      return newConnection;
     }
   }
 
@@ -1408,24 +1414,38 @@ export class DatabaseStorage implements IStorage {
       return result.recordset[0];
     } catch (error) {
       console.error('updateSqlConnection error:', error);
-      // Return updated mock connection for demo mode
-      return {
+      // Update in-memory connection for demo mode
+      const connectionIndex = this.sqlConnections.findIndex(conn => conn.id === id);
+      if (connectionIndex >= 0) {
+        this.sqlConnections[connectionIndex] = {
+          ...this.sqlConnections[connectionIndex],
+          ...connectionData,
+          updatedAt: new Date()
+        };
+        return this.sqlConnections[connectionIndex];
+      }
+      
+      // If not found, create a new one
+      const updatedConnection: SqlConnection = {
         id: id,
-        name: connectionData.name || "Updated Demo Connection",
-        description: connectionData.description || "Updated demo connection",
+        name: connectionData.name || "Updated Connection",
+        description: connectionData.description || "Updated connection",
         host: connectionData.host || "localhost",
         port: connectionData.port || 1433,
         username: connectionData.username || "sa",
         password: "***hidden***",
-        database_name: connectionData.database || "demo_db",
-        connection_type: connectionData.connectionType || "mssql",
-        ssl_enabled: connectionData.sslEnabled || false,
-        test_status: "demo_mode",
+        database_name: connectionData.database_name || "demo_db",
+        connection_type: connectionData.connection_type || "mssql",
+        ssl_enabled: connectionData.ssl_enabled || false,
+        test_status: "never_tested",
         created_by: "admin001",
         createdAt: new Date(),
         updatedAt: new Date(),
         last_test_at: null
       };
+      
+      this.sqlConnections.push(updatedConnection);
+      return updatedConnection;
     }
   }
 
@@ -1437,8 +1457,14 @@ export class DatabaseStorage implements IStorage {
       await request.query('DELETE FROM sql_connections WHERE id = @id');
     } catch (error) {
       console.error('deleteSqlConnection error:', error);
-      // In demo mode, just log the deletion
-      console.log(`Demo mode: Would delete SQL connection with ID ${id}`);
+      // Delete from in-memory storage for demo mode
+      const connectionIndex = this.sqlConnections.findIndex(conn => conn.id === id);
+      if (connectionIndex >= 0) {
+        this.sqlConnections.splice(connectionIndex, 1);
+        console.log(`Demo mode: Deleted SQL connection with ID ${id} from memory`);
+      } else {
+        console.log(`Demo mode: SQL connection with ID ${id} not found`);
+      }
     }
   }
 
