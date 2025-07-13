@@ -1329,20 +1329,23 @@ export class DatabaseStorage implements IStorage {
       const { createSafeRequest } = await import('./db.js');
       const request = createSafeRequest();
       
-      // Generate an ID for the connection
-      const id = Math.floor(Math.random() * 1000000);
-      
-      Object.keys(connectionData).forEach(key => {
-        request.input(key, connectionData[key as keyof typeof connectionData]);
-      });
-      request.input('id', id);
+      // Map frontend field names to database column names (don't include ID - let it auto-increment)
+      request.input('name', connectionData.name);
+      request.input('description', connectionData.description || '');
+      request.input('host', connectionData.host);
+      request.input('username', connectionData.username);
+      request.input('password', connectionData.password);
+      request.input('database_name', connectionData.database || 'wizone_production');
+      request.input('connection_type', connectionData.connectionType || 'mssql');
+      request.input('ssl_enabled', connectionData.sslEnabled || false);
+      request.input('created_by', connectionData.created_by || 'admin001');
       request.input('createdAt', new Date());
       request.input('updatedAt', new Date());
       
       const result = await request.query(`
-        INSERT INTO sql_connections (id, name, description, host, port, username, password, database_name, connection_type, ssl_enabled, test_status, created_by, createdAt, updatedAt)
+        INSERT INTO sql_connections (name, description, host, username, password, database_name, connection_type, ssl_enabled, test_status, created_by, createdAt, updatedAt)
         OUTPUT INSERTED.*
-        VALUES (@id, @name, @description, @host, @port, @username, @password, @database_name, @connection_type, @ssl_enabled, @test_status, @created_by, @createdAt, @updatedAt)
+        VALUES (@name, @description, @host, @username, @password, @database_name, @connection_type, @ssl_enabled, 'never_tested', @created_by, @createdAt, @updatedAt)
       `);
       
       return result.recordset[0];

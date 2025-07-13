@@ -105,6 +105,28 @@ async function createTables() {
       )
     `);
     
+    // Create sql_connections table
+    await dbPool.request().query(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='sql_connections' AND xtype='U')
+      CREATE TABLE sql_connections (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(255) NOT NULL,
+        description NTEXT,
+        host NVARCHAR(255) NOT NULL,
+        port INT DEFAULT 1433,
+        username NVARCHAR(100) NOT NULL,
+        password NVARCHAR(255) NOT NULL,
+        database_name NVARCHAR(100),
+        connection_type NVARCHAR(50) DEFAULT 'mssql',
+        ssl_enabled BIT DEFAULT 0,
+        test_status NVARCHAR(50) DEFAULT 'never_tested',
+        created_by NVARCHAR(50),
+        createdAt DATETIME2 DEFAULT GETDATE(),
+        updatedAt DATETIME2 DEFAULT GETDATE(),
+        last_test_at DATETIME2
+      )
+    `);
+    
     console.log('Inserting sample data...');
     
     // Insert admin user
