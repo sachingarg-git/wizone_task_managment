@@ -57,8 +57,7 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
           <p className="text-blue-100 font-medium">{subtitle}</p>
         </div>
         <div className="flex items-center space-x-4">
-          {actions}
-          {children}
+          {actions || children}
           <Popover open={showNotifications} onOpenChange={setShowNotifications}>
             <PopoverTrigger asChild>
               <Button 
