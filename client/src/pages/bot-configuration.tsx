@@ -83,14 +83,6 @@ export default function BotConfiguration() {
     webhookAuth: "",
     webhookHeaders: {},
     
-    // Notification Settings
-    notifyOnTaskCreate: true,
-    notifyOnTaskUpdate: true,
-    notifyOnTaskComplete: true,
-    notifyOnTaskAssign: true,
-    notifyOnTaskStatusChange: true,
-    notifyOnHighPriority: true,
-    
     // Templates - Enhanced for automatic notifications
     taskCreateTemplate: "🆕 New Task Created - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n📧 Email: {customerEmail}\n📱 Contact: {customerPhone}\n⚡ Priority: {priority}\n📝 Description: {description}\n👷 Assigned to: {assignedTo}\n🏢 Department: {department}\n📅 Created: {createdAt}\n\n🔗 View Task: {taskUrl}",
     taskUpdateTemplate: "📝 Task Updated - Wizone IT Support\n\n📋 Task ID: {taskNumber}\n👤 Customer: {customerName}\n🔄 Status: {status}\n💬 Latest Notes: {notes}\n👷 Updated by: {updatedBy}\n📅 Updated: {updatedAt}\n\n🔗 View Task: {taskUrl}",
