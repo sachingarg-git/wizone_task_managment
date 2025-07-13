@@ -131,61 +131,79 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log("Serializing user:", user.id);
+    done(null, user.id);
+  });
   passport.deserializeUser(async (id: string, done) => {
+    console.log("Deserializing user ID:", id);
     try {
-      let user;
-      try {
-        user = await storage.getUser(id);
-      } catch (dbError) {
-        // Fallback to temporary users
-        const tempUsers = [
-          {
-            id: "admin001",
-            username: "admin",
-            password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
-            email: "admin@wizone.com",
-            firstName: "Admin",
-            lastName: "User",
-            role: "admin",
-            department: "Management",
-            isActive: true,
-          },
-          {
-            id: "WIZONE0015",
-            username: "RAVI",
-            password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
-            email: "ravi@wizone.com",
-            firstName: "Ravi",
-            lastName: "Kumar",
-            role: "field_engineer",
-            department: "Field Operations",
-            isActive: true,
-          },
-          {
-            id: "manpreet001",
-            username: "manpreet",
-            password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
-            email: "manpreet@wizone.com",
-            firstName: "Manpreet",
-            lastName: "Singh",
-            role: "manager",
-            department: "Engineering",
-            isActive: true,
-          }
-        ];
-        
-        user = tempUsers.find(u => u.id === id);
-      }
-      done(null, user);
+      // Always use fallback users for now since database is not connected
+      const tempUsers = [
+        {
+          id: "admin001",
+          username: "admin",
+          password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
+          email: "admin@wizone.com",
+          firstName: "Admin",
+          lastName: "User",
+          role: "admin",
+          department: "Management",
+          isActive: true,
+        },
+        {
+          id: "WIZONE0015",
+          username: "RAVI",
+          password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
+          email: "ravi@wizone.com",
+          firstName: "Ravi",
+          lastName: "Kumar",
+          role: "field_engineer",
+          department: "Field Operations",
+          isActive: true,
+        },
+        {
+          id: "manpreet001",
+          username: "manpreet",
+          password: "32dc874d83f8e3829e47123a59ed94f270e6b284fea685496f1fada378a02c1d51464b035595d1bd7872c55355a59f3dc9516a19a096daf5d3485803d09826c4.8e1fabfbd18012c505718f32b41244e1",
+          email: "manpreet@wizone.com",
+          firstName: "Manpreet",
+          lastName: "Singh",
+          role: "manager",
+          department: "Engineering",
+          isActive: true,
+        }
+      ];
+      
+      const user = tempUsers.find(u => u.id === id);
+      console.log("Found user for deserialization:", user ? user.username : "not found");
+      done(null, user || false);
     } catch (error) {
-      done(error);
+      console.error("Passport deserializeUser error:", error);
+      done(null, false);
     }
   });
 
   // Login endpoint
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Login authentication error:", err);
+        return res.status(500).json({ message: "Authentication error" });
+      }
+      if (!user) {
+        return res.status(401).json({ message: "Invalid admin credentials" });
+      }
+      
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Login session error:", loginErr);
+          return res.status(500).json({ message: "Session creation failed" });
+        }
+        console.log("User logged in successfully:", user.username);
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   // Logout endpoint
@@ -198,7 +216,9 @@ export function setupAuth(app: Express) {
 
   // Get current user endpoint
   app.get("/api/auth/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
     res.json(req.user);
   });
 

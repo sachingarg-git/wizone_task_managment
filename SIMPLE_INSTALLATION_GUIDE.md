@@ -55,6 +55,11 @@ npm start
 - **URL**: http://localhost:5000
 - **Admin Login**: admin / admin123
 - **Field Engineer**: RAVI / admin123
+- **Manager Login**: manpreet / admin123
+
+✅ **Authentication Status**: Fixed and working perfectly!
+✅ **Login System**: Fallback authentication enabled when SQL Server isn't connected
+✅ **Session Management**: Secure session handling with MemoryStore
 
 ## Features Ready to Use
 

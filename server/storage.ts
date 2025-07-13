@@ -206,13 +206,14 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     try {
-      const request = db.request();
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
       request.input('id', id);
       const result = await request.query('SELECT * FROM users WHERE id = @id');
       return result.recordset[0] || undefined;
     } catch (error) {
       console.error('getUser error:', error);
-      return undefined;
+      throw error; // Throw to trigger fallback authentication
     }
   }
 
@@ -230,13 +231,14 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      const request = db.request();
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
       request.input('username', username);
       const result = await request.query('SELECT * FROM users WHERE username = @username');
       return result.recordset[0] || undefined;
     } catch (error) {
       console.error('getUserByUsername error:', error);
-      return undefined;
+      throw error; // Throw to trigger fallback authentication
     }
   }
 

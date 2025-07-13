@@ -76,6 +76,14 @@ async function createTablesIfNotExists() {
 export const db = pool;
 export const isDbConnected = () => isConnected;
 
+// Create a safe request function that checks connection
+export const createSafeRequest = () => {
+  if (!isConnected) {
+    throw new Error("Database not connected");
+  }
+  return pool.request();
+};
+
 // Export schema elements for convenience
 export const {
   users,
