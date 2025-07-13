@@ -63,11 +63,11 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="btn-animate relative text-white hover:text-blue-100 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/20"
+                className="btn-animate relative text-white hover:text-blue-100 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/20 p-2"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center pulse-glow border border-white">
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center pulse-glow border border-white z-10">
                     {unreadCount}
                   </span>
                 )}

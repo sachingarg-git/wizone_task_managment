@@ -284,10 +284,6 @@ export default function Portal() {
             <User className="w-4 h-4 mr-2 text-white" />
             <span className="text-white font-semibold">{user?.role?.replace('_', ' ').toUpperCase()}</span>
           </div>
-          <div className="flex items-center bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm">
-            <Mail className="w-4 h-4 mr-2 text-white" />
-            <span className="text-white font-medium">{user?.email}</span>
-          </div>
         </div>
       </Header>
 
