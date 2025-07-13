@@ -418,22 +418,32 @@ export class DatabaseStorage implements IStorage {
       const request = createSafeRequest();
       
       // Generate customer ID
-      const customerId = `C${Date.now().toString().slice(-6)}`;
+      const generatedCustomerId = `C${Date.now().toString().slice(-6)}`;
       
-      // Set up all parameters
-      Object.keys(customer).forEach(key => {
-        request.input(key, customer[key as keyof typeof customer]);
-      });
-      request.input('customerId', customerId);
+      // Set up parameters manually to avoid duplicates
+      request.input('customerId', generatedCustomerId);
+      request.input('name', customer.name || '');
+      request.input('contactPerson', customer.contactPerson || '');
+      request.input('email', customer.email || '');
+      request.input('phone', customer.phone || '');
+      request.input('address', customer.address || '');
+      request.input('city', customer.city || '');
+      request.input('state', customer.state || '');
+      request.input('connectionType', customer.connectionType || '');
+      request.input('planType', customer.planType || '');
+      request.input('monthlyFee', customer.monthlyFee || 0);
+      request.input('status', customer.status || 'active');
+      request.input('latitude', customer.latitude || null);
+      request.input('longitude', customer.longitude || null);
       request.input('createdAt', new Date());
       request.input('updatedAt', new Date());
       
       const result = await request.query(`
-        INSERT INTO customers (customerId, companyName, contactPerson, email, phone, address, planType, 
-          connectionType, ipAddress, internetSpeed, installationDate, status, notes, createdAt, updatedAt)
+        INSERT INTO customers (customerId, name, contactPerson, email, phone, address, city, state, 
+          connectionType, planType, monthlyFee, status, latitude, longitude, createdAt, updatedAt)
         OUTPUT INSERTED.*
-        VALUES (@customerId, @companyName, @contactPerson, @email, @phone, @address, @planType,
-          @connectionType, @ipAddress, @internetSpeed, @installationDate, @status, @notes, @createdAt, @updatedAt)
+        VALUES (@customerId, @name, @contactPerson, @email, @phone, @address, @city, @state,
+          @connectionType, @planType, @monthlyFee, @status, @latitude, @longitude, @createdAt, @updatedAt)
       `);
       
       return result.recordset[0];
@@ -730,11 +740,28 @@ export class DatabaseStorage implements IStorage {
       // Generate ticket number
       const ticketNumber = `WIZ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       
-      // Set up parameters
-      const taskData = { ...task, ticketNumber, createdAt: new Date(), updatedAt: new Date() };
-      Object.keys(taskData).forEach(key => {
-        request.input(key, (taskData as any)[key]);
-      });
+      // Set up parameters with default status
+      const taskData = { 
+        ...task, 
+        ticketNumber, 
+        status: task.status || 'pending',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      };
+      
+      // Add parameters to request
+      request.input('ticketNumber', taskData.ticketNumber);
+      request.input('title', taskData.title || '');
+      request.input('description', taskData.description || '');
+      request.input('priority', taskData.priority || 'medium');
+      request.input('status', taskData.status);
+      request.input('customerId', taskData.customerId);
+      request.input('assignedTo', taskData.assignedTo || null);
+      request.input('fieldEngineerId', taskData.fieldEngineerId || null);
+      request.input('issueType', taskData.issueType || '');
+      request.input('visitCharges', taskData.visitCharges || 0);
+      request.input('createdAt', taskData.createdAt);
+      request.input('updatedAt', taskData.updatedAt);
       
       const result = await request.query(`
         INSERT INTO tasks (ticketNumber, title, description, priority, status, customerId, assignedTo, fieldEngineerId, issueType, visitCharges, createdAt, updatedAt)
