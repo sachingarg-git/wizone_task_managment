@@ -98,7 +98,20 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                       {notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                          onClick={() => {
+                            // Handle notification click based on type
+                            if (notification.type === 'task') {
+                              // Use window.location for proper navigation
+                              window.location.href = '/portal';
+                            } else if (notification.type === 'completion') {
+                              window.location.href = '/portal';
+                            } else if (notification.type === 'system') {
+                              // Handle system notifications
+                              window.location.href = '/portal';
+                            }
+                            setShowNotifications(false);
+                          }}
+                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                             !notification.read ? 'bg-blue-50' : ''
                           }`}
                         >
@@ -149,6 +162,10 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                         variant="ghost" 
                         size="sm" 
                         className="w-full text-center text-blue-600 hover:text-blue-700"
+                        onClick={() => {
+                          window.location.href = '/portal';
+                          setShowNotifications(false);
+                        }}
                       >
                         View All Notifications
                       </Button>

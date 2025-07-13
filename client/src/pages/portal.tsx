@@ -266,9 +266,9 @@ export default function Portal() {
   });
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <Header 
-        title={`Welcome, ${user?.firstName || 'User'}`}
+        title={`Welcome, ${user?.firstName || user?.username || 'User'}`}
         subtitle="Your Personal Task Portal"
       >
         <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -286,62 +286,62 @@ export default function Portal() {
       <div className="p-6 space-y-8">
         {/* Task Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
+          <Card className="border-l-4 border-l-blue-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">My Tasks</p>
-                  <p className="text-2xl font-bold text-gray-900">{statsData.total}</p>
+                  <p className="text-sm font-semibold text-gray-700">My Tasks</p>
+                  <p className="text-3xl font-bold text-gray-900">{statsData.total}</p>
                 </div>
-                <FileText className="w-5 h-5 text-primary" />
+                <FileText className="w-6 h-6 text-blue-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-yellow-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{statsData.pending}</p>
+                  <p className="text-sm font-semibold text-gray-700">Pending</p>
+                  <p className="text-3xl font-bold text-yellow-700">{statsData.pending}</p>
                 </div>
-                <Clock className="w-5 h-5 text-yellow-500" />
+                <Clock className="w-6 h-6 text-yellow-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-purple-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">In Progress</p>
-                  <p className="text-2xl font-bold text-blue-600">{statsData.inProgress}</p>
+                  <p className="text-sm font-semibold text-gray-700">In Progress</p>
+                  <p className="text-3xl font-bold text-purple-700">{statsData.inProgress}</p>
                 </div>
-                <AlertCircle className="w-5 h-5 text-blue-500" />
+                <AlertCircle className="w-6 h-6 text-purple-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-green-500 shadow-lg bg-white hover:shadow-xl transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">{statsData.completed}</p>
+                  <p className="text-sm font-semibold text-gray-700">Completed</p>
+                  <p className="text-3xl font-bold text-green-700">{statsData.completed}</p>
                 </div>
-                <CheckCircle className="w-5 h-5 text-green-500" />
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tasks Table */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-lg bg-white border-t-4 border-t-blue-500">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex items-center justify-between">
-              <CardTitle>My Assigned Tasks</CardTitle>
+              <CardTitle className="text-xl font-bold text-gray-800">My Assigned Tasks</CardTitle>
               <div className="flex items-center space-x-2">
-                <Badge variant="outline" className="text-sm">
+                <Badge variant="outline" className="text-sm bg-blue-100 text-blue-800 border-blue-300">
                   {myTasks.length} tasks assigned to you
                 </Badge>
                 <Button 
@@ -379,41 +379,42 @@ export default function Portal() {
                   </TableHeader>
                   <TableBody>
                     {myTasks.map((task: any) => (
-                      <TableRow key={task.id}>
+                      <TableRow key={task.id} className="hover:bg-blue-50 transition-colors">
                         <TableCell>
                           <button 
                             onClick={() => handleTaskIdClick(task)}
-                            className="text-primary hover:text-blue-700 font-medium underline"
+                            className="text-blue-600 hover:text-blue-800 font-semibold underline hover:no-underline transition-all"
                           >
                             {task.ticketNumber}
                           </button>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{task.customer?.name || 'Unknown'}</p>
-                            <p className="text-sm text-gray-500">{task.customer?.city}</p>
+                            <p className="font-semibold text-gray-800">{task.customer?.name || 'Unknown'}</p>
+                            <p className="text-sm text-gray-600">{task.customer?.city}</p>
                           </div>
                         </TableCell>
-                        <TableCell>{task.issueType}</TableCell>
+                        <TableCell className="font-medium text-gray-700">{task.issueType}</TableCell>
                         <TableCell>
-                          <Badge className={getPriorityColor(task.priority)}>
+                          <Badge className={getPriorityColor(task.priority) + " font-semibold"}>
                             {task.priority}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(task.status)}>
+                          <Badge className={getStatusColor(task.status) + " font-semibold"}>
                             {task.status?.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="font-medium text-gray-700">
                           {task.createdAt ? format(new Date(task.createdAt), 'MMM dd, yyyy') : 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button 
-                              variant="ghost" 
+                              variant="outline" 
                               size="sm"
                               onClick={() => handleTaskIdClick(task)}
+                              className="hover:bg-blue-100 hover:border-blue-300"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -425,10 +426,10 @@ export default function Portal() {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">No tasks assigned</p>
-                <p>You don't have any tasks assigned to you at the moment.</p>
+              <div className="text-center py-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-dashed border-blue-200">
+                <FileText className="w-16 h-16 mx-auto mb-4 text-blue-400" />
+                <p className="text-xl font-semibold mb-2 text-gray-800">No tasks assigned</p>
+                <p className="text-gray-600 max-w-md mx-auto">You don't have any tasks assigned to you at the moment. New tasks will appear here when they are assigned.</p>
               </div>
             )}
           </CardContent>
