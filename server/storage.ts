@@ -473,49 +473,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCustomer(id: number): Promise<void> {
-    // Delete all related records first to avoid foreign key constraint violations
-    
-    // Delete customer comments
-    await db.delete(customerComments).where(eq(customerComments.customerId, id));
-    
-    // Delete customer system details  
-    await db.delete(customerSystemDetails).where(eq(customerSystemDetails.customerId, id));
-    
-    // Delete geofence zones for this customer
-    await db.delete(geofenceZones).where(eq(geofenceZones.customerId, id));
-    
-    // Delete task updates for tasks belonging to this customer
-    const customerTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.customerId, id));
-    if (customerTasks.length > 0) {
-      const taskIds = customerTasks.map(task => task.id);
-      await db.delete(taskUpdates).where(inArray(taskUpdates.taskId, taskIds));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      
+      // Delete all related records first to avoid foreign key constraint violations
+      await request.query('DELETE FROM customer_comments WHERE customerId = @id');
+      await request.query('DELETE FROM customer_system_details WHERE customerId = @id');
+      await request.query('DELETE FROM geofence_zones WHERE customerId = @id');
+      
+      // Delete task updates for tasks belonging to this customer
+      await request.query('DELETE FROM task_updates WHERE taskId IN (SELECT id FROM tasks WHERE customerId = @id)');
+      
+      // Delete tasks for this customer
+      await request.query('DELETE FROM tasks WHERE customerId = @id');
+      
+      // Finally delete the customer
+      await request.query('DELETE FROM customers WHERE id = @id');
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      throw error;
     }
-    
-    // Delete tasks for this customer
-    await db.delete(tasks).where(eq(tasks.customerId, id));
-    
-    // Finally delete the customer
-    await db.delete(customers).where(eq(customers.id, id));
   }
 
   async searchCustomers(query: string): Promise<Customer[]> {
-    return await db
-      .select()
-      .from(customers)
-      .where(
-        or(
-          ilike(customers.name, `%${query}%`),
-          ilike(customers.contactPerson, `%${query}%`),
-          ilike(customers.city, `%${query}%`),
-          ilike(customers.customerId, `%${query}%`)
-        )
-      );
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('query', `%${query}%`);
+      
+      const result = await request.query(`
+        SELECT * FROM customers 
+        WHERE name LIKE @query 
+           OR contactPerson LIKE @query 
+           OR city LIKE @query 
+           OR customerId LIKE @query
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      return [];
+    }
   }
 
   // Customer portal authentication
   async getCustomerByUsername(username: string): Promise<Customer | undefined> {
-    const [customer] = await db.select().from(customers).where(eq(customers.username, username));
-    return customer;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('username', username);
+      
+      const result = await request.query('SELECT * FROM customers WHERE username = @username');
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting customer by username:', error);
+      return undefined;
+    }
   }
 
   async createCustomerWithCredentials(customerData: InsertCustomer & { username: string; password: string }): Promise<Customer> {
@@ -708,26 +723,70 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTask(task: InsertTask): Promise<Task> {
-    // Generate ticket number
-    const ticketNumber = `T${Date.now().toString()}`;
-    const [newTask] = await db
-      .insert(tasks)
-      .values({ ...task, ticketNumber })
-      .returning();
-    return newTask;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      
+      // Generate ticket number
+      const ticketNumber = `WIZ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      
+      // Set up parameters
+      const taskData = { ...task, ticketNumber, createdAt: new Date(), updatedAt: new Date() };
+      Object.keys(taskData).forEach(key => {
+        request.input(key, (taskData as any)[key]);
+      });
+      
+      const result = await request.query(`
+        INSERT INTO tasks (ticketNumber, title, description, priority, status, customerId, assignedTo, fieldEngineerId, issueType, visitCharges, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@ticketNumber, @title, @description, @priority, @status, @customerId, @assignedTo, @fieldEngineerId, @issueType, @visitCharges, @createdAt, @updatedAt)
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
   }
 
   async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
-    const [updatedTask] = await db
-      .update(tasks)
-      .set({ ...task, updatedAt: new Date() })
-      .where(eq(tasks.id, id))
-      .returning();
-    return updatedTask;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      
+      const fields = Object.keys(task).map(key => {
+        request.input(key, (task as any)[key]);
+        return `${key} = @${key}`;
+      });
+      
+      request.input('updatedAt', new Date());
+      fields.push('updatedAt = @updatedAt');
+      
+      const result = await request.query(`
+        UPDATE tasks 
+        SET ${fields.join(', ')}
+        OUTPUT INSERTED.*
+        WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
   }
 
   async deleteTask(id: number): Promise<void> {
-    await db.delete(tasks).where(eq(tasks.id, id));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      await request.query('DELETE FROM tasks WHERE id = @id');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      throw error;
+    }
   }
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
@@ -2069,124 +2128,180 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChatParticipants(roomId: number): Promise<(ChatParticipant & { user: User })[]> {
-    const participants = await db
-      .select({
-        id: chatParticipants.id,
-        roomId: chatParticipants.roomId,
-        userId: chatParticipants.userId,
-        role: chatParticipants.role,
-        joinedAt: chatParticipants.joinedAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          role: users.role,
-          department: users.department,
-          phone: users.phone,
-          profileImageUrl: users.profileImageUrl,
-          isActive: users.isActive,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-          password: users.password,
-        },
-      })
-      .from(chatParticipants)
-      .leftJoin(users, eq(chatParticipants.userId, users.id))
-      .where(eq(chatParticipants.roomId, roomId));
-
-    return participants.map(p => ({
-      id: p.id,
-      roomId: p.roomId,
-      userId: p.userId,
-      role: p.role,
-      joinedAt: p.joinedAt,
-      isActive: true,
-      lastReadAt: p.joinedAt,
-      user: p.user,
-    }));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('roomId', roomId);
+      
+      const result = await request.query(`
+        SELECT cp.*, 
+               u.id as user_id, u.username, u.firstName, u.lastName, u.email, 
+               u.role as user_role, u.department, u.phone, u.profileImageUrl, 
+               u.isActive, u.createdAt as user_createdAt, u.updatedAt as user_updatedAt, u.password
+        FROM chat_participants cp
+        LEFT JOIN users u ON cp.userId = u.id
+        WHERE cp.roomId = @roomId
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        id: row.id,
+        roomId: row.roomId,
+        userId: row.userId,
+        role: row.role,
+        joinedAt: row.joinedAt,
+        isActive: true,
+        lastReadAt: row.joinedAt,
+        user: row.user_id ? {
+          id: row.user_id,
+          username: row.username,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          email: row.email,
+          role: row.user_role,
+          department: row.department,
+          phone: row.phone,
+          profileImageUrl: row.profileImageUrl,
+          isActive: row.isActive,
+          createdAt: row.user_createdAt,
+          updatedAt: row.user_updatedAt,
+          password: row.password,
+        } : null,
+      }));
+    } catch (error) {
+      console.error("Error fetching chat participants:", error);
+      return [];
+    }
   }
 
   async isChatParticipant(roomId: number, userId: string): Promise<boolean> {
-    const [participant] = await db
-      .select()
-      .from(chatParticipants)
-      .where(
-        and(
-          eq(chatParticipants.roomId, roomId),
-          eq(chatParticipants.userId, userId)
-        )
-      );
-    return !!participant;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('roomId', roomId);
+      request.input('userId', userId);
+      
+      const result = await request.query(`
+        SELECT COUNT(*) as count 
+        FROM chat_participants 
+        WHERE roomId = @roomId AND userId = @userId
+      `);
+      
+      return result.recordset[0].count > 0;
+    } catch (error) {
+      console.error("Error checking chat participant:", error);
+      return false;
+    }
   }
 
   // Customer comment operations
   async getTaskComments(taskId: number): Promise<CustomerCommentWithUser[]> {
-    const comments = await db
-      .select({
-        id: customerComments.id,
-        taskId: customerComments.taskId,
-        customerId: customerComments.customerId,
-        comment: customerComments.comment,
-        attachments: customerComments.attachments,
-        isInternal: customerComments.isInternal,
-        respondedBy: customerComments.respondedBy,
-        createdAt: customerComments.createdAt,
-        updatedAt: customerComments.updatedAt,
-        customer: {
-          id: customers.id,
-          name: customers.name,
-          contactPerson: customers.contactPerson,
-          email: customers.email,
-        },
-        respondedByUser: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-        },
-      })
-      .from(customerComments)
-      .leftJoin(customers, eq(customerComments.customerId, customers.id))
-      .leftJoin(users, eq(customerComments.respondedBy, users.id))
-      .where(eq(customerComments.taskId, taskId))
-      .orderBy(desc(customerComments.createdAt));
-
-    return comments.map(row => ({
-      id: row.id,
-      taskId: row.taskId,
-      customerId: row.customerId,
-      comment: row.comment,
-      attachments: row.attachments,
-      isInternal: row.isInternal,
-      respondedBy: row.respondedBy,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      customer: row.customer || undefined,
-      respondedByUser: row.respondedByUser || undefined,
-    }));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('taskId', taskId);
+      
+      const result = await request.query(`
+        SELECT cc.*, 
+               c.id as customer_id, c.name as customer_name, 
+               c.contactPerson as customer_contactPerson, c.email as customer_email,
+               u.id as user_id, u.firstName as user_firstName, 
+               u.lastName as user_lastName, u.role as user_role
+        FROM customer_comments cc
+        LEFT JOIN customers c ON cc.customerId = c.id
+        LEFT JOIN users u ON cc.respondedBy = u.id
+        WHERE cc.taskId = @taskId
+        ORDER BY cc.createdAt DESC
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        id: row.id,
+        taskId: row.taskId,
+        customerId: row.customerId,
+        comment: row.comment,
+        attachments: row.attachments,
+        isInternal: row.isInternal,
+        respondedBy: row.respondedBy,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        customer: row.customer_id ? {
+          id: row.customer_id,
+          name: row.customer_name,
+          contactPerson: row.customer_contactPerson,
+          email: row.customer_email,
+        } : undefined,
+        respondedByUser: row.user_id ? {
+          id: row.user_id,
+          firstName: row.user_firstName,
+          lastName: row.user_lastName,
+          role: row.user_role,
+        } : undefined,
+      }));
+    } catch (error) {
+      console.error("Error fetching task comments:", error);
+      return [];
+    }
   }
 
   async createCustomerComment(commentData: InsertCustomerComment): Promise<CustomerComment> {
-    const [comment] = await db
-      .insert(customerComments)
-      .values(commentData)
-      .returning();
-    return comment;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      
+      Object.keys(commentData).forEach(key => {
+        request.input(key, (commentData as any)[key]);
+      });
+      
+      const result = await request.query(`
+        INSERT INTO customer_comments (taskId, customerId, comment, attachments, isInternal, respondedBy, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@taskId, @customerId, @comment, @attachments, @isInternal, @respondedBy, @createdAt, @updatedAt)
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error("Error creating customer comment:", error);
+      throw error;
+    }
   }
 
   async updateCustomerComment(id: number, commentData: Partial<InsertCustomerComment>): Promise<CustomerComment> {
-    const [comment] = await db
-      .update(customerComments)
-      .set({ ...commentData, updatedAt: new Date() })
-      .where(eq(customerComments.id, id))
-      .returning();
-    return comment;
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      
+      const fields = Object.keys(commentData).map(key => {
+        request.input(key, (commentData as any)[key]);
+        return `${key} = @${key}`;
+      });
+      
+      request.input('updatedAt', new Date());
+      fields.push('updatedAt = @updatedAt');
+      
+      const result = await request.query(`
+        UPDATE customer_comments 
+        SET ${fields.join(', ')}
+        OUTPUT INSERTED.*
+        WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error("Error updating customer comment:", error);
+      throw error;
+    }
   }
 
   async deleteCustomerComment(id: number): Promise<void> {
-    await db.delete(customerComments).where(eq(customerComments.id, id));
+    try {
+      const { createSafeRequest } = await import('./db.js');
+      const request = createSafeRequest();
+      request.input('id', id);
+      await request.query('DELETE FROM customer_comments WHERE id = @id');
+    } catch (error) {
+      console.error("Error deleting customer comment:", error);
+      throw error;
+    }
   }
 
   // Office location operations
