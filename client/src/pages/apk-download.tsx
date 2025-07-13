@@ -281,21 +281,16 @@ export default function APKDownload() {
               </Card>
             </div>
 
-            {/* Login Credentials */}
+            {/* Application Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Default Login Credentials</CardTitle>
+                <CardTitle>Application Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="font-medium">Username</p>
-                    <code className="text-sm bg-muted px-2 py-1 rounded">admin</code>
-                  </div>
-                  <div>
-                    <p className="font-medium">Password</p>
-                    <code className="text-sm bg-muted px-2 py-1 rounded">admin123</code>
-                  </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Contact your administrator for login credentials to access the Wizone IT Support Portal.
+                  </p>
                 </div>
               </CardContent>
             </Card>

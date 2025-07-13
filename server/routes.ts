@@ -22,6 +22,7 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
+import { healthCheck } from "./health";
 
 // Notification helper function
 async function sendTaskNotification(task: any, eventType: string) {
@@ -210,15 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Health check endpoint for monitoring
-  app.get('/api/health', (req, res) => {
-    res.status(200).json({ 
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      domain: req.hostname,
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
+  app.get('/health', healthCheck);
+  app.get('/api/health', healthCheck);
 
   // Serve APK generation page
   app.get("/generate-apk", (req, res) => {

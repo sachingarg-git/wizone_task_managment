@@ -47,10 +47,7 @@ export default function LoginScreen() {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setUsername('manpreet');
-    setPassword('admin123');
-  };
+
 
   return (
     <KeyboardAvoidingView
@@ -121,26 +118,7 @@ export default function LoginScreen() {
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
 
-            <Button
-              mode="outlined"
-              onPress={fillDemoCredentials}
-              disabled={loading}
-              style={styles.demoButton}
-            >
-              Use Demo Credentials
-            </Button>
 
-            <View style={styles.credentialsInfo}>
-              <Text variant="bodySmall" style={styles.credentialsText}>
-                Demo Credentials:
-              </Text>
-              <Text variant="bodySmall" style={styles.credentialsText}>
-                Username: manpreet
-              </Text>
-              <Text variant="bodySmall" style={styles.credentialsText}>
-                Password: admin123
-              </Text>
-            </View>
           </Card.Content>
         </Card>
 

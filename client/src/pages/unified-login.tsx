@@ -222,15 +222,7 @@ export default function UnifiedLogin({ onAdminLogin, onCustomerLogin }: LoginPro
               ← Back to Login Selection
             </Button>
 
-            {/* Demo Credentials */}
-            <div className="text-center text-sm text-purple-300 mt-4 p-3 bg-white/5 rounded-lg">
-              <div className="font-medium text-purple-200 mb-1">Demo Credentials:</div>
-              {loginType === "admin" ? (
-                <div>Staff: admin / admin123</div>
-              ) : (
-                <div>Customer: shivalik / admin123</div>
-              )}
-            </div>
+
           </CardContent>
         </Card>
       </div>
