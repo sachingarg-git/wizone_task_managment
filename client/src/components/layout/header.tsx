@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Bell, Plus, X, CheckCircle } from "lucide-react";
+import { Bell, Plus, X, CheckCircle, User, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -8,6 +9,7 @@ import {
   PopoverContent, 
   PopoverTrigger 
 } from "@/components/ui/popover";
+import { apiRequest } from "@/lib/queryClient";
 
 interface HeaderProps {
   title: string;
@@ -18,36 +20,73 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, children, actions }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const queryClient = useQueryClient();
   
-  // Mock notifications - in real app, this would come from API
-  const notifications = [
-    {
-      id: 1,
-      title: "New Task Assigned",
-      message: "Task T000012 has been assigned to you",
-      type: "task",
-      time: "2 min ago",
-      read: false
+  // Fetch real notifications from API
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/notifications");
+        if (!response.ok) return [];
+        return response.json();
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+        return [];
+      }
     },
-    {
-      id: 2,
-      title: "Task Completed",
-      message: "Customer CUST001 task has been completed",
-      type: "completion",
-      time: "5 min ago",
-      read: false
-    },
-    {
-      id: 3,
-      title: "System Update",
-      message: "New features available in task management",
-      type: "system",
-      time: "1 hour ago",
-      read: true
-    }
-  ];
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: number) => {
+      return apiRequest(`/api/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  // Mark all as read mutation
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/notifications/mark-all-read", {
+        method: "PATCH",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  const unreadCount = notifications.filter((n: any) => !n.read).length;
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.read) {
+      markAsReadMutation.mutate(notification.id);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsReadMutation.mutate();
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
 
   return (
     <header className="bg-gradient-to-r from-slate-800 to-slate-900 shadow-2xl border-b border-slate-700/50 px-6 py-4 backdrop-blur-sm">
@@ -96,35 +135,41 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {notifications.map((notification) => (
+                      {notifications.map((notification: any) => (
                         <div
                           key={notification.id}
-                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                            !notification.read ? 'bg-blue-50' : ''
+                          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                            !notification.read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                           }`}
+                          onClick={() => handleNotificationClick(notification)}
                         >
                           <div className="flex items-start space-x-3">
                             <div className="flex-shrink-0">
-                              {notification.type === 'task' && (
+                              {(notification.eventType === 'task_created' || notification.eventType === 'task_assigned') && (
                                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                   <Plus className="w-4 h-4 text-blue-600" />
                                 </div>
                               )}
-                              {notification.type === 'completion' && (
+                              {(notification.eventType === 'task_completed' || notification.eventType === 'task_resolved') && (
                                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                   <CheckCircle className="w-4 h-4 text-green-600" />
                                 </div>
                               )}
-                              {notification.type === 'system' && (
+                              {notification.eventType === 'task_update' && (
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                                  <Clock className="w-4 h-4 text-orange-600" />
+                                </div>
+                              )}
+                              {notification.eventType === 'field_assignment' && (
                                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                  <Bell className="w-4 h-4 text-purple-600" />
+                                  <User className="w-4 h-4 text-purple-600" />
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <p className="text-sm font-medium text-gray-900 truncate">
-                                  {notification.title}
+                                  {notification.title || 'Task Notification'}
                                 </p>
                                 {!notification.read && (
                                   <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
@@ -132,11 +177,11 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 truncate mt-1">
-                                {notification.message}
+                              <p className="text-sm text-gray-600 mt-1">
+                                {notification.message || notification.content || 'No message content'}
                               </p>
                               <p className="text-xs text-gray-400 mt-1">
-                                {notification.time}
+                                {formatTime(notification.createdAt || notification.timestamp)}
                               </p>
                             </div>
                           </div>
@@ -145,14 +190,27 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
                     </div>
                   )}
                   {notifications.length > 0 && (
-                    <div className="p-3 border-t border-gray-100">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full text-center text-blue-600 hover:text-blue-700"
-                      >
-                        View All Notifications
-                      </Button>
+                    <div className="p-3 border-t border-gray-100 space-y-2">
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline"
+                          size="sm" 
+                          className="flex-1 text-center"
+                          onClick={handleMarkAllAsRead}
+                          disabled={markAllAsReadMutation.isPending || unreadCount === 0}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Mark All Read
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-1 text-center text-blue-600 hover:text-blue-700"
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          View All
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>

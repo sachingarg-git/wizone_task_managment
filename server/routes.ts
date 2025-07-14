@@ -2020,6 +2020,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification endpoints
+  app.get('/api/notifications', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Get recent notification logs for the user
+      const notifications = await db
+        .select({
+          id: notificationLogs.id,
+          eventType: notificationLogs.eventType,
+          message: notificationLogs.message,
+          createdAt: notificationLogs.createdAt,
+          read: notificationLogs.read,
+          taskId: notificationLogs.taskId,
+          customerId: notificationLogs.customerId,
+          userId: notificationLogs.userId,
+        })
+        .from(notificationLogs)
+        .where(eq(notificationLogs.userId, userId))
+        .orderBy(desc(notificationLogs.createdAt))
+        .limit(50);
+
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: 'Failed to fetch notifications' });
+    }
+  });
+
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      await db
+        .update(notificationLogs)
+        .set({ read: true })
+        .where(and(
+          eq(notificationLogs.id, notificationId),
+          eq(notificationLogs.userId, userId)
+        ));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: 'Failed to mark notification as read' });
+    }
+  });
+
+  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      await db
+        .update(notificationLogs)
+        .set({ read: true })
+        .where(eq(notificationLogs.userId, userId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ message: 'Failed to mark all notifications as read' });
+    }
+  });
+
   // Chat system routes - restricted to engineers only
   const isEngineer = (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
