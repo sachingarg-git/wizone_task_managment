@@ -1,45 +1,72 @@
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import "./index.css";
 
-// Register service worker for PWA functionality
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
+console.log("Starting application initialization...");
 
+// Basic test without App component first
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   console.error("Root element not found!");
   throw new Error("Root element not found");
 }
 
-console.log("Starting Wizone IT Support Portal...");
 console.log("Root element found:", rootElement);
 
 try {
+  // Simple test render
+  rootElement.innerHTML = `
+    <div style="min-height: 100vh; background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%); color: white; padding: 20px; font-family: system-ui;">
+      <h1 style="margin-bottom: 20px;">React Test - Step 1</h1>
+      <p>If you see this, HTML is loading correctly.</p>
+      <p>Now testing React rendering...</p>
+    </div>
+  `;
+  
+  console.log("Basic HTML loaded, now testing React...");
+  
+  // Test React rendering
   const root = createRoot(rootElement);
   console.log("React root created successfully");
   
-  // Directly render the full app
-  root.render(<App />);
-  console.log("Full app render successful");
+  root.render(
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
+      color: 'white', 
+      padding: '20px', 
+      fontFamily: 'system-ui' 
+    }}>
+      <h1 style={{ marginBottom: '20px' }}>React Test - Step 2</h1>
+      <p>✅ React is rendering successfully!</p>
+      <p>This confirms React and createRoot are working.</p>
+      <button 
+        onClick={() => window.location.reload()} 
+        style={{ 
+          marginTop: '20px', 
+          padding: '10px 20px', 
+          background: '#ffffff', 
+          color: '#dc2626', 
+          border: 'none', 
+          borderRadius: '5px', 
+          cursor: 'pointer',
+          fontWeight: 'bold'
+        }}
+      >
+        Reload to Test Again
+      </button>
+    </div>
+  );
+  
+  console.log("React render completed successfully");
 } catch (error) {
-  console.error("Failed to render app:", error);
+  console.error("Failed to render:", error);
   // Fallback render
   rootElement.innerHTML = `
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-      <div style="text-align: center; color: white;">
-        <h1>Wizone IT Support Portal</h1>
-        <p>Application Error: ${error.message}</p>
-        <button onclick="window.location.reload()" style="margin-top: 16px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #dc2626; color: white;">
+      <div style="text-align: center;">
+        <h1>Error Detected</h1>
+        <p>Error: ${error.message}</p>
+        <button onclick="window.location.reload()" style="margin-top: 16px; padding: 8px 16px; background: white; color: #dc2626; border: none; border-radius: 4px; cursor: pointer;">
           Reload
         </button>
       </div>
