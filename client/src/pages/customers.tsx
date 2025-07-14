@@ -305,22 +305,23 @@ export default function Customers() {
       <Header 
         title="Customer Management"
         subtitle="Manage customer information and service history"
-      >
-        <div className="flex space-x-3">
-          <Button variant="outline" onClick={exportCustomers}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Import
-          </Button>
-          <Button onClick={() => setShowCustomerForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Customer
-          </Button>
-        </div>
-      </Header>
+        actions={
+          <div className="flex space-x-3">
+            <Button variant="outline" onClick={exportCustomers}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            <Button onClick={() => setShowCustomerForm(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Customer
+            </Button>
+          </div>
+        }
+      />
       
       <div className="p-6 space-y-8">
         {/* Customer Stats */}

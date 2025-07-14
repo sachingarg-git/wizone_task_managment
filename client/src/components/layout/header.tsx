@@ -57,17 +57,18 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
           <p className="text-gray-400">{subtitle}</p>
         </div>
         <div className="flex items-center space-x-4">
-          {children}
+          {actions}
           <Popover open={showNotifications} onOpenChange={setShowNotifications}>
             <PopoverTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="btn-animate relative text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 rounded-lg transition-all duration-300"
+                className="relative text-gray-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all duration-200"
+                onClick={() => setShowNotifications(!showNotifications)}
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center pulse-glow">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}

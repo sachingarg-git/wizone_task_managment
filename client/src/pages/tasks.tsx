@@ -94,6 +94,8 @@ export default function Tasks() {
       if (!response.ok) throw new Error('Failed to fetch tasks');
       return response.json();
     },
+    refetchInterval: 30000, // Auto-refresh every 30 seconds for real-time updates
+    refetchOnWindowFocus: true, // Refresh when window gains focus
   });
 
   const { data: taskStats, isLoading: statsLoading } = useQuery({
@@ -539,21 +541,22 @@ export default function Tasks() {
       <Header 
         title="Task Management"
         subtitle="Create, assign, and track task progress"
-      >
-        <div className="flex space-x-3">
-          <Button variant="outline" onClick={() => setShowFilterModal(true)}>
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-            {(searchQuery || priorityFilter !== 'all' || statusFilter !== 'all') && (
-              <span className="ml-2 w-2 h-2 bg-purple-600 rounded-full"></span>
-            )}
-          </Button>
-          <Button onClick={() => setShowTaskForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Task
-          </Button>
-        </div>
-      </Header>
+        actions={
+          <div className="flex space-x-3">
+            <Button variant="outline" onClick={() => setShowFilterModal(true)}>
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+              {(searchQuery || priorityFilter !== 'all' || statusFilter !== 'all') && (
+                <span className="ml-2 w-2 h-2 bg-purple-600 rounded-full"></span>
+              )}
+            </Button>
+            <Button onClick={() => setShowTaskForm(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Task
+            </Button>
+          </div>
+        }
+      />
       
       <div className="p-6 space-y-8">
         {/* Task Statistics */}
@@ -568,7 +571,10 @@ export default function Tasks() {
             ))
           ) : (
             <>
-              <Card>
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                onClick={() => setStatusFilter('pending')}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -582,7 +588,10 @@ export default function Tasks() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                onClick={() => setStatusFilter('in_progress')}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -596,7 +605,10 @@ export default function Tasks() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                onClick={() => setStatusFilter('completed')}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>

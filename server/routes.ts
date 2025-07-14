@@ -1164,22 +1164,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Sync endpoint for field engineers to refresh their task data
+  // Sync endpoint for field engineers to refresh their task data with real-time updates
   app.post('/api/tasks/sync', isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
+      const userRole = (req.user as any)?.role;
+      
       if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      console.log("Syncing data for user:", userId);
+      console.log("Syncing data for user:", userId, "Role:", userRole);
       
-      // Force refresh user tasks and related data
-      const userTasks = await storage.getTasksByUser(userId);
-      console.log("Sync found tasks:", userTasks.length);
+      // Force refresh user tasks and related data based on role
+      let userTasks;
+      if (userRole === 'field_engineer') {
+        // For field engineers, get tasks where they are assigned as fieldEngineerId
+        userTasks = await storage.getTasksByUser(userId);
+        console.log("Field engineer sync - found tasks:", userTasks.length);
+      } else {
+        // For other roles, get tasks assigned to them
+        userTasks = await storage.getTasksByUser(userId);
+        console.log("Regular sync - found tasks:", userTasks.length);
+      }
       
-      // Also get any recent updates for user's tasks
-      const taskIds = userTasks.map(task => task.id);
+      // Force cache invalidation and fresh data fetch with proper filtering
+      let filteredTasks;
+      if (userRole === 'field_engineer') {
+        // For field engineers, get tasks where they are specifically assigned as field engineer
+        filteredTasks = await storage.getAllTasks({ fieldEngineerId: userId });
+      } else {
+        // For other roles, get tasks assigned to them
+        filteredTasks = await storage.getAllTasks({ assignedTo: userId });
+      }
+      
+      console.log("Fresh filtered tasks:", filteredTasks.length);
+      
+      // Get recent updates for user's tasks
+      const taskIds = filteredTasks.map(task => task.id);
       const recentUpdates = [];
       
       for (const taskId of taskIds) {
@@ -1192,11 +1214,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({
-        tasks: userTasks,
+        tasks: filteredTasks,
         recentUpdates: recentUpdates.slice(0, 8), // Limit to 8 most recent
         syncTime: new Date().toISOString(),
-        message: `Data synced successfully - ${userTasks.length} tasks found`,
-        userId: userId
+        message: `Real-time sync completed - ${filteredTasks.length} tasks found for ${userRole}`,
+        userId: userId,
+        userRole: userRole
       });
     } catch (error) {
       console.error("Error syncing tasks:", error);

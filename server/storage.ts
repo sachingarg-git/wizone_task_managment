@@ -87,7 +87,7 @@ export interface IStorage {
   updateCustomerPortalAccess(id: number, data: { username: string; password: string; portalAccess: boolean }): Promise<Customer>;
   
   // Task operations
-  getAllTasks(): Promise<TaskWithRelations[]>;
+  getAllTasks(filters?: { assignedTo?: string; fieldEngineerId?: string }): Promise<TaskWithRelations[]>;
   getTask(id: number): Promise<TaskWithRelations | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
@@ -455,8 +455,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Task operations
-  async getAllTasks(): Promise<TaskWithRelations[]> {
-    const result = await db
+  async getAllTasks(filters?: { assignedTo?: string; fieldEngineerId?: string }): Promise<TaskWithRelations[]> {
+    let query = db
       .select({
         task: tasks,
         customer: customers,
@@ -464,8 +464,25 @@ export class DatabaseStorage implements IStorage {
       })
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .orderBy(desc(tasks.createdAt));
+      .leftJoin(users, eq(tasks.assignedTo, users.id));
+
+    // Apply filters if provided
+    if (filters) {
+      const conditions = [];
+      if (filters.assignedTo) {
+        conditions.push(eq(tasks.assignedTo, filters.assignedTo));
+      }
+      if (filters.fieldEngineerId) {
+        conditions.push(eq(tasks.fieldEngineerId, filters.fieldEngineerId));
+      }
+      
+      if (conditions.length > 0) {
+        // Use AND logic for more precise filtering
+        query = query.where(and(...conditions));
+      }
+    }
+
+    const result = await query.orderBy(desc(tasks.createdAt));
     
     return result.map(row => ({
       ...row.task,
