@@ -48,6 +48,15 @@ app.use((req, res, next) => {
 (async () => {
   // Database connection is automatically established via Drizzle ORM
   
+  // Setup default users
+  try {
+    console.log("Setting up default user credentials...");
+    await createDefaultUsers();
+    console.log("Default user setup complete");
+  } catch (err) {
+    console.error("❌ Error seeding default users:", err);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
