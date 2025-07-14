@@ -690,7 +690,7 @@ export const notificationLogs = pgTable("notification_logs", {
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
   customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
-  messageText: text("message_text"), // Database column name
+  message: text("message"), // Changed from messageText to message for consistency
   messageTemplateUsed: varchar("message_template_used"),
   status: varchar("status").notNull().default("pending"), // pending, sent, failed, retrying
   read: boolean("read").notNull().default(false), // Added read field for notification tracking

@@ -2292,17 +2292,7 @@ export class DatabaseStorage implements IStorage {
 
   async getNotificationsByUser(userId: string): Promise<NotificationLog[]> {
     return await db
-      .select({
-        id: notificationLogs.id,
-        eventType: notificationLogs.eventType,
-        message: notificationLogs.messageText, // Use messageText from database
-        createdAt: notificationLogs.createdAt,
-        read: sql`COALESCE(${notificationLogs.read}, false)`.as('read'), // Handle null reads
-        taskId: notificationLogs.taskId,
-        customerId: notificationLogs.customerId,
-        userId: notificationLogs.userId,
-        status: notificationLogs.status,
-      })
+      .select()
       .from(notificationLogs)
       .where(eq(notificationLogs.userId, userId))
       .orderBy(desc(notificationLogs.createdAt))
