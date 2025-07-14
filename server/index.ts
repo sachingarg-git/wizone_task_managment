@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
-import { createDefaultUsers } from "./auth.js";
+// Import will be handled inline to avoid module issues
 import { db } from "./db.js";
 
 const app = express();
@@ -49,9 +49,11 @@ app.use((req, res, next) => {
 (async () => {
   // Database connection is automatically established via Drizzle ORM
   
-  // Setup default users
+  // Setup default users - inline to avoid import issues
   try {
     console.log("Setting up default user credentials...");
+    // Import the function dynamically to avoid module issues
+    const { createDefaultUsers } = await import("./auth");
     await createDefaultUsers();
     console.log("Default user setup complete");
   } catch (err) {
