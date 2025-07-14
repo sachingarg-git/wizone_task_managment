@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
+import { createDefaultUsers } from "./auth.js";
 import { db } from "./db.js";
 
 const app = express();
