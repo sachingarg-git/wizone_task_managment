@@ -1049,11 +1049,64 @@ export default function Tasks() {
                                       </div>
                                       <div className="space-y-1">
                                         {update.attachments.map((file: string, index: number) => (
-                                          <div key={index} className="flex items-center gap-2 text-xs bg-white border border-purple-200 px-2 py-1 rounded">
-                                            {getFileIcon(file)}
-                                            <span className="text-purple-800 font-medium">
-                                              {file.includes('data:') ? `Document ${index + 1}` : file}
-                                            </span>
+                                          <div key={index} className="flex items-center justify-between gap-2 text-xs bg-white border border-purple-200 px-2 py-1 rounded">
+                                            <div className="flex items-center gap-2">
+                                              {getFileIcon(file)}
+                                              <span className="text-purple-800 font-medium">
+                                                {file.includes('data:') ? `Document ${index + 1}` : file}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              {file.includes('data:') ? (
+                                                <>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-6 px-2 text-xs hover:bg-purple-100"
+                                                    onClick={() => {
+                                                      // Create download link for base64 data
+                                                      const link = document.createElement('a');
+                                                      link.href = file;
+                                                      link.download = `attachment_${index + 1}`;
+                                                      link.click();
+                                                    }}
+                                                  >
+                                                    <Download className="w-3 h-3" />
+                                                  </Button>
+                                                  {file.startsWith('data:image/') && (
+                                                    <Button
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      className="h-6 px-2 text-xs hover:bg-purple-100"
+                                                      onClick={() => {
+                                                        // Open image in new window
+                                                        const newWindow = window.open();
+                                                        if (newWindow) {
+                                                          newWindow.document.write(`<img src="${file}" style="max-width:100%;height:auto;" />`);
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Eye className="w-3 h-3" />
+                                                    </Button>
+                                                  )}
+                                                </>
+                                              ) : (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 px-2 text-xs hover:bg-purple-100"
+                                                  onClick={() => {
+                                                    // Download file from server
+                                                    const link = document.createElement('a');
+                                                    link.href = `/uploads/${file}`;
+                                                    link.download = file;
+                                                    link.click();
+                                                  }}
+                                                >
+                                                  <Download className="w-3 h-3" />
+                                                </Button>
+                                              )}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>

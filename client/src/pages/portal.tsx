@@ -31,7 +31,8 @@ import {
   Upload,
   Camera,
   Trash2,
-  Image
+  Image,
+  Download
 } from "lucide-react";
 import {
   Dialog,
@@ -578,9 +579,29 @@ export default function Portal() {
                                   </div>
                                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{update.note}</p>
                                   {update.files && update.files.length > 0 && (
-                                    <div className="mt-2 flex items-center space-x-2">
-                                      <FileText className="w-4 h-4 text-gray-400" />
-                                      <p className="text-xs text-gray-500">Files: {update.files.join(', ')}</p>
+                                    <div className="mt-2">
+                                      <div className="flex items-center gap-1 text-xs text-blue-600 mb-1">
+                                        <FileText className="w-3 h-3" />
+                                        <span>Files ({update.files.length})</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {update.files.map((file: string, fileIndex: number) => (
+                                          <div key={fileIndex} className="flex items-center justify-between text-xs bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                                            <span className="truncate flex-1">{file}</span>
+                                            <button
+                                              onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = `/uploads/${file}`;
+                                                link.download = file;
+                                                link.click();
+                                              }}
+                                              className="ml-2 text-blue-600 hover:text-blue-800"
+                                            >
+                                              <Download className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   )}
                                 </div>

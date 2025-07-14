@@ -2297,7 +2297,7 @@ export class DatabaseStorage implements IStorage {
         eventType: notificationLogs.eventType,
         message: notificationLogs.messageText, // Use messageText from database
         createdAt: notificationLogs.createdAt,
-        read: sql`COALESCE(${notificationLogs.read}, false)`.as('read'), // Handle null reads
+        read: sql`false`.as('read'), // Default to false since column doesn't exist
         taskId: notificationLogs.taskId,
         customerId: notificationLogs.customerId,
         userId: notificationLogs.userId,
