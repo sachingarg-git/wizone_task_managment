@@ -24,6 +24,76 @@ import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
 import { healthCheck } from "./health";
 
+// SQL Server sync helper function
+async function syncUserToSqlServer(user: any, connection: any) {
+  try {
+    const mssql = await import('mssql');
+    const { ConnectionPool } = mssql.default || mssql;
+    
+    // Parse host and port - SQL Server uses comma format like "14.102.70.90,1433"
+    let server = connection.host.trim();
+    let port = connection.port;
+    
+    // If host contains comma, split it for SQL Server format
+    if (server.includes(',')) {
+      const parts = server.split(',');
+      server = parts[0].trim();
+      port = parseInt(parts[1].trim()) || port;
+    }
+    
+    const config = {
+      server: server,
+      port: port,
+      database: connection.database.trim(),
+      user: connection.username.trim(),
+      password: connection.password.trim(),
+      options: {
+        encrypt: connection.sslEnabled,
+        trustServerCertificate: true,
+        enableArithAbort: true,
+      },
+      pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+      },
+      connectionTimeout: 30000,
+      requestTimeout: 30000,
+    };
+    
+    console.log(`Connecting to SQL Server for user sync: ${server},${port}`);
+    const pool = new ConnectionPool(config);
+    await pool.connect();
+    
+    // Insert user into SQL Server
+    const insertQuery = `
+      INSERT INTO users (id, username, password, email, firstName, lastName, phone, profileImageUrl, role, department, isActive, createdAt, updatedAt)
+      VALUES (@id, @username, @password, @email, @firstName, @lastName, @phone, @profileImageUrl, @role, @department, @isActive, GETDATE(), GETDATE())
+    `;
+    
+    const request = pool.request()
+      .input('id', user.id)
+      .input('username', user.username)
+      .input('password', user.password)
+      .input('email', user.email)
+      .input('firstName', user.firstName)
+      .input('lastName', user.lastName)
+      .input('phone', user.phone || null)
+      .input('profileImageUrl', user.profileImageUrl || null)
+      .input('role', user.role)
+      .input('department', user.department || 'WIZONE HELP DESK')
+      .input('isActive', user.isActive);
+    
+    await request.query(insertQuery);
+    await pool.close();
+    
+    console.log(`User ${user.username} synced to SQL Server successfully`);
+  } catch (error) {
+    console.error('SQL Server user sync error:', error);
+    throw error;
+  }
+}
+
 // Notification helper function
 async function sendTaskNotification(task: any, eventType: string) {
   try {
@@ -1587,6 +1657,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const user = await storage.createUserWithPassword(userData);
+
+      // Sync new user to SQL Server if connected
+      try {
+        const sqlConnections = await storage.getAllSqlConnections();
+        const activeConnection = sqlConnections.find(conn => conn.isActive);
+        
+        if (activeConnection) {
+          console.log("Syncing new user to SQL Server...");
+          await syncUserToSqlServer(user, activeConnection);
+          console.log("User synced to SQL Server successfully");
+        }
+      } catch (syncError) {
+        console.error("Error syncing user to SQL Server:", syncError);
+        // Don't fail user creation if SQL sync fails
+      }
+
       res.status(201).json(user);
     } catch (error) {
       console.error("Error creating user:", error);
