@@ -1077,6 +1077,53 @@ export default function Tasks() {
                   </TabsContent>
 
                   <TabsContent value="update" className="space-y-4">
+                    {/* Field Team Assignment Section */}
+                    {!task.fieldEngineerId && task.status !== "completed" && task.status !== "cancelled" && (
+                      <Card className="border-blue-200 bg-blue-50">
+                        <CardHeader>
+                          <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+                            <User className="w-4 h-4" />
+                            Move to Field Team
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-blue-700 mb-3">Assign this task to field engineers for on-site work.</p>
+                          <Button 
+                            onClick={() => handleMoveToFieldTeam(task)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <User className="w-4 h-4 mr-2" />
+                            Move to Field Team
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    {/* Field Engineer Information */}
+                    {task.fieldEngineerId && (
+                      <Card className="border-green-200 bg-green-50">
+                        <CardHeader>
+                          <CardTitle className="text-sm text-green-800 flex items-center gap-2">
+                            <User className="w-4 h-4" />
+                            Field Team Assignment
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-sm text-green-700 mb-3">
+                            <span className="font-medium">Field Engineer:</span> {task.fieldEngineer?.firstName} {task.fieldEngineer?.lastName}
+                          </div>
+                          <Button 
+                            onClick={() => handleFieldWorkflow(task)}
+                            variant="outline"
+                            className="border-green-300 text-green-700 hover:bg-green-100"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Field Workflow
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Update Section */}
                     <div className="space-y-4">
                       <h4 className="font-medium text-gray-900">Update Task Status</h4>
