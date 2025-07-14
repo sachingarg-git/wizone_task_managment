@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
-import { setupAuth, createDefaultUsers } from "./auth";
+import { setupAuth } from "./auth";
 import { seedDatabase } from "./seed";
 import { 
   insertTaskSchema, 
@@ -253,8 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
 
-  // Create default users
-  await createDefaultUsers();
+  // Skip user seeding for Windows compatibility
+  console.log("User seeding skipped for Windows compatibility");
 
 
 
