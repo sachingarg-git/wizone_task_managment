@@ -58,6 +58,9 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Serve static files for testing
+  app.use('/public', express.static('public'));
+
   // Add simple test routes
   app.get('/test', (req, res) => {
     res.send(`

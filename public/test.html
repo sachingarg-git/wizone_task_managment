@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Static Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        p {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        .test-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ffffff;
+            color: #059669;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🟢 STATIC FILE TEST</h1>
+        <p>This is a direct static HTML file served without any middleware.</p>
+        
+        <div class="test-info">
+            <p><strong>Test Status:</strong> Static HTML Loading Works</p>
+            <p><strong>Time:</strong> <span id="current-time">Loading...</span></p>
+            <p><strong>Browser:</strong> <span id="browser-info">Loading...</span></p>
+        </div>
+        
+        <div>
+            <a href="/test" class="btn">Test Express Route</a>
+            <a href="/simple" class="btn">Test Simple Route</a>
+            <a href="/" class="btn">Try Main App</a>
+        </div>
+        
+        <div style="margin-top: 30px; opacity: 0.8;">
+            <p>If you see this green page, static files work correctly.</p>
+            <p>The issue is likely with dynamic content generation.</p>
+        </div>
+    </div>
+
+    <script>
+        // Update time and browser info
+        document.getElementById('current-time').textContent = new Date().toLocaleString();
+        document.getElementById('browser-info').textContent = navigator.userAgent.substring(0, 50) + '...';
+        
+        console.log('=== STATIC HTML TEST SUCCESSFUL ===');
+        console.log('Browser:', navigator.userAgent);
+        console.log('Location:', window.location.href);
+        console.log('Document ready state:', document.readyState);
+    </script>
+</body>
+</html>
