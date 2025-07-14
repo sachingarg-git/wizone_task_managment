@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
@@ -60,6 +61,11 @@ app.use((req, res, next) => {
 
   // Serve static files for testing
   app.use('/public', express.static('public'));
+  
+  // Direct login route bypassing React
+  app.get('/login-direct', (req, res) => {
+    res.sendFile(path.resolve('public/login.html'));
+  });
 
   // Add simple test routes
   app.get('/test', (req, res) => {
