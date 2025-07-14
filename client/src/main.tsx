@@ -1,53 +1,24 @@
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
 console.log("=== MAIN.TSX EXECUTION START ===");
 
-// Test 1: Can we access DOM?
 const rootElement = document.getElementById("root");
-console.log("Root element:", rootElement);
-
 if (!rootElement) {
-  console.error("Root element not found!");
-  document.body.innerHTML = `
-    <div style="background: red; color: white; padding: 20px; font-family: Arial;">
-      <h1>CRITICAL ERROR: Root element not found</h1>
-      <p>The #root div is missing from the HTML</p>
-    </div>
-  `;
   throw new Error("Root element not found");
 }
 
-// Test 2: Basic DOM manipulation
-console.log("Testing basic DOM manipulation...");
-rootElement.innerHTML = `
-  <div style="
-    min-height: 100vh; 
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-    color: white; 
-    padding: 20px; 
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  ">
-    <h1 style="margin-bottom: 20px; font-size: 2rem;">✅ DOM Access Working</h1>
-    <p style="margin-bottom: 10px;">Basic HTML and JavaScript are functioning.</p>
-    <p style="margin-bottom: 20px;">Testing React import next...</p>
-    <div id="react-test" style="margin-top: 20px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
-      React test pending...
-    </div>
-  </div>
-`;
+console.log("Creating React root and rendering App...");
+const root = createRoot(rootElement);
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
 
-console.log("Basic DOM test completed, now testing React...");
-
-// Test 3: React import and rendering
-(async () => {
-  try {
-    console.log("Importing React...");
-    const { createRoot } = await import("react-dom/client");
-    console.log("React imported successfully");
-    
-    const reactTestDiv = document.getElementById("react-test");
+console.log("React application mounted successfully");
     if (reactTestDiv) {
       console.log("Creating React root...");
       const root = createRoot(reactTestDiv);
