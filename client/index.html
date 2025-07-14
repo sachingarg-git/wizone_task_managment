@@ -20,7 +20,89 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Immediate test script -->
+    <script>
+      console.log('=== INLINE SCRIPT EXECUTING ===');
+      
+      // Test 1: Basic DOM access
+      const root = document.getElementById('root');
+      console.log('Root element found:', root);
+      
+      if (root) {
+        // Test 2: Basic DOM manipulation
+        root.innerHTML = `
+          <div style="
+            min-height: 100vh; 
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); 
+            color: white; 
+            padding: 40px; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          ">
+            <h1 style="font-size: 3rem; margin-bottom: 20px; font-weight: bold;">⚡ BASIC TEST WORKING</h1>
+            <p style="font-size: 1.25rem; margin-bottom: 10px; opacity: 0.9;">HTML and inline JavaScript are functioning correctly!</p>
+            <p style="font-size: 1rem; margin-bottom: 30px; opacity: 0.8;">Now testing module loading...</p>
+            <div id="module-test" style="
+              padding: 20px; 
+              background: rgba(255,255,255,0.1); 
+              border-radius: 10px; 
+              border: 2px solid rgba(255,255,255,0.2);
+              min-width: 300px;
+            ">
+              <div style="font-size: 1.1rem; margin-bottom: 10px;">Module Test Status:</div>
+              <div id="status" style="font-weight: bold; color: #fbbf24;">Loading...</div>
+            </div>
+            <button onclick="window.location.reload()" style="
+              margin-top: 20px; 
+              padding: 12px 24px; 
+              background: #ffffff; 
+              color: #7c3aed; 
+              border: none; 
+              border-radius: 8px; 
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 1rem;
+              transition: transform 0.2s;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+              🔄 Reload Test
+            </button>
+          </div>
+        `;
+        
+        console.log('Basic DOM manipulation successful');
+        
+        // Test 3: Module loading
+        setTimeout(() => {
+          console.log('Testing module import...');
+          const statusDiv = document.getElementById('status');
+          
+          import('/src/main.tsx')
+            .then(() => {
+              console.log('Module loaded successfully!');
+              if (statusDiv) {
+                statusDiv.innerHTML = '✅ Module Loading Works!';
+                statusDiv.style.color = '#10b981';
+              }
+            })
+            .catch((error) => {
+              console.error('Module loading failed:', error);
+              if (statusDiv) {
+                statusDiv.innerHTML = '❌ Module Error: ' + error.message;
+                statusDiv.style.color = '#ef4444';
+              }
+            });
+        }, 500);
+      } else {
+        console.error('Root element not found!');
+        document.body.innerHTML = '<div style="background: red; color: white; padding: 20px;">CRITICAL: Root element missing</div>';
+      }
+    </script>
+    
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
   </body>
