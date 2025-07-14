@@ -2,7 +2,7 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+// import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Landing from "@/pages/landing";
@@ -30,12 +30,22 @@ import NotFound from "@/pages/not-found";
 function Router() {
   console.log("Router component rendering...");
   
-  // Original router logic
-  const { isAuthenticated, isLoading, error } = useAuth();
-  const [location] = useLocation();
-  const [customerUser, setCustomerUser] = useState(null);
-  
-  console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
+  // Test if basic rendering works
+  try {
+    // Add a test render to see if anything shows
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'red', color: 'white', padding: '20px' }}>
+        <h1>Test Component Working!</h1>
+        <p>If you see this, React is rendering correctly</p>
+      </div>
+    );
+    
+    // Original router logic
+    const { isAuthenticated, isLoading, error } = useAuth();
+    const [location] = useLocation();
+    const [customerUser, setCustomerUser] = useState(null);
+    
+    console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
 
   // Check for stored customer session
   useEffect(() => {
@@ -138,6 +148,37 @@ function Router() {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error("Router error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#1e293b'
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <h1 style={{ marginBottom: '16px' }}>Router Error</h1>
+          <p>{error?.message || 'Unknown router error'}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              marginTop: '16px', 
+              padding: '8px 16px', 
+              backgroundColor: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
 
 function App() {
@@ -146,12 +187,10 @@ function App() {
   try {
     return (
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <div className="app-container">
-            <Router />
-            <Toaster />
-          </div>
-        </TooltipProvider>
+        <div className="app-container" style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Router />
+          <Toaster />
+        </div>
       </QueryClientProvider>
     );
   } catch (error) {
