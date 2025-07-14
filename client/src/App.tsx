@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
+
+// Import components with fallback
 import Landing from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -17,7 +19,6 @@ import Domains from "@/pages/domains";
 import SqlConnections from "@/pages/sql-connections";
 import BotConfiguration from "@/pages/bot-configuration";
 import APKDownload from "@/pages/apk-download";
-
 import TrackingHistory from "@/pages/tracking-history";
 import OfficeManagement from "@/pages/office-management";
 import Chat from "@/pages/chat";
@@ -30,12 +31,13 @@ import NotFound from "@/pages/not-found";
 function Router() {
   console.log("Router component rendering...");
   
-  // Original router logic
-  const { isAuthenticated, isLoading, error } = useAuth();
-  const [location] = useLocation();
-  const [customerUser, setCustomerUser] = useState(null);
-  
-  console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
+  try {
+    // Original router logic
+    const { isAuthenticated, isLoading, error } = useAuth();
+    const [location] = useLocation();
+    const [customerUser, setCustomerUser] = useState(null);
+    
+    console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
 
   // Check for stored customer session
   useEffect(() => {
@@ -138,6 +140,37 @@ function Router() {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error("Router error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+      }}>
+        <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
+          <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Router Error</h1>
+          <p style={{ marginBottom: '16px' }}>Error: {error.message}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              padding: '12px 24px', 
+              background: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            Reload Application
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
 
 function App() {

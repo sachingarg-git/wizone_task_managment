@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Critical CSS for white page fix */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: white;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
 /* Ensure app container is visible */
 #root {
   min-height: 100vh;
