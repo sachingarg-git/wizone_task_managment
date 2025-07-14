@@ -49,16 +49,8 @@ app.use((req, res, next) => {
 (async () => {
   // Database connection is automatically established via Drizzle ORM
   
-  // Setup default users - inline to avoid import issues
-  try {
-    console.log("Setting up default user credentials...");
-    // Import the function dynamically to avoid module issues
-    const { createDefaultUsers } = await import("./auth");
-    await createDefaultUsers();
-    console.log("Default user setup complete");
-  } catch (err) {
-    console.error("❌ Error seeding default users:", err);
-  }
+  // Skip user seeding for faster startup - users can be created via UI
+  console.log("Skipping user seeding for faster startup");
   
   const server = await registerRoutes(app);
 

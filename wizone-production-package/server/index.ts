@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
+// Import will be handled inline to avoid module issues
 import { db } from "./db.js";
 
 const app = express();
@@ -47,6 +48,9 @@ app.use((req, res, next) => {
 
 (async () => {
   // Database connection is automatically established via Drizzle ORM
+  
+  // Skip user seeding for faster startup - users can be created via UI
+  console.log("Skipping user seeding for faster startup");
   
   const server = await registerRoutes(app);
 
