@@ -10,7 +10,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // Setup domain validation and CORS for custom domains
 setupDomainCORS(app);
-app.use(domainValidationMiddleware);
+// app.use(domainValidationMiddleware); // Temporarily disabled for debugging
 
 // Trust proxy for production hosting behind load balancers/reverse proxies
 app.set('trust proxy', true);

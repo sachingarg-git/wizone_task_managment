@@ -138,8 +138,13 @@ export const domainManager = new DomainManager();
 export function domainValidationMiddleware(req: any, res: any, next: any) {
   const hostname = req.get('host') || req.hostname;
   
-  // Skip validation for API routes and local development
-  if (req.path.startsWith('/api') || hostname === 'localhost:5000' || process.env.NODE_ENV === 'development') {
+  // Skip validation for API routes, local development, and Replit domains
+  if (req.path.startsWith('/api') || 
+      hostname === 'localhost:5000' || 
+      process.env.NODE_ENV === 'development' ||
+      hostname.includes('replit.dev') ||
+      hostname.includes('replit.app') ||
+      hostname.includes('picard.replit.dev')) {
     return next();
   }
 
