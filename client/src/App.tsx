@@ -2,7 +2,7 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-// import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Landing from "@/pages/landing";
@@ -30,6 +30,7 @@ import NotFound from "@/pages/not-found";
 function Router() {
   console.log("Router component rendering...");
   
+  // Original router logic
   const { isAuthenticated, isLoading, error } = useAuth();
   const [location] = useLocation();
   const [customerUser, setCustomerUser] = useState(null);
@@ -136,19 +137,54 @@ function Router() {
         </Switch>
       </div>
     </div>
+  );
 }
 
 function App() {
   console.log("App component rendering...");
   
-  return (
-    <QueryClientProvider client={queryClient}>
-      <div className="app-container" style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <Router />
-        <Toaster />
+  try {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <div className="app-container">
+            <Router />
+            <Toaster />
+          </div>
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  } catch (error) {
+    console.error("App rendering error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ color: '#ef4444', marginBottom: '16px' }}>Application Error</h1>
+          <p style={{ color: '#6b7280' }}>Something went wrong loading the application.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              marginTop: '16px', 
+              padding: '8px 16px', 
+              backgroundColor: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Reload Page
+          </button>
+        </div>
       </div>
-    </QueryClientProvider>
-  );
+    );
+  }
 }
 
 export default App;

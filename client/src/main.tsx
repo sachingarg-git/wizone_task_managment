@@ -1,57 +1,48 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-console.log("=== MAIN.TSX EXECUTION START ===");
+// Register service worker for PWA functionality
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('SW registered: ', registration);
+      })
+      .catch((registrationError) => {
+        console.log('SW registration failed: ', registrationError);
+      });
+  });
+}
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
+  console.error("Root element not found!");
   throw new Error("Root element not found");
 }
 
-console.log("Creating React root and rendering App...");
-const root = createRoot(rootElement);
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+console.log("Starting Wizone IT Support Portal...");
+console.log("Root element found:", rootElement);
 
-console.log("React application mounted successfully");
-    if (reactTestDiv) {
-      console.log("Creating React root...");
-      const root = createRoot(reactTestDiv);
-      console.log("React root created, attempting render...");
-      
-      // Use createElement instead of JSX for this test
-      const React = await import("react");
-      const testElement = React.createElement('div', {
-        style: {
-          padding: '10px',
-          background: '#ffffff',
-          color: '#059669',
-          borderRadius: '5px',
-          textAlign: 'center',
-          fontWeight: 'bold'
-        }
-      }, '🎉 REACT IS WORKING! 🎉');
-      
-      root.render(testElement);
-      
-      console.log("React render successful!");
-    }
-  } catch (error) {
-    console.error("React error:", error);
-    const reactTestDiv = document.getElementById("react-test");
-    if (reactTestDiv) {
-      reactTestDiv.innerHTML = `
-        <div style="padding: 10px; background: #dc2626; color: white; border-radius: 5px;">
-          ❌ React Error: ${error.message}
-        </div>
-      `;
-    }
-  }
-})();
-
-console.log("=== MAIN.TSX EXECUTION COMPLETE ===");
+try {
+  const root = createRoot(rootElement);
+  console.log("React root created successfully");
+  
+  // Directly render the full app
+  root.render(<App />);
+  console.log("Full app render successful");
+} catch (error) {
+  console.error("Failed to render app:", error);
+  // Fallback render
+  rootElement.innerHTML = `
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div style="text-align: center; color: white;">
+        <h1>Wizone IT Support Portal</h1>
+        <p>Application Error: ${error.message}</p>
+        <button onclick="window.location.reload()" style="margin-top: 16px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          Reload
+        </button>
+      </div>
+    </div>
+  `;
+}
