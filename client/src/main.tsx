@@ -1,75 +1,86 @@
-import { createRoot } from "react-dom/client";
-import "./index.css";
+console.log("=== MAIN.TSX EXECUTION START ===");
 
-console.log("Starting application initialization...");
-
-// Basic test without App component first
+// Test 1: Can we access DOM?
 const rootElement = document.getElementById("root");
+console.log("Root element:", rootElement);
+
 if (!rootElement) {
   console.error("Root element not found!");
+  document.body.innerHTML = `
+    <div style="background: red; color: white; padding: 20px; font-family: Arial;">
+      <h1>CRITICAL ERROR: Root element not found</h1>
+      <p>The #root div is missing from the HTML</p>
+    </div>
+  `;
   throw new Error("Root element not found");
 }
 
-console.log("Root element found:", rootElement);
+// Test 2: Basic DOM manipulation
+console.log("Testing basic DOM manipulation...");
+rootElement.innerHTML = `
+  <div style="
+    min-height: 100vh; 
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+    color: white; 
+    padding: 20px; 
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  ">
+    <h1 style="margin-bottom: 20px; font-size: 2rem;">✅ DOM Access Working</h1>
+    <p style="margin-bottom: 10px;">Basic HTML and JavaScript are functioning.</p>
+    <p style="margin-bottom: 20px;">Testing React import next...</p>
+    <div id="react-test" style="margin-top: 20px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+      React test pending...
+    </div>
+  </div>
+`;
 
-try {
-  // Simple test render
-  rootElement.innerHTML = `
-    <div style="min-height: 100vh; background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%); color: white; padding: 20px; font-family: system-ui;">
-      <h1 style="margin-bottom: 20px;">React Test - Step 1</h1>
-      <p>If you see this, HTML is loading correctly.</p>
-      <p>Now testing React rendering...</p>
-    </div>
-  `;
-  
-  console.log("Basic HTML loaded, now testing React...");
-  
-  // Test React rendering
-  const root = createRoot(rootElement);
-  console.log("React root created successfully");
-  
-  root.render(
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
-      color: 'white', 
-      padding: '20px', 
-      fontFamily: 'system-ui' 
-    }}>
-      <h1 style={{ marginBottom: '20px' }}>React Test - Step 2</h1>
-      <p>✅ React is rendering successfully!</p>
-      <p>This confirms React and createRoot are working.</p>
-      <button 
-        onClick={() => window.location.reload()} 
-        style={{ 
-          marginTop: '20px', 
-          padding: '10px 20px', 
-          background: '#ffffff', 
-          color: '#dc2626', 
-          border: 'none', 
-          borderRadius: '5px', 
-          cursor: 'pointer',
+console.log("Basic DOM test completed, now testing React...");
+
+// Test 3: React import and rendering
+(async () => {
+  try {
+    console.log("Importing React...");
+    const { createRoot } = await import("react-dom/client");
+    console.log("React imported successfully");
+    
+    const reactTestDiv = document.getElementById("react-test");
+    if (reactTestDiv) {
+      console.log("Creating React root...");
+      const root = createRoot(reactTestDiv);
+      console.log("React root created, attempting render...");
+      
+      // Use createElement instead of JSX for this test
+      const React = await import("react");
+      const testElement = React.createElement('div', {
+        style: {
+          padding: '10px',
+          background: '#ffffff',
+          color: '#059669',
+          borderRadius: '5px',
+          textAlign: 'center',
           fontWeight: 'bold'
-        }}
-      >
-        Reload to Test Again
-      </button>
-    </div>
-  );
-  
-  console.log("React render completed successfully");
-} catch (error) {
-  console.error("Failed to render:", error);
-  // Fallback render
-  rootElement.innerHTML = `
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #dc2626; color: white;">
-      <div style="text-align: center;">
-        <h1>Error Detected</h1>
-        <p>Error: ${error.message}</p>
-        <button onclick="window.location.reload()" style="margin-top: 16px; padding: 8px 16px; background: white; color: #dc2626; border: none; border-radius: 4px; cursor: pointer;">
-          Reload
-        </button>
-      </div>
-    </div>
-  `;
-}
+        }
+      }, '🎉 REACT IS WORKING! 🎉');
+      
+      root.render(testElement);
+      
+      console.log("React render successful!");
+    }
+  } catch (error) {
+    console.error("React error:", error);
+    const reactTestDiv = document.getElementById("react-test");
+    if (reactTestDiv) {
+      reactTestDiv.innerHTML = `
+        <div style="padding: 10px; background: #dc2626; color: white; border-radius: 5px;">
+          ❌ React Error: ${error.message}
+        </div>
+      `;
+    }
+  }
+})();
+
+console.log("=== MAIN.TSX EXECUTION COMPLETE ===");
