@@ -227,6 +227,59 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .returning();
+    
+    // Automatically sync to SQL Server (permanently configured)
+    try {
+      const mssql = await import('mssql');
+      const { ConnectionPool } = mssql.default || mssql;
+      
+      const sqlServerConfig = {
+        server: "14.102.70.90",
+        port: 1433,
+        database: "TASK_SCORE_WIZONE",
+        user: "sa",
+        password: "ss123456",
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+          enableArithAbort: true,
+        },
+        pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+        connectionTimeout: 30000,
+        requestTimeout: 30000,
+      };
+      
+      console.log(`🔄 Auto-syncing user ${userData.username} to SQL Server...`);
+      const pool = new ConnectionPool(sqlServerConfig);
+      await pool.connect();
+      
+      const insertQuery = `
+        INSERT INTO users (id, username, password, email, firstName, lastName, phone, profileImageUrl, role, department, isActive, createdAt, updatedAt)
+        VALUES (@id, @username, @password, @email, @firstName, @lastName, @phone, @profileImageUrl, @role, @department, @isActive, GETDATE(), GETDATE())
+      `;
+      
+      const request = pool.request()
+        .input('id', user.id)
+        .input('username', user.username)
+        .input('password', user.password)
+        .input('email', user.email)
+        .input('firstName', user.firstName)
+        .input('lastName', user.lastName)
+        .input('phone', user.phone || null)
+        .input('profileImageUrl', user.profileImageUrl || null)
+        .input('role', user.role)
+        .input('department', user.department || 'WIZONE HELP DESK')
+        .input('isActive', user.isActive);
+      
+      await request.query(insertQuery);
+      await pool.close();
+      
+      console.log(`✅ User ${userData.username} synced to SQL Server successfully!`);
+    } catch (syncError) {
+      console.error('❌ SQL Server sync failed:', syncError);
+      // Don't fail user creation if SQL sync fails
+    }
+    
     return user;
   }
 
@@ -2292,7 +2345,17 @@ export class DatabaseStorage implements IStorage {
 
   async getNotificationsByUser(userId: string): Promise<NotificationLog[]> {
     return await db
-      .select()
+      .select({
+        id: notificationLogs.id,
+        eventType: notificationLogs.eventType,
+        message: notificationLogs.messageText, // Use messageText from database
+        createdAt: notificationLogs.createdAt,
+        read: sql`false`.as('read'), // Default to false since column doesn't exist
+        taskId: notificationLogs.taskId,
+        customerId: notificationLogs.customerId,
+        userId: notificationLogs.userId,
+        status: notificationLogs.status,
+      })
       .from(notificationLogs)
       .where(eq(notificationLogs.userId, userId))
       .orderBy(desc(notificationLogs.createdAt))
