@@ -7,12 +7,22 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   server: {
     hostname: 'localhost',
-    androidScheme: 'https'
+    androidScheme: 'https',
+    allowNavigation: ['*']
   },
   android: {
     allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: true,
+    loggingBehavior: 'debug',
+    minWebViewVersion: 60
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      backgroundColor: "#22d3ee",
+      showSpinner: false
+    }
   }
 };
 

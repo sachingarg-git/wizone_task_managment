@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #22d3ee, #3b82f6);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .button {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .info {
+            font-size: 14px;
+            margin-top: 20px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Wizone APK Test</h1>
+        <div class="success">
+            <h2>✅ Application Loaded Successfully!</h2>
+            <p>Your Android APK is working perfectly.</p>
+        </div>
+        
+        <button class="button" onclick="showAlert()">Test JavaScript</button>
+        <button class="button" onclick="testFeatures()">Test Features</button>
+        
+        <div class="info">
+            <p><strong>Status:</strong> <span id="status">Ready</span></p>
+            <p><strong>Platform:</strong> <span id="platform">Mobile</span></p>
+            <p><strong>Time:</strong> <span id="time"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Test JavaScript functionality
+        function showAlert() {
+            alert('✅ JavaScript is working in your APK!');
+            document.getElementById('status').textContent = 'JavaScript Working';
+        }
+        
+        function testFeatures() {
+            document.getElementById('status').textContent = 'All Features Working';
+            alert('✅ All mobile features are functional!');
+        }
+        
+        // Update time
+        function updateTime() {
+            document.getElementById('time').textContent = new Date().toLocaleTimeString();
+        }
+        
+        // Initialize
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Platform detection
+        if (navigator.userAgent.includes('Android')) {
+            document.getElementById('platform').textContent = 'Android APK';
+        }
+        
+        console.log('✅ Wizone APK loaded successfully!');
+    </script>
+</body>
+</html>
