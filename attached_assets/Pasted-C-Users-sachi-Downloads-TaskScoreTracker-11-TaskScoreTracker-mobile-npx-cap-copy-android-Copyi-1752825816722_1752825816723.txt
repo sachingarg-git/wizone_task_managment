@@ -1,0 +1,70 @@
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap copy android
+√ Copying web assets from public to android\app\src\main\assets\public in 57.74ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 5.03ms
+√ copy android in 182.36ms
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap open android
+[info] Opening Android project at: android.
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap sync android
+√ Copying web assets from public to android\app\src\main\assets\public in 56.79ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 1.30ms
+√ copy android in 81.48ms
+√ Updating Android plugins in 6.30ms
+√ update android in 59.13ms
+[info] Sync finished in 0.166s
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap copy android
+√ Copying web assets from public to android\app\src\main\assets\public in 49.24ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 1.55ms
+√ copy android in 86.24ms
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap open android
+[info] Opening Android project at: android.
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>cd..\client
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\client>npm run build
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v7.0.5 building for production...
+transforming (1) src\main.tsxBrowserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 2784 modules transformed.
+../dist/public/index.html                           1.33 kB │ gzip:   0.61 kB
+../dist/public/assets/wizone-logo-BqWPFk3I.jpg      5.50 kB
+../dist/public/assets/index-CNtFVdXZ.css           94.37 kB │ gzip:  15.58 kB
+../dist/public/assets/index-bySc0JL0.js         1,278.12 kB │ gzip: 339.74 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 28.63s
+
+  dist\index.js  224.4kb
+
+Done in 23ms
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\client>cd..\mobile
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap copy android
+√ Copying web assets from public to android\app\src\main\assets\public in 98.67ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 4.82ms
+√ copy android in 213.55ms
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap sync android
+√ Copying web assets from public to android\app\src\main\assets\public in 105.33ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 5.75ms
+√ copy android in 165.73ms
+√ Updating Android plugins in 9.13ms
+√ update android in 189.65ms
+[info] Sync finished in 0.424s
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>npx cap open android
+[info] Opening Android project at: android.
+
+C:\Users\sachi\Downloads\TaskScoreTracker (11)\TaskScoreTracker\mobile>
