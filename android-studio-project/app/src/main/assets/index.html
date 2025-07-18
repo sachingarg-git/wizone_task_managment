@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wizone IT Support Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card p {
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn:hover, .btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn.primary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #0891b2;
+            font-weight: 600;
+        }
+
+        .btn.primary:hover {
+            background: white;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .offline-indicator {
+            background: rgba(251, 191, 36, 0.2);
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            color: #fbbf24;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        @media (max-width: 480px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .container {
+                padding: 16px;
+            }
+            
+            .card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">WIZONE</div>
+        <div class="subtitle">IT Support Portal - Mobile</div>
+    </div>
+
+    <div class="container">
+        <div class="offline-indicator">
+            📱 Offline Mode - Limited Features Available
+        </div>
+
+        <div class="card">
+            <h3>🎯 Quick Actions</h3>
+            <div class="buttons">
+                <button class="btn primary" onclick="connectOnline()">Connect to Live Portal</button>
+                <button class="btn" onclick="showFeatures()">View Available Features</button>
+                <button class="btn" onclick="showHelp()">Help & Support</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📊 System Status</h3>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">v1.0</div>
+                    <div class="stat-label">App Version</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">✓</div>
+                    <div class="stat-label">Offline Ready</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">📱</div>
+                    <div class="stat-label">Mobile Optimized</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">🔒</div>
+                    <div class="stat-label">Secure</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="features-card" style="display: none;">
+            <h3>✨ Available Features</h3>
+            <ul class="feature-list">
+                <li>Task Management Dashboard</li>
+                <li>Customer Directory</li>
+                <li>User Management</li>
+                <li>Performance Analytics</li>
+                <li>File Upload/Download</li>
+                <li>Real-time Notifications</li>
+                <li>Mobile Responsive Design</li>
+                <li>Offline Capability</li>
+            </ul>
+        </div>
+
+        <div class="card" id="help-card" style="display: none;">
+            <h3>❓ Help & Support</h3>
+            <p><strong>Getting Started:</strong></p>
+            <ul class="feature-list">
+                <li>Tap "Connect to Live Portal" for full features</li>
+                <li>Use offline mode when internet is limited</li>
+                <li>All data syncs when connected</li>
+                <li>Contact support for login issues</li>
+            </ul>
+            <div class="buttons">
+                <button class="btn" onclick="window.open('tel:+1234567890')">📞 Call Support</button>
+                <button class="btn" onclick="window.open('mailto:support@wizoneit.com')">📧 Email Support</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🏢 About Wizone</h3>
+            <p>Professional IT support solutions for modern businesses. Streamline your task management, customer service, and team performance with our comprehensive platform.</p>
+        </div>
+    </div>
+
+    <script>
+        function connectOnline() {
+            if (window.Android) {
+                // Call Android method to switch to online mode
+                window.Android.connectOnline();
+            } else {
+                // Fallback for web testing
+                window.location.href = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/';
+            }
+        }
+
+        function showFeatures() {
+            const card = document.getElementById('features-card');
+            const helpCard = document.getElementById('help-card');
+            helpCard.style.display = 'none';
+            card.style.display = card.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function showHelp() {
+            const card = document.getElementById('help-card');
+            const featuresCard = document.getElementById('features-card');
+            featuresCard.style.display = 'none';
+            card.style.display = card.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Auto-hide cards after 10 seconds
+        setTimeout(() => {
+            document.getElementById('features-card').style.display = 'none';
+            document.getElementById('help-card').style.display = 'none';
+        }, 10000);
+
+        // Smooth loading animation
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>

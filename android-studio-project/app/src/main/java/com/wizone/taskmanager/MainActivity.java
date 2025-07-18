@@ -20,7 +20,8 @@ import androidx.appcompat.app.AlertDialog;
 public class MainActivity extends AppCompatActivity {
     
     private WebView webView;
-    private static final String APP_URL = "https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/";
+    private static final String APP_URL = "file:///android_asset/index.html";
+    private static final String REMOTE_URL = "https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/";
     private static final String FALLBACK_URL = "https://task.wizoneit.com/";
     private boolean isLoading = false;
     
@@ -71,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
         
         // Enhanced User Agent for better compatibility
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneApp/1.0");
+        
+        // Add JavaScript interface for offline/online switching
+        webView.addJavascriptInterface(new WebAppInterface(), "Android");
         
         // Set WebView client with enhanced error handling
         webView.setWebViewClient(new WebViewClient() {
@@ -151,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void loadApplication() {
-        // Try primary URL first
+        // Load offline version first for instant startup
         webView.loadUrl(APP_URL);
         
         // Set timeout for loading
@@ -159,11 +163,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 if (isLoading) {
-                    // Still loading after 10 seconds, show retry option
+                    // Still loading after 5 seconds, show options
+                    showLoadingOptions();
+                }
+            }
+        }, 5000);
+    }
+    
+    private void loadRemoteApplication() {
+        // Try remote URL
+        webView.loadUrl(REMOTE_URL);
+        
+        // Set timeout for remote loading
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (isLoading) {
                     showTimeoutDialog();
                 }
             }
-        }, 10000);
+        }, 15000);
     }
     
     private boolean isNetworkAvailable() {
@@ -210,20 +229,54 @@ public class MainActivity extends AppCompatActivity {
             .show();
     }
     
-    private void showTimeoutDialog() {
+    private void showLoadingOptions() {
         new AlertDialog.Builder(this)
-            .setTitle("Loading Timeout")
-            .setMessage("The application is taking longer than expected to load. Would you like to retry?")
+            .setTitle("Choose Connection Mode")
+            .setMessage("Would you like to use the app offline or connect to the live server?")
             .setIcon(android.R.drawable.ic_dialog_info)
-            .setPositiveButton("Retry", (dialog, which) -> {
-                webView.reload();
+            .setPositiveButton("Use Offline", (dialog, which) -> {
+                // Continue with offline mode - already loaded
+                isLoading = false;
             })
-            .setNeutralButton("Try Backup", (dialog, which) -> {
-                webView.loadUrl(FALLBACK_URL);
+            .setNeutralButton("Connect Online", (dialog, which) -> {
+                loadRemoteApplication();
             })
             .setNegativeButton("Exit", (dialog, which) -> finish())
             .setCancelable(false)
             .show();
+    }
+    
+    private void showTimeoutDialog() {
+        new AlertDialog.Builder(this)
+            .setTitle("Connection Timeout")
+            .setMessage("Unable to connect to the server. You can use the offline version or try again.")
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setPositiveButton("Use Offline", (dialog, which) -> {
+                webView.loadUrl(APP_URL);
+            })
+            .setNeutralButton("Retry Online", (dialog, which) -> {
+                loadRemoteApplication();
+            })
+            .setNegativeButton("Exit", (dialog, which) -> finish())
+            .setCancelable(false)
+            .show();
+    }
+    
+    // JavaScript Interface for offline/online switching
+    public class WebAppInterface {
+        @android.webkit.JavascriptInterface
+        public void connectOnline() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (isNetworkAvailable()) {
+                        loadRemoteApplication();
+                    } else {
+                        showNetworkErrorDialog();
+                    }
+                }
+            });
+        }
     }
     
     @Override
