@@ -404,7 +404,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
                 <FormField
                   control={form.control}
                   name="newPassword"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
                       <FormControl>
@@ -418,7 +418,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
                 <FormField
                   control={form.control}
                   name="confirmPassword"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
@@ -530,7 +530,7 @@ export default function UsersPage() {
     return latestMetrics?.performanceScore ? parseFloat(latestMetrics.performanceScore) : 0;
   };
 
-  const getLastActive = (user: any) => {
+  const getLastActive = (_user: any) => {
     // Mock last active calculation
     const hours = Math.floor(Math.random() * 24);
     if (hours === 0) return "Online now";
@@ -641,7 +641,7 @@ export default function UsersPage() {
                   <Input
                     placeholder="Search users..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                     className="pl-10 w-64"
                   />
                 </div>
@@ -718,7 +718,7 @@ export default function UsersPage() {
                           <TableCell>
                             <Select 
                               value={user.role} 
-                              onValueChange={(value) => handleRoleChange(user.id, value)}
+                              onValueChange={(value: string) => handleRoleChange(user.id, value)}
                             >
                               <SelectTrigger className="w-32">
                                 <Badge className={getRoleColor(user.role)}>
