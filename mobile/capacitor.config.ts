@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.wizoneit.taskmanager',
   appName: 'Wizone IT Support Portal',
-  webDir: '../client/dist', // ✅ Correct path to client build output
+  webDir: '../dist/public', // ✅ Correct path to build output
   bundledWebRuntime: false,
   server: {
     hostname: 'localhost',

@@ -16,10 +16,10 @@ try {
   process.exit(1);
 }
 
-// Step 2: Check if client dist exists
-const clientDistPath = path.join(__dirname, '../client/dist');
-if (!fs.existsSync(clientDistPath)) {
-  console.error('❌ Client dist directory not found at:', clientDistPath);
+// Step 2: Check if dist exists (build creates it in root)
+const distPath = path.join(__dirname, '../dist/public');
+if (!fs.existsSync(distPath)) {
+  console.error('❌ Dist directory not found at:', distPath);
   process.exit(1);
 }
 
