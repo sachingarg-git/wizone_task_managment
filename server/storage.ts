@@ -619,23 +619,22 @@ export class DatabaseStorage implements IStorage {
       await pool.connect();
       
       const insertQuery = `
-        INSERT INTO tasks (id, ticketNumber, title, description, priority, status, issueType, customerId, assignedTo, fieldEngineerId, fieldEngineerName, createdBy, createdAt, updatedAt)
-        VALUES (@id, @ticketNumber, @title, @description, @priority, @status, @issueType, @customerId, @assignedTo, @fieldEngineerId, @fieldEngineerName, @createdBy, GETDATE(), GETDATE())
+        INSERT INTO tasks (id, ticket_number, title, description, priority, status, issue_type, customer_id, assigned_to, field_engineer_id, created_by, created_at, updated_at)
+        VALUES (@id, @ticket_number, @title, @description, @priority, @status, @issue_type, @customer_id, @assigned_to, @field_engineer_id, @created_by, GETDATE(), GETDATE())
       `;
       
       const request = pool.request()
         .input('id', task.id)
-        .input('ticketNumber', task.ticketNumber)
+        .input('ticket_number', task.ticketNumber)
         .input('title', task.title)
         .input('description', task.description || null)
         .input('priority', task.priority)
         .input('status', task.status)
-        .input('issueType', task.issueType || null)
-        .input('customerId', task.customerId || null)
-        .input('assignedTo', task.assignedTo || null)
-        .input('fieldEngineerId', task.fieldEngineerId || null)
-        .input('fieldEngineerName', task.fieldEngineerName || null)
-        .input('createdBy', task.createdBy);
+        .input('issue_type', task.issueType || null)
+        .input('customer_id', task.customerId || null)
+        .input('assigned_to', task.assignedTo || null)
+        .input('field_engineer_id', task.fieldEngineerId || null)
+        .input('created_by', task.createdBy);
       
       await request.query(insertQuery);
       await pool.close();
@@ -696,12 +695,11 @@ export class DatabaseStorage implements IStorage {
             description = @description, 
             priority = @priority, 
             status = @status, 
-            issueType = @issueType, 
-            customerId = @customerId, 
-            assignedTo = @assignedTo, 
-            fieldEngineerId = @fieldEngineerId, 
-            fieldEngineerName = @fieldEngineerName,
-            updatedAt = GETDATE()
+            issue_type = @issue_type, 
+            customer_id = @customer_id, 
+            assigned_to = @assigned_to, 
+            field_engineer_id = @field_engineer_id,
+            updated_at = GETDATE()
         WHERE id = @id
       `;
       
@@ -711,11 +709,10 @@ export class DatabaseStorage implements IStorage {
         .input('description', task.description || null)
         .input('priority', task.priority)
         .input('status', task.status)
-        .input('issueType', task.issueType || null)
-        .input('customerId', task.customerId || null)
-        .input('assignedTo', task.assignedTo || null)
-        .input('fieldEngineerId', task.fieldEngineerId || null)
-        .input('fieldEngineerName', task.fieldEngineerName || null);
+        .input('issue_type', task.issueType || null)
+        .input('customer_id', task.customerId || null)
+        .input('assigned_to', task.assignedTo || null)
+        .input('field_engineer_id', task.fieldEngineerId || null);
       
       await request.query(updateQuery);
       await pool.close();
