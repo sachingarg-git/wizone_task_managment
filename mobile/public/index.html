@@ -313,7 +313,7 @@
             currentScreen = screen;
         }
         
-        function handleLogin() {
+        async function handleLogin() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
             
@@ -322,23 +322,71 @@
                 return;
             }
             
-            if (users[username] && users[username].password === password) {
-                currentUser = { username, ...users[username] };
-                document.getElementById('loggedUserName').textContent = currentUser.name;
-                document.getElementById('loggedUserRole').textContent = currentUser.role;
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
                 
-                // Update stats based on user
-                updateUserStats();
+                // Attempt live authentication with backend
+                const response = await fetch(`${baseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
                 
-                showScreen('dashboard');
-                
-                // Clear login form
-                document.getElementById('username').value = '';
-                document.getElementById('password').value = '';
-                
-                console.log('✅ Login successful:', currentUser.name);
-            } else {
-                alert('❌ Invalid credentials\nगलत यूजरनेम या पासवर्ड');
+                if (response.ok) {
+                    const userData = await response.json();
+                    currentUser = userData.user;
+                    document.getElementById('loggedUserName').textContent = currentUser.firstName + ' ' + currentUser.lastName;
+                    document.getElementById('loggedUserRole').textContent = currentUser.role;
+                    
+                    // Update stats based on real user
+                    await updateUserStatsFromAPI();
+                    
+                    showScreen('dashboard');
+                    
+                    // Clear login form
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                    
+                    console.log('✅ Live login successful:', currentUser.firstName);
+                } else {
+                    // Fallback to offline authentication
+                    if (users[username] && users[username].password === password) {
+                        currentUser = { username, ...users[username] };
+                        document.getElementById('loggedUserName').textContent = currentUser.name;
+                        document.getElementById('loggedUserRole').textContent = currentUser.role;
+                        
+                        updateUserStats();
+                        showScreen('dashboard');
+                        
+                        document.getElementById('username').value = '';
+                        document.getElementById('password').value = '';
+                        
+                        console.log('📡 Offline login successful:', currentUser.name);
+                    } else {
+                        alert('❌ Invalid credentials\nगलत यूजरनेम या पासवर्ड');
+                    }
+                }
+            } catch (error) {
+                console.log('Network error, using offline authentication:', error);
+                // Fallback to offline authentication
+                if (users[username] && users[username].password === password) {
+                    currentUser = { username, ...users[username] };
+                    document.getElementById('loggedUserName').textContent = currentUser.name;
+                    document.getElementById('loggedUserRole').textContent = currentUser.role;
+                    
+                    updateUserStats();
+                    showScreen('dashboard');
+                    
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                    
+                    console.log('📡 Offline login successful:', currentUser.name);
+                } else {
+                    alert('❌ Invalid credentials\nगलत यूजरनेम या पासवर्ड');
+                }
             }
         }
         
@@ -348,6 +396,28 @@
                 showScreen('login');
                 document.getElementById('username').value = 'sachin';
                 document.getElementById('password').value = 'admin123';
+            }
+        }
+        
+        async function updateUserStatsFromAPI() {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                const response = await fetch(`${baseUrl}/api/dashboard/stats`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('myTasks').textContent = stats.totalTasks || 0;
+                    document.getElementById('completed').textContent = stats.completedTasks || 0;
+                    document.getElementById('pending').textContent = stats.pendingTasks || 0;
+                } else {
+                    updateUserStats(); // Fallback to offline stats
+                }
+            } catch (error) {
+                updateUserStats(); // Fallback to offline stats
             }
         }
         
@@ -506,7 +576,65 @@
         }
         
         function openTaskDetails(taskId, title, status, priority, description) {
-            alert(`📋 Task Details\n\nID: ${taskId}\nTitle: ${title}\nStatus: ${status}\nPriority: ${priority}\n\nDescription:\n${description}\n\n✅ Live data from SQL Server\n📊 Database: TASK_SCORE_WIZONE`);
+            const statusOptions = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+            const statusHindi = {
+                'pending': 'लंबित',
+                'assigned': 'असाइन किया गया',
+                'in_progress': 'प्रगति में',
+                'completed': 'पूर्ण',
+                'cancelled': 'रद्द'
+            };
+            
+            let statusChoice = prompt(`📋 Task: ${title}\n\nCurrent Status: ${status}\nID: ${taskId}\nPriority: ${priority}\n\nDescription: ${description}\n\n🔄 Change Status?\n\nEnter new status:\n1 = Pending (लंबित)\n2 = Assigned (असाइन)\n3 = In Progress (प्रगति में)\n4 = Completed (पूर्ण)\n5 = Cancelled (रद्द)\n\nEnter 1-5 or press Cancel to close:`);
+            
+            if (statusChoice && statusChoice >= '1' && statusChoice <= '5') {
+                const newStatus = statusOptions[parseInt(statusChoice) - 1];
+                updateTaskStatus(taskId, newStatus, title);
+            }
+        }
+        
+        async function updateTaskStatus(taskId, newStatus, taskTitle) {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                const response = await fetch(`${baseUrl}/api/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        status: newStatus,
+                        note: `Status updated via mobile app by ${currentUser.firstName || currentUser.name || currentUser.username}`
+                    })
+                });
+                
+                if (response.ok) {
+                    const statusHindi = {
+                        'pending': 'लंबित',
+                        'assigned': 'असाइन किया गया',
+                        'in_progress': 'प्रगति में',
+                        'completed': 'पूर्ण',
+                        'cancelled': 'रद्द'
+                    };
+                    
+                    alert(`✅ Task Updated!\n\nTask: ${taskTitle}\nNew Status: ${newStatus.replace('_', ' ').toUpperCase()}\nHindi: ${statusHindi[newStatus]}\n\n📊 Updated in SQL Server Database\n🔄 Refreshing task list...`);
+                    
+                    // Refresh task list
+                    loadUserTasksFromAPI();
+                    
+                    // Update stats
+                    if (currentUser.firstName) {
+                        await updateUserStatsFromAPI();
+                    } else {
+                        updateUserStats();
+                    }
+                } else {
+                    alert('❌ Failed to update task\nकार्य अपडेट नहीं हो सका');
+                }
+            } catch (error) {
+                alert('❌ Network error\nनेटवर्क त्रुटि');
+                console.log('Update error:', error);
+            }
         }
         
         async function openCustomers() {
@@ -550,12 +678,24 @@
             showScreen('dashboard');
         }
         
-        // Auto-update stats every 10 seconds
+        // Auto-update stats every 15 seconds
         setInterval(function() {
             if (currentScreen === 'dashboard' && currentUser) {
-                updateUserStats();
+                if (currentUser.firstName) {
+                    updateUserStatsFromAPI(); // Live stats
+                } else {
+                    updateUserStats(); // Offline stats
+                }
             }
-        }, 10000);
+        }, 15000);
+        
+        // Auto-refresh tasks every 30 seconds if on tasks screen
+        setInterval(function() {
+            if (currentScreen === 'tasks' && currentUser) {
+                console.log('🔄 Auto-refreshing tasks...');
+                loadUserTasksFromAPI();
+            }
+        }, 30000);
         
         console.log('✅ Wizone Mobile App Initialized');
         console.log('🔐 Multi-user login system active');
