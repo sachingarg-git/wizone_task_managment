@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: linear-gradient(45deg, #667eea, #764ba2); 
+            color: white; 
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        h1 { font-size: 32px; margin-bottom: 20px; }
+        p { font-size: 18px; margin-bottom: 15px; }
+        button { 
+            background: #22d3ee; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 ASSET TEST SUCCESS</h1>
+        <p>यदि यह दिख रहा है तो assets load हो रहे हैं!</p>
+        <p>If you see this, assets are loading!</p>
+        <button onclick="testAlert()">Test Alert</button>
+        <button onclick="testConsole()">Test Console</button>
+        <div id="status">✅ HTML, CSS, JS सभी काम कर रहे हैं</div>
+    </div>
+    
+    <script>
+        function testAlert() {
+            alert('✅ JavaScript working!\n✅ जावास्क्रिप्ट काम कर रहा है!');
+        }
+        
+        function testConsole() {
+            console.log('✅ Console working - Asset loading test successful');
+            document.getElementById('status').innerHTML = '🎯 All systems working!<br>सभी सिस्टम काम कर रहे हैं!';
+        }
+        
+        console.log('🎯 Direct Test HTML loaded successfully');
+        console.log('✅ No external dependencies');
+        console.log('🔧 Pure HTML/CSS/JS working');
+        
+        // Auto-test after 2 seconds
+        setTimeout(function() {
+            document.getElementById('status').innerHTML = '⚡ Auto-test completed!<br>Asset loading: SUCCESS';
+        }, 2000);
+    </script>
+</body>
+</html>
