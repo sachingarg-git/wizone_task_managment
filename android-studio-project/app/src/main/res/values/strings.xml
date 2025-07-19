@@ -1,15 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Wizone IT Support Portal</string>
-    <string name="loading">Loading Wizone Portal...</string>
-    <string name="error_network">Network Error. Please check your internet connection.</string>
-    <string name="error_loading">Error loading application. Please try again.</string>
-    <string name="retry">Retry</string>
-    <string name="exit">Exit</string>
-    <string name="try_backup">Try Backup Server</string>
-    <string name="no_internet_title">No Internet Connection</string>
-    <string name="no_internet_message">Please check your internet connection and try again.</string>
-    <string name="loading_timeout_title">Loading Timeout</string>
-    <string name="loading_timeout_message">The application is taking longer than expected to load. Would you like to retry?</string>
-    <string name="error_title">Unable to Load Application</string>
-    <string name="connection_error">Connection failed. Please check your internet connection.</string>
+    <string name="app_name">Wizone IT Portal</string>
 </resources>

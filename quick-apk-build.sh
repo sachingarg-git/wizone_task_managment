@@ -1,39 +1,61 @@
 #!/bin/bash
 
-echo "🚀 Wizone Native Android APK Build Process"
-echo "=========================================="
+echo "🚀 Quick APK Build Script"
+echo "========================="
 
-# Step 1: Go to native app directory
-echo "📁 Moving to native app directory..."
-cd wizone-native-app/android
+# Find Java installation
+JAVA_PATH=$(find /nix/store -name "java" -type f 2>/dev/null | grep openjdk | head -1)
+if [ -n "$JAVA_PATH" ]; then
+    export JAVA_HOME=$(dirname $(dirname $JAVA_PATH))
+    export PATH=$JAVA_HOME/bin:$PATH
+    echo "✅ Java found: $JAVA_HOME"
+else
+    echo "❌ Java not found. Installing..."
+    # Try alternative approach
+    export JAVA_HOME="/usr/lib/jvm/default-java"
+    export PATH="/usr/lib/jvm/default-java/bin:$PATH"
+fi
 
-# Step 2: Make gradlew executable
-echo "🔧 Setting up build permissions..."
+echo ""
+echo "📦 Building Android APK..."
+echo "Location: android-studio-project"
+echo ""
+
+cd android-studio-project
+
+# Make gradlew executable
 chmod +x gradlew
 
-# Step 3: Build the APK
-echo "🏗️ Building native Android APK..."
-echo "यह process 2-3 minutes लेगी..."
-
-./gradlew assembleDebug
+# Build APK
+echo "🔨 Running Gradle build..."
+./gradlew assembleDebug --no-daemon --stacktrace
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "✅ SUCCESS! Native Android APK built successfully!"
-    echo "=========================================="
-    echo "📱 APK Location: wizone-native-app/android/app/build/outputs/apk/debug/app-debug.apk"
-    echo "📊 APK Size: ~2-3 MB"
-    echo "🎯 Features: Task Management, Customer Portal, Analytics, Settings"
-    echo "🌐 Language: Hindi + English support"
-    echo "📲 Compatibility: Android 5.0+ (API 21+)"
+    echo "✅ APK BUILD SUCCESSFUL!"
+    echo "📱 APK Location: android-studio-project/app/build/outputs/apk/debug/app-debug.apk"
     echo ""
-    echo "अब आप APK को अपने Android device में install कर सकते हैं!"
-    echo "No 'Unable to load application' error guaranteed!"
+    
+    # Check if APK exists
+    if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+        APK_SIZE=$(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)
+        echo "📊 APK Size: $APK_SIZE"
+        echo "📋 APK Details:"
+        ls -la app/build/outputs/apk/debug/app-debug.apk
+    else
+        echo "⚠️  APK file not found in expected location"
+        echo "🔍 Searching for APK files..."
+        find . -name "*.apk" -type f
+    fi
 else
     echo ""
-    echo "❌ Build failed. Check the error messages above."
-    echo "Common solutions:"
-    echo "1. Make sure Java is installed"
-    echo "2. Check Android SDK setup"
-    echo "3. Verify all files are in place"
+    echo "❌ BUILD FAILED"
+    echo "🔧 Troubleshooting tips:"
+    echo "1. Check Java installation: java -version"
+    echo "2. Verify Android SDK setup"
+    echo "3. Try: ./gradlew clean assembleDebug"
 fi
+
+echo ""
+echo "🎯 Alternative: Use online APK generators for instant results"
+echo "📄 Check: generate-instant-apk.html"

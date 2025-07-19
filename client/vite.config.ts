@@ -5,8 +5,20 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'dist', // Output directory for client build
+    outDir: '../dist/public', // Output to main dist/public for Android build
     emptyOutDir: true,
+    target: 'es2015', // Compatible with older Android WebView
+    rollupOptions: {
+      output: {
+        format: 'iife', // Self-contained bundle for WebView
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+        manualChunks: undefined // Single bundle for mobile
+      }
+    },
+    minify: 'esbuild',
+    sourcemap: false
   },
   resolve: {
     alias: {
@@ -23,5 +35,5 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
   },
-  base: './', // Important for mobile builds - use relative paths
+  base: './', // Relative paths for mobile compatibility
 })

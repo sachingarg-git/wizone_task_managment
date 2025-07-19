@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Creating WebView Android APK Project...');
+console.log('🚀 Creating Complete Android Studio Project...');
 
 // Create project structure
 const projectDir = 'android-studio-project';
@@ -26,7 +26,7 @@ createDir(`${projectDir}/app/src/main/res/mipmap-xxxhdpi`);
 createDir(`${projectDir}/app/src/main/assets`);
 createDir(`${projectDir}/gradle/wrapper`);
 
-// Create MainActivity.java
+// Create MainActivity.java with better WebView handling
 const mainActivityContent = `package com.wizoneit.taskmanager;
 
 import android.app.Activity;
@@ -38,6 +38,9 @@ import android.webkit.WebChromeClient;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.content.Context;
 
 public class MainActivity extends Activity {
     
@@ -58,18 +61,32 @@ public class MainActivity extends Activity {
     
     private void setupWebView() {
         WebSettings webSettings = webView.getSettings();
+        
+        // Enable JavaScript and modern web features
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setAppCacheEnabled(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        // File access permissions
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
+        
+        // Viewport and zoom settings
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
+        webSettings.setSupportZoom(false);
+        webSettings.setBuiltInZoomControls(false);
+        
+        // Performance settings
+        webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        // Modern browser features
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -80,12 +97,33 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
+                
+                // Inject CSS to hide any loading issues
+                String css = "javascript:(function() {" +
+                    "var style = document.createElement('style');" +
+                    "style.innerHTML = 'body { background-color: #1e40af !important; }';" +
+                    "document.head.appendChild(style);" +
+                    "})()";
+                view.loadUrl(css);
             }
             
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 progressBar.setVisibility(View.GONE);
-                Toast.makeText(MainActivity.this, "Error loading app: " + description, Toast.LENGTH_LONG).show();
+                
+                // Try fallback URL if local assets fail
+                if (failingUrl.contains("android_asset")) {
+                    Toast.makeText(MainActivity.this, "Loading online version...", Toast.LENGTH_SHORT).show();
+                    webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+                } else {
+                    Toast.makeText(MainActivity.this, "Error: " + description, Toast.LENGTH_LONG).show();
+                }
+            }
+            
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                view.loadUrl(url);
+                return true;
             }
         });
         
@@ -99,12 +137,24 @@ public class MainActivity extends Activity {
     
     private void loadApplication() {
         try {
-            // Try to load local assets first
-            webView.loadUrl("file:///android_asset/index.html");
+            // Check if we have internet connectivity
+            if (isNetworkAvailable()) {
+                // Load online version first (more reliable)
+                webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+            } else {
+                // Fallback to local assets
+                webView.loadUrl("file:///android_asset/index.html");
+            }
         } catch (Exception e) {
-            // Fallback to online version
-            webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+            Toast.makeText(this, "Loading application...", Toast.LENGTH_SHORT).show();
+            webView.loadUrl("file:///android_asset/index.html");
         }
+    }
+    
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
     
     @Override
@@ -113,6 +163,22 @@ public class MainActivity extends Activity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
         }
     }
 }`;
@@ -130,16 +196,18 @@ const layoutContent = `<?xml version="1.0" encoding="utf-8"?>
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="6dp"
         android:layout_alignParentTop="true"
         android:progressTint="#22d3ee"
+        android:progressBackgroundTint="#1e3a8a"
         android:visibility="gone" />
 
     <WebView
         android:id="@+id/webview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/progressBar" />
+        android:layout_below="@id/progressBar"
+        android:background="#1e40af" />
 
 </RelativeLayout>`;
 
@@ -175,8 +243,6 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -184,13 +250,15 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="true"
-        android:hardwareAccelerated="true">
+        android:hardwareAccelerated="true"
+        android:largeHeap="true">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -229,12 +297,18 @@ android {
         debug {
             applicationIdSuffix ".debug"
             debuggable true
+            minifyEnabled false
         }
     }
     
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
     }
 }
 
@@ -280,7 +354,9 @@ android.useAndroidX=true
 android.enableJetifier=true
 android.nonTransitiveRClass=false
 org.gradle.parallel=true
-org.gradle.caching=true`;
+org.gradle.caching=true
+android.defaults.buildfeatures.buildconfig=true
+android.nonFinalResIds=false`;
 
 fs.writeFileSync(`${projectDir}/gradle.properties`, gradlePropertiesContent);
 
@@ -326,17 +402,16 @@ const proguardContent = `# Add project specific ProGuard rules here.
 }
 
 -keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile`;
+-renamesourcefileattribute SourceFile
+
+# Keep JavaScript interface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}`;
 
 fs.writeFileSync(`${projectDir}/app/proguard-rules.pro`, proguardContent);
 
 console.log('✅ Android Studio project created successfully!');
 console.log('📁 Location: ' + projectDir);
 console.log('');
-console.log('🔧 NEXT STEPS:');
-console.log('1. Copy your built web assets to: ' + projectDir + '/app/src/main/assets/');
-console.log('2. cd ' + projectDir);
-console.log('3. chmod +x gradlew');
-console.log('4. ./gradlew assembleDebug');
-console.log('');
-console.log('📱 APK Location: ' + projectDir + '/app/build/outputs/apk/debug/app-debug.apk');
+console.log('🔧 Next steps will copy web assets and configure build...');
