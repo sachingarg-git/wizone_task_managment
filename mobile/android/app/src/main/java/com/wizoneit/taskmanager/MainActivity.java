@@ -38,9 +38,8 @@ public class MainActivity extends BridgeActivity {
             settings.setBuiltInZoomControls(false);
             settings.setDisplayZoomControls(false);
             
-            // Cache settings
+            // Cache settings (removed deprecated setAppCacheEnabled)
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-            settings.setAppCacheEnabled(true);
             
             Log.d(TAG, "WebView settings configured successfully");
         } else {
