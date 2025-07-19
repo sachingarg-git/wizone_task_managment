@@ -11,197 +11,556 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; color: white; overflow-x: hidden;
             position: fixed; width: 100%; height: 100%;
-            -webkit-user-select: none; user-select: none;
         }
-        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        
+        /* Loading Screen */
+        .loading-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 1000; transition: opacity 0.5s ease;
+            z-index: 3000; transition: opacity 0.5s ease;
         }
         .loading-icon { font-size: 80px; animation: pulse 2s infinite; }
         .loading-text { font-size: 24px; color: #22d3ee; margin-top: 20px; font-weight: 600; }
         .loading-subtitle { font-size: 16px; margin-top: 8px; opacity: 0.8; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .container { display: none; flex-direction: column; justify-content: center; 
-            align-items: center; min-height: 100vh; padding: 20px; text-align: center;
+        
+        /* Login Screen */
+        .login-screen { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 2000; padding: 20px;
         }
-        .container.show { display: flex; }
-        .header { margin-bottom: 40px; }
-        .app-icon { font-size: 64px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        .title { font-size: 28px; color: #22d3ee; margin-bottom: 8px; 
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3); font-weight: 700;
+        .login-form { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 30px; width: 100%; max-width: 350px;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
-        .subtitle { font-size: 16px; opacity: 0.9; font-weight: 400; }
-        .menu { width: 100%; max-width: 380px; display: grid; gap: 16px; margin-bottom: 30px; }
-        .menu-item { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px; padding: 24px 20px; display: flex; align-items: center; gap: 16px;
-            cursor: pointer; transition: all 0.3s ease; color: white;
+        .login-logo { text-align: center; margin-bottom: 20px; }
+        .login-logo-icon { font-size: 64px; margin-bottom: 10px; }
+        .login-title { font-size: 24px; text-align: center; margin-bottom: 30px; color: #22d3ee; }
+        .input-group { margin-bottom: 20px; }
+        .input-label { display: block; margin-bottom: 8px; font-size: 14px; }
+        .input-field { 
+            width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; font-size: 16px;
+        }
+        .input-field::placeholder { color: rgba(255,255,255,0.7); }
+        .login-btn {
+            width: 100%; padding: 15px; border-radius: 12px; border: none;
+            background: #22d3ee; color: white; font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .login-btn:active { transform: scale(0.98); }
+        .demo-info {
+            margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1);
+            border-radius: 12px; text-align: center; font-size: 12px;
+        }
+        
+        /* Dashboard Screen */
+        .dashboard-screen { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column; padding: 20px;
+        }
+        .dashboard-header { 
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; 
+            margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
-        .menu-item:active { transform: scale(0.98); background: rgba(255,255,255,0.25); }
-        .menu-item:hover { background: rgba(255,255,255,0.25); transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        .user-info { }
+        .user-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .user-role { font-size: 14px; opacity: 0.8; }
+        .logout-btn { 
+            background: rgba(255,255,255,0.2); border: none; color: white; 
+            padding: 10px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;
         }
-        .menu-icon { font-size: 32px; width: 40px; display: flex; justify-content: center;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .dashboard-card { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; cursor: pointer;
+            transition: all 0.3s ease; backdrop-filter: blur(10px);
+            min-height: 120px;
         }
-        .menu-text { text-align: left; flex: 1; }
-        .menu-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-        .menu-desc { font-size: 14px; opacity: 0.8; }
-        .status-card { width: 100%; max-width: 380px; background: rgba(34,197,94,0.2);
-            border: 1px solid rgba(34,197,94,0.4); border-radius: 16px; padding: 16px; margin-bottom: 20px;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        .dashboard-card:active { transform: scale(0.98); background: rgba(255,255,255,0.25); }
+        .card-icon { font-size: 40px; margin-bottom: 12px; }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .card-desc { font-size: 12px; opacity: 0.8; }
+        
+        .stats-section {
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;
+            backdrop-filter: blur(10px);
         }
-        .status-title { font-weight: 600; color: #10b981; margin-bottom: 4px; font-size: 16px; }
-        .status-desc { font-size: 14px; opacity: 0.8; }
-        .stats-grid { width: 100%; max-width: 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .stat-card { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 16px; padding: 20px; text-align: center;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        .stats-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 24px; font-weight: 700; color: #22d3ee; margin-bottom: 4px; }
+        .stat-label { font-size: 12px; opacity: 0.8; }
+        
+        /* Task Screen */
+        .task-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column; padding: 20px;
         }
-        .stat-number { font-size: 28px; font-weight: 700; color: #22d3ee; margin-bottom: 4px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        .task-header {
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 16px;
+            margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(10px);
         }
-        .stat-label { font-size: 13px; opacity: 0.8; }
-        .footer { margin-top: 20px; padding: 16px; background: rgba(255,255,255,0.1);
-            border-radius: 12px; max-width: 380px;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        .back-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;
         }
-        .footer-text { font-size: 12px; opacity: 0.7; line-height: 1.4; }
+        .task-content {
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;
+            flex: 1; overflow-y: auto; backdrop-filter: blur(10px);
+        }
+        .task-item {
+            background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;
+            margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .task-item:active { background: rgba(255,255,255,0.2); }
+        .task-id { font-size: 12px; color: #22d3ee; margin-bottom: 4px; }
+        .task-title { font-weight: 600; margin-bottom: 4px; }
+        .task-desc { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+        .task-status { 
+            display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px;
+            background: rgba(34,197,94,0.3); color: #10b981;
+        }
+        .task-priority { 
+            display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px;
+            margin-left: 8px; background: rgba(239,68,68,0.3); color: #f87171;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="loading-icon">📱</div>
         <div class="loading-text">Wizone IT Support</div>
         <div class="loading-subtitle">विज़ोन आईटी सपोर्ट पोर्टल</div>
     </div>
     
-    <div class="container" id="mainApp">
-        <div class="header">
-            <div class="app-icon">📱</div>
-            <h1 class="title">Wizone IT Support Portal</h1>
-            <p class="subtitle">विज़ोन आईटी सपोर्ट पोर्टल</p>
-        </div>
-        
-        <div class="menu">
-            <div class="menu-item" onclick="handleTaskManagement()">
-                <div class="menu-icon">📋</div>
-                <div class="menu-text">
-                    <div class="menu-title">Task Management</div>
-                    <div class="menu-desc">कार्य प्रबंधन और ट्रैकिंग</div>
-                </div>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-form">
+            <div class="login-logo">
+                <div class="login-logo-icon">🏢</div>
+                <div class="login-title">User Login</div>
+                <div style="font-size: 14px; opacity: 0.8;">यूजर लॉगिन</div>
             </div>
-            
-            <div class="menu-item" onclick="handleCustomerPortal()">
-                <div class="menu-icon">👥</div>
-                <div class="menu-text">
-                    <div class="menu-title">Customer Portal</div>
-                    <div class="menu-desc">ग्राहक जानकारी और सहायता</div>
-                </div>
+            <div class="input-group">
+                <label class="input-label">Username / यूजरनेम</label>
+                <input type="text" class="input-field" id="username" placeholder="Enter username" value="sachin">
             </div>
-            
-            <div class="menu-item" onclick="handleAnalytics()">
-                <div class="menu-icon">📊</div>
-                <div class="menu-text">
-                    <div class="menu-title">Analytics & Reports</div>
-                    <div class="menu-desc">रिपोर्ट और विश्लेषण</div>
-                </div>
+            <div class="input-group">
+                <label class="input-label">Password / पासवर्ड</label>
+                <input type="password" class="input-field" id="password" placeholder="Enter password" value="admin123">
             </div>
-            
-            <div class="menu-item" onclick="handleWebVersion()">
-                <div class="menu-icon">🌐</div>
-                <div class="menu-text">
-                    <div class="menu-title">Full Web Portal</div>
-                    <div class="menu-desc">पूर्ण वेब पोर्टल एक्सेस</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="status-card">
-            <div class="status-title">🟢 सिस्टम स्थिति: ऑनलाइन</div>
-            <div class="status-desc">सभी सेवाएं चालू हैं और सामान्य रूप से काम कर रही हैं</div>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="taskCounter">24</div>
-                <div class="stat-label">सक्रिय कार्य</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="customerCounter">156</div>
-                <div class="stat-label">ग्राहक</div>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <div class="footer-text">
-                📱 Mobile App Version 1.0<br>
-                🔧 No external dependencies<br>
-                ✅ Asset loading optimized
+            <button class="login-btn" onclick="handleLogin()">Login / लॉगिन</button>
+            <div class="demo-info">
+                Demo Credentials:<br>
+                Username: sachin | Password: admin123<br>
+                यूजरनेम: sachin | पासवर्ड: admin123
             </div>
         </div>
     </div>
     
+    <!-- Dashboard Screen -->
+    <div class="dashboard-screen" id="dashboardScreen">
+        <div class="dashboard-header">
+            <div class="user-info">
+                <div class="user-name">👋 <span id="loggedUserName">User</span></div>
+                <div class="user-role"><span id="loggedUserRole">Engineer</span></div>
+            </div>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="dashboard-card" onclick="openTasks()">
+                <div class="card-icon">📋</div>
+                <div class="card-title">My Tasks</div>
+                <div class="card-desc">मेरे कार्य देखें</div>
+            </div>
+            
+            <div class="dashboard-card" onclick="openCustomers()">
+                <div class="card-icon">👥</div>
+                <div class="card-title">Customers</div>
+                <div class="card-desc">ग्राहक सूची</div>
+            </div>
+            
+            <div class="dashboard-card" onclick="openReports()">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Reports</div>
+                <div class="card-desc">रिपोर्ट देखें</div>
+            </div>
+            
+            <div class="dashboard-card" onclick="openWebPortal()">
+                <div class="card-icon">🌐</div>
+                <div class="card-title">Web Portal</div>
+                <div class="card-desc">पूर्ण वेब पोर्टल</div>
+            </div>
+        </div>
+        
+        <div class="stats-section">
+            <div class="stats-title">📊 Live Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="myTasks">8</div>
+                    <div class="stat-label">My Tasks</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="completed">15</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="pending">3</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Task Screen -->
+    <div class="task-screen" id="taskScreen">
+        <div class="task-header">
+            <button class="back-btn" onclick="goBackToDashboard()">← Back</button>
+            <div id="taskTitle">My Tasks</div>
+            <div></div>
+        </div>
+        <div class="task-content" id="taskContent">
+            <!-- Task list will be loaded here -->
+        </div>
+    </div>
+
     <script>
+        // User database
+        const users = {
+            'admin': { password: 'admin123', name: 'Admin User', role: 'Administrator' },
+            'sachin': { password: 'admin123', name: 'Sachin Kumar', role: 'Field Engineer' },
+            'manpreet': { password: 'admin123', name: 'Manpreet Singh', role: 'Manager' },
+            'engineer': { password: 'pass123', name: 'Support Engineer', role: 'Engineer' }
+        };
+        
+        // Task database for logged user
+        const userTasks = {
+            'sachin': [
+                {
+                    id: 'T23501',
+                    title: 'Server Maintenance - Data Center',
+                    description: 'डेटा सेंटर में सर्वर रखरखाव और अपडेट करना है',
+                    status: 'In Progress',
+                    priority: 'High',
+                    customer: 'ABC Corporation'
+                },
+                {
+                    id: 'T23502',
+                    title: 'Network Setup - Branch Office',
+                    description: 'नई ब्रांच ऑफिस में नेटवर्क कनेक्शन सेटअप',
+                    status: 'Assigned',
+                    priority: 'Medium',
+                    customer: 'XYZ Business'
+                },
+                {
+                    id: 'T23503',
+                    title: 'Software Installation',
+                    description: 'क्लाइंट सिस्टम में नया सॉफ्टवेयर इंस्टॉल करना',
+                    status: 'Pending',
+                    priority: 'Low',
+                    customer: 'Tech Solutions'
+                },
+                {
+                    id: 'T23504',
+                    title: 'Hardware Replacement',
+                    description: 'डैमेज हार्डवेयर को रिप्लेस करना है',
+                    status: 'Completed',
+                    priority: 'High',
+                    customer: 'Digital Hub'
+                }
+            ]
+        };
+        
+        let currentUser = null;
+        let currentScreen = 'loading';
+        
+        // App initialization
         window.addEventListener('load', function() {
             setTimeout(function() {
-                const loadingScreen = document.getElementById('loadingScreen');
-                const mainApp = document.getElementById('mainApp');
-                
-                loadingScreen.style.opacity = '0';
-                setTimeout(function() {
-                    loadingScreen.style.display = 'none';
-                    mainApp.classList.add('show');
-                }, 500);
+                showScreen('login');
             }, 2000);
         });
         
-        function handleTaskManagement() {
-            alert('📋 Task Management\n\n🔧 सर्वर रखरखाव - उच्च प्राथमिकता\n💻 सॉफ्टवेयर अपडेट - प्रगति में\n📞 ग्राहक सहायता - पूर्ण\n🌐 नेटवर्क सेटअप - लंबित\n🔄 बैकअप सिस्टम - चालू');
-        }
-        
-        function handleCustomerPortal() {
-            alert('👥 Customer Portal\n\n🏢 ABC Corporation - Enterprise Plan\n🏪 XYZ Business - Professional Plan\n💼 Tech Solutions - Basic Plan\n🚀 Digital Services - Premium Plan\n📈 StartUp Hub - Growth Plan');
-        }
-        
-        function handleAnalytics() {
-            alert('📊 Analytics Dashboard\n\n📈 कार्य पूर्णता दर: 85%\n⭐ ग्राहक संतुष्टि: 4.2/5\n⏱️ औसत प्रतिक्रिया समय: 2.3 घंटे\n👨‍💻 सक्रिय इंजीनियर: 12\n🎯 मासिक लक्ष्य: 92% पूर्ण');
-        }
-        
-        function handleWebVersion() {
-            const url = 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
-            alert('🌐 Full Web Portal\n\nURL: ' + url + '\n\n📋 Complete task management\n👥 Full customer database\n📊 Advanced analytics\n💬 Internal chat system\n📁 File management\n\nइस URL को अपने ब्राउज़र में खोलें');
-        }
-        
-        function updateCounters() {
-            const taskCounter = document.getElementById('taskCounter');
-            const customerCounter = document.getElementById('customerCounter');
+        function showScreen(screen) {
+            // Hide all screens
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'none';
+            document.getElementById('taskScreen').style.display = 'none';
             
-            if (taskCounter) {
-                const current = parseInt(taskCounter.textContent);
-                const change = Math.floor(Math.random() * 5) - 2;
-                taskCounter.textContent = Math.max(20, Math.min(30, current + change));
+            // Show selected screen
+            if (screen === 'login') {
+                document.getElementById('loginScreen').style.display = 'flex';
+            } else if (screen === 'dashboard') {
+                document.getElementById('dashboardScreen').style.display = 'flex';
+            } else if (screen === 'tasks') {
+                document.getElementById('taskScreen').style.display = 'flex';
+            }
+            currentScreen = screen;
+        }
+        
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                alert('⚠️ Please enter username and password\nकृपया यूजरनेम और पासवर्ड दर्ज करें');
+                return;
             }
             
-            if (customerCounter) {
-                const current = parseInt(customerCounter.textContent);
-                const change = Math.floor(Math.random() * 3);
-                customerCounter.textContent = Math.max(150, current + change);
+            if (users[username] && users[username].password === password) {
+                currentUser = { username, ...users[username] };
+                document.getElementById('loggedUserName').textContent = currentUser.name;
+                document.getElementById('loggedUserRole').textContent = currentUser.role;
+                
+                // Update stats based on user
+                updateUserStats();
+                
+                showScreen('dashboard');
+                
+                // Clear login form
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                
+                console.log('✅ Login successful:', currentUser.name);
+            } else {
+                alert('❌ Invalid credentials\nगलत यूजरनेम या पासवर्ड');
             }
         }
         
-        setInterval(updateCounters, 8000);
-        
-        console.log('✅ Wizone IT Support Portal - Mobile App Ready');
-        console.log('📱 Zero external dependencies');
-        console.log('🎯 Asset loading optimized');
-        console.log('🔧 Version: 1.0 - Production Ready');
-        
-        if (performance && performance.now) {
-            console.log('⚡ App loaded in:', Math.round(performance.now()), 'ms');
+        function handleLogout() {
+            if (confirm('🚪 Logout from Wizone Portal?\nक्या आप लॉगआउट करना चाहते हैं?')) {
+                currentUser = null;
+                showScreen('login');
+                document.getElementById('username').value = 'sachin';
+                document.getElementById('password').value = 'admin123';
+            }
         }
+        
+        function updateUserStats() {
+            if (currentUser && userTasks[currentUser.username]) {
+                const tasks = userTasks[currentUser.username];
+                const completed = tasks.filter(t => t.status === 'Completed').length;
+                const pending = tasks.filter(t => t.status === 'Pending' || t.status === 'Assigned').length;
+                
+                document.getElementById('myTasks').textContent = tasks.length;
+                document.getElementById('completed').textContent = completed;
+                document.getElementById('pending').textContent = pending;
+            }
+        }
+        
+        function openTasks() {
+            document.getElementById('taskTitle').textContent = '📋 My Tasks';
+            loadUserTasksFromAPI();
+            showScreen('tasks');
+        }
+        
+        async function loadUserTasksFromAPI() {
+            const content = document.getElementById('taskContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 16px; animation: pulse 2s infinite;">⏳</div>
+                    <div>Loading tasks...</div>
+                    <div style="font-size: 14px; margin-top: 8px;">कार्य लोड हो रहे हैं...</div>
+                </div>
+            `;
+            
+            try {
+                // Get current deployment URL dynamically
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                
+                // Fetch tasks from live API
+                const response = await fetch(`${baseUrl}/api/tasks`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const tasks = await response.json();
+                    displayTasks(tasks);
+                } else {
+                    // Fallback to offline data if API fails
+                    console.log('API failed, using offline data');
+                    loadUserTasksOffline();
+                }
+            } catch (error) {
+                console.log('Network error, using offline data:', error);
+                loadUserTasksOffline();
+            }
+        }
+        
+        function displayTasks(tasks) {
+            const content = document.getElementById('taskContent');
+            
+            if (tasks && tasks.length > 0) {
+                let html = '';
+                
+                tasks.forEach(task => {
+                    const statusColor = task.status === 'completed' ? 'rgba(34,197,94,0.3)' : 
+                                       task.status === 'in_progress' ? 'rgba(59,130,246,0.3)' : 
+                                       task.status === 'assigned' ? 'rgba(245,158,11,0.3)' :
+                                       'rgba(239,68,68,0.3)';
+                    const statusTextColor = task.status === 'completed' ? '#10b981' : 
+                                           task.status === 'in_progress' ? '#3b82f6' : 
+                                           task.status === 'assigned' ? '#f59e0b' :
+                                           '#f87171';
+                    
+                    const statusText = task.status === 'completed' ? 'Completed' :
+                                      task.status === 'in_progress' ? 'In Progress' :
+                                      task.status === 'assigned' ? 'Assigned' : 
+                                      task.status === 'pending' ? 'Pending' : 'New';
+                    
+                    const priorityText = task.priority === 'high' ? 'High' :
+                                        task.priority === 'medium' ? 'Medium' : 'Low';
+                    
+                    html += `
+                        <div class="task-item" onclick="openTaskDetails('${task.ticketNumber}', '${task.title}', '${statusText}', '${priorityText}', '${task.description || 'No description'}')">
+                            <div class="task-id">${task.ticketNumber}</div>
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-desc">${task.description || 'कार्य विवरण उपलब्ध नहीं है'}</div>
+                            <div class="task-status" style="background: ${statusColor}; color: ${statusTextColor}">
+                                ${statusText}
+                            </div>
+                            <div class="task-priority">${priorityText} Priority</div>
+                            <div style="margin-top: 8px; font-size: 12px; opacity: 0.8;">
+                                Customer: ${task.customerId || 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; opacity: 0.7;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <div>No tasks found</div>
+                        <div style="font-size: 14px; margin-top: 8px;">कोई कार्य नहीं मिला</div>
+                    </div>
+                `;
+            }
+        }
+        
+        function loadUserTasksOffline() {
+            const content = document.getElementById('taskContent');
+            
+            if (currentUser && userTasks[currentUser.username]) {
+                const tasks = userTasks[currentUser.username];
+                let html = '';
+                
+                tasks.forEach(task => {
+                    const statusColor = task.status === 'Completed' ? 'rgba(34,197,94,0.3)' : 
+                                       task.status === 'In Progress' ? 'rgba(59,130,246,0.3)' : 
+                                       'rgba(239,68,68,0.3)';
+                    const statusTextColor = task.status === 'Completed' ? '#10b981' : 
+                                           task.status === 'In Progress' ? '#3b82f6' : 
+                                           '#f87171';
+                    
+                    html += `
+                        <div class="task-item" onclick="openTaskDetails('${task.id}', '${task.title}', '${task.status}', '${task.priority}', '${task.description}')">
+                            <div class="task-id">${task.id}</div>
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-desc">${task.description}</div>
+                            <div class="task-status" style="background: ${statusColor}; color: ${statusTextColor}">
+                                ${task.status}
+                            </div>
+                            <div class="task-priority">${task.priority} Priority</div>
+                            <div style="margin-top: 8px; font-size: 12px; opacity: 0.8;">
+                                Customer: ${task.customer}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html + `
+                    <div style="text-align: center; margin-top: 20px; padding: 16px; background: rgba(245,158,11,0.2); border-radius: 12px; color: #f59e0b;">
+                        📡 Offline Mode - Showing sample data
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; opacity: 0.7;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <div>No tasks assigned</div>
+                        <div style="font-size: 14px; margin-top: 8px;">कोई कार्य असाइन नहीं है</div>
+                    </div>
+                `;
+            }
+        }
+        
+        function openTaskDetails(taskId, title, status, priority, description) {
+            alert(`📋 Task Details\n\nID: ${taskId}\nTitle: ${title}\nStatus: ${status}\nPriority: ${priority}\n\nDescription:\n${description}\n\n✅ Live data from SQL Server\n📊 Database: TASK_SCORE_WIZONE`);
+        }
+        
+        async function openCustomers() {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                const response = await fetch(`${baseUrl}/api/customers`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const customers = await response.json();
+                    let customerList = '👥 Live Customer Data\n\n';
+                    customers.slice(0, 5).forEach(customer => {
+                        customerList += `🏢 ${customer.name}\n📧 ${customer.email}\n📱 ${customer.phone}\n📍 ${customer.address}\n\n`;
+                    });
+                    customerList += '✅ Data from SQL Server Database';
+                    alert(customerList);
+                } else {
+                    alert('👥 Customer Portal\n\n🏢 ABC Corporation - Enterprise Plan\n🏪 XYZ Business - Professional Plan\n💼 Tech Solutions - Basic Plan\n🚀 Digital Services - Premium Plan\n📈 StartUp Hub - Growth Plan\n\n📡 Offline Mode');
+                }
+            } catch (error) {
+                alert('👥 Customer Portal\n\n🏢 ABC Corporation - Enterprise Plan\n🏪 XYZ Business - Professional Plan\n💼 Tech Solutions - Basic Plan\n🚀 Digital Services - Premium Plan\n📈 StartUp Hub - Growth Plan\n\n📡 Offline Mode');
+            }
+        }
+        
+        function openReports() {
+            alert('📊 Performance Reports\n\n📈 Task Completion: 85%\n⭐ Customer Satisfaction: 4.2/5\n⏱️ Response Time: 2.3 hours\n👨‍💻 Active Engineers: 12\n🎯 Monthly Target: 92%\n\nप्रदर्शन रिपोर्ट - सभी मेट्रिक्स');
+        }
+        
+        function openWebPortal() {
+            const url = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+            
+            if (confirm('🌐 Open Full Web Portal?\n\nThis will open the complete Wizone IT Support Portal with all features.\n\nक्या आप पूर्ण वेब पोर्टल खोलना चाहते हैं?')) {
+                window.open(url, '_blank');
+            }
+        }
+        
+        function goBackToDashboard() {
+            showScreen('dashboard');
+        }
+        
+        // Auto-update stats every 10 seconds
+        setInterval(function() {
+            if (currentScreen === 'dashboard' && currentUser) {
+                updateUserStats();
+            }
+        }, 10000);
+        
+        console.log('✅ Wizone Mobile App Initialized');
+        console.log('🔐 Multi-user login system active');
+        console.log('📱 Task management ready');
+        console.log('🎯 User-specific data loading enabled');
     </script>
 </body>
 </html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone IT Support Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; color: white; overflow-x: hidden;
+            position: fixed; width: 100%; height: 100%;
+        }
+        
+        /* Login Screen */
+        .login-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 2000; padding: 20px;
+        }
+        .login-form { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 30px; width: 100%; max-width: 350px;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        }
+        .login-title { font-size: 24px; text-align: center; margin-bottom: 30px; color: #22d3ee; }
+        .input-group { margin-bottom: 20px; }
+        .input-label { display: block; margin-bottom: 8px; font-size: 14px; }
+        .input-field { 
+            width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; font-size: 16px;
+        }
+        .input-field::placeholder { color: rgba(255,255,255,0.7); }
+        .login-btn {
+            width: 100%; padding: 15px; border-radius: 12px; border: none;
+            background: #22d3ee; color: white; font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .login-btn:active { transform: scale(0.98); }
+        
+        /* Navigation Screen */
+        .nav-screen { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column; padding: 20px;
+        }
+        .nav-header { 
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; 
+            margin-bottom: 20px; text-align: center;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .user-info { font-size: 18px; margin-bottom: 8px; }
+        .logout-btn { 
+            background: rgba(255,255,255,0.2); border: none; color: white; 
+            padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;
+        }
+        
+        .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
+        .nav-card { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; cursor: pointer;
+            transition: all 0.3s ease; backdrop-filter: blur(10px);
+        }
+        .nav-card:active { transform: scale(0.98); background: rgba(255,255,255,0.25); }
+        .nav-icon { font-size: 48px; margin-bottom: 12px; }
+        .nav-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .nav-desc { font-size: 12px; opacity: 0.8; }
+        
+        /* Data Screen */
+        .data-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column; padding: 20px;
+        }
+        .data-header {
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 16px;
+            margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(10px);
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;
+        }
+        .data-content {
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;
+            flex: 1; overflow-y: auto; backdrop-filter: blur(10px);
+        }
+        .data-item {
+            background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;
+            margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .item-title { font-weight: 600; margin-bottom: 4px; color: #22d3ee; }
+        .item-desc { font-size: 14px; opacity: 0.9; }
+        .item-status { 
+            display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px;
+            margin-top: 8px; background: rgba(34,197,94,0.3); color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-form">
+            <div class="login-title">🔐 User Login</div>
+            <div class="input-group">
+                <label class="input-label">Username / यूजरनेम</label>
+                <input type="text" class="input-field" id="username" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Password / पासवर्ड</label>
+                <input type="password" class="input-field" id="password" placeholder="Enter password">
+            </div>
+            <button class="login-btn" onclick="handleLogin()">Login / लॉगिन</button>
+        </div>
+    </div>
+    
+    <!-- Navigation Screen -->
+    <div class="nav-screen" id="navScreen">
+        <div class="nav-header">
+            <div class="user-info">👋 Welcome, <span id="loggedUser">User</span></div>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+        
+        <div class="nav-grid">
+            <div class="nav-card" onclick="showTasks()">
+                <div class="nav-icon">📋</div>
+                <div class="nav-title">My Tasks</div>
+                <div class="nav-desc">मेरे कार्य देखें</div>
+            </div>
+            
+            <div class="nav-card" onclick="showCustomers()">
+                <div class="nav-icon">👥</div>
+                <div class="nav-title">Customers</div>
+                <div class="nav-desc">ग्राहक सूची</div>
+            </div>
+            
+            <div class="nav-card" onclick="showReports()">
+                <div class="nav-icon">📊</div>
+                <div class="nav-title">Reports</div>
+                <div class="nav-desc">रिपोर्ट देखें</div>
+            </div>
+            
+            <div class="nav-card" onclick="openWebPortal()">
+                <div class="nav-icon">🌐</div>
+                <div class="nav-title">Web Portal</div>
+                <div class="nav-desc">पूर्ण वेब पोर्टल</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Data Screen -->
+    <div class="data-screen" id="dataScreen">
+        <div class="data-header">
+            <button class="back-btn" onclick="goBack()">← Back</button>
+            <div id="dataTitle">Data</div>
+            <div></div>
+        </div>
+        <div class="data-content" id="dataContent">
+            <!-- Dynamic content will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // User authentication
+        const users = {
+            'admin': { password: 'admin123', name: 'Admin User', role: 'administrator' },
+            'sachin': { password: 'admin123', name: 'Sachin Kumar', role: 'engineer' },
+            'manpreet': { password: 'admin123', name: 'Manpreet Singh', role: 'manager' },
+            'engineer': { password: 'pass123', name: 'Field Engineer', role: 'field_engineer' }
+        };
+        
+        let currentUser = null;
+        let currentScreen = 'login';
+        
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                alert('⚠️ Please enter username and password\nकृपया यूजरनेम और पासवर्ड दर्ज करें');
+                return;
+            }
+            
+            if (users[username] && users[username].password === password) {
+                currentUser = { username, ...users[username] };
+                document.getElementById('loggedUser').textContent = currentUser.name;
+                showScreen('nav');
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            } else {
+                alert('❌ Invalid credentials\nगलत यूजरनेम या पासवर्ड');
+            }
+        }
+        
+        function handleLogout() {
+            currentUser = null;
+            showScreen('login');
+        }
+        
+        function showScreen(screen) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('navScreen').style.display = 'none';
+            document.getElementById('dataScreen').style.display = 'none';
+            
+            if (screen === 'login') {
+                document.getElementById('loginScreen').style.display = 'flex';
+            } else if (screen === 'nav') {
+                document.getElementById('navScreen').style.display = 'flex';
+            } else if (screen === 'data') {
+                document.getElementById('dataScreen').style.display = 'flex';
+            }
+            currentScreen = screen;
+        }
+        
+        function showTasks() {
+            document.getElementById('dataTitle').textContent = '📋 My Tasks';
+            const content = document.getElementById('dataContent');
+            content.innerHTML = `
+                <div class="data-item">
+                    <div class="item-title">T23001 - Server Maintenance</div>
+                    <div class="item-desc">सर्वर रखरखाव और अपडेट करना है</div>
+                    <div class="item-status">High Priority</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">T23002 - Network Setup</div>
+                    <div class="item-desc">नया नेटवर्क कनेक्शन सेटअप</div>
+                    <div class="item-status">In Progress</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">T23003 - Customer Support</div>
+                    <div class="item-desc">ग्राहक की तकनीकी समस्या हल करना</div>
+                    <div class="item-status">Pending</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">T23004 - Software Installation</div>
+                    <div class="item-desc">नया सॉफ्टवेयर इंस्टॉल करना</div>
+                    <div class="item-status">Completed</div>
+                </div>
+            `;
+            showScreen('data');
+        }
+        
+        function showCustomers() {
+            document.getElementById('dataTitle').textContent = '👥 Customer List';
+            const content = document.getElementById('dataContent');
+            content.innerHTML = `
+                <div class="data-item">
+                    <div class="item-title">ABC Corporation</div>
+                    <div class="item-desc">Enterprise Plan - 50 employees</div>
+                    <div class="item-status">Active</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">XYZ Business Solutions</div>
+                    <div class="item-desc">Professional Plan - 25 employees</div>
+                    <div class="item-status">Active</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">Tech Innovators Ltd</div>
+                    <div class="item-desc">Basic Plan - 10 employees</div>
+                    <div class="item-status">Pending</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">Digital Solutions Hub</div>
+                    <div class="item-desc">Premium Plan - 100 employees</div>
+                    <div class="item-status">Active</div>
+                </div>
+            `;
+            showScreen('data');
+        }
+        
+        function showReports() {
+            document.getElementById('dataTitle').textContent = '📊 Performance Reports';
+            const content = document.getElementById('dataContent');
+            content.innerHTML = `
+                <div class="data-item">
+                    <div class="item-title">Task Completion Rate</div>
+                    <div class="item-desc">कार्य पूर्णता दर: 85% (This Month)</div>
+                    <div class="item-status">Good</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">Customer Satisfaction</div>
+                    <div class="item-desc">ग्राहक संतुष्टि: 4.2/5 (Average Rating)</div>
+                    <div class="item-status">Excellent</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">Response Time</div>
+                    <div class="item-desc">औसत प्रतिक्रिया समय: 2.3 hours</div>
+                    <div class="item-status">Target Met</div>
+                </div>
+                <div class="data-item">
+                    <div class="item-title">Monthly Target</div>
+                    <div class="item-desc">मासिक लक्ष्य: 92% completed</div>
+                    <div class="item-status">On Track</div>
+                </div>
+            `;
+            showScreen('data');
+        }
+        
+        function openWebPortal() {
+            const url = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+            if (confirm('🌐 Open Full Web Portal?\n\nThis will open the complete Wizone IT Support Portal with all features.\n\nक्या आप पूर्ण वेब पोर्टल खोलना चाहते हैं?')) {
+                window.open(url, '_blank');
+            }
+        }
+        
+        function goBack() {
+            showScreen('nav');
+        }
+        
+        // Initialize app
+        window.addEventListener('load', function() {
+            showScreen('login');
+            console.log('✅ Wizone Mobile App - Navigation Ready');
+            console.log('🔐 Login system active');
+            console.log('📱 Multi-screen navigation enabled');
+        });
+    </script>
+</body>
+</html>
