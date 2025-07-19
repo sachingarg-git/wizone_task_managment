@@ -1,18 +1,4 @@
-#!/usr/bin/env node
-
-/**
- * Direct APK Creator - Instant Android Package  
- * Bypasses all web server and deployment issues
- */
-
-import fs from 'fs';
-import path from 'path';
-
-console.log('🚀 Creating Direct APK Package - No Web Dependencies');
-console.log('');
-
-// Create standalone HTML with embedded CSS and JS
-const standaloneHTML = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -186,19 +172,19 @@ const standaloneHTML = `<!DOCTYPE html>
     
     <script>
         function showTasks() {
-            alert('📋 Task Management\\n\\n• Server Maintenance - High Priority\\n• Software Update - In Progress\\n• Customer Support - Completed\\n• Network Setup - Pending');
+            alert('📋 Task Management\n\n• Server Maintenance - High Priority\n• Software Update - In Progress\n• Customer Support - Completed\n• Network Setup - Pending');
         }
         
         function showCustomers() {
-            alert('👥 Customer Portal\\n\\n• ABC Corporation - Enterprise Plan\\n• XYZ Business - Professional Plan\\n• Tech Solutions - Basic Plan\\n• Digital Services - Premium Plan');
+            alert('👥 Customer Portal\n\n• ABC Corporation - Enterprise Plan\n• XYZ Business - Professional Plan\n• Tech Solutions - Basic Plan\n• Digital Services - Premium Plan');
         }
         
         function showAnalytics() {
-            alert('📊 Analytics Dashboard\\n\\n• Task Completion Rate: 85%\\n• Customer Satisfaction: 4.2/5\\n• Response Time: 2.3 hours\\n• Active Engineers: 12');
+            alert('📊 Analytics Dashboard\n\n• Task Completion Rate: 85%\n• Customer Satisfaction: 4.2/5\n• Response Time: 2.3 hours\n• Active Engineers: 12');
         }
         
         function showSettings() {
-            alert('⚙️ Settings\\n\\n• Version: 1.0.0\\n• Language: Hindi/English\\n• Notifications: Enabled\\n• Theme: Professional\\n• Server: Connected');
+            alert('⚙️ Settings\n\n• Version: 1.0.0\n• Language: Hindi/English\n• Notifications: Enabled\n• Theme: Professional\n• Server: Connected');
         }
         
         // Update stats periodically
@@ -211,79 +197,4 @@ const standaloneHTML = `<!DOCTYPE html>
         }, 5000);
     </script>
 </body>
-</html>`;
-
-// Create standalone project
-if (fs.existsSync('wizone-standalone-apk')) {
-    fs.rmSync('wizone-standalone-apk', { recursive: true, force: true });
-}
-
-fs.mkdirSync('wizone-standalone-apk', { recursive: true });
-fs.mkdirSync('wizone-standalone-apk/app/src/main/assets', { recursive: true });
-fs.mkdirSync('wizone-standalone-apk/app/src/main/java/com/wizone/standalone', { recursive: true });
-fs.mkdirSync('wizone-standalone-apk/app/src/main/res/layout', { recursive: true });
-fs.mkdirSync('wizone-standalone-apk/app/src/main/res/values', { recursive: true });
-
-// Write standalone HTML
-fs.writeFileSync('wizone-standalone-apk/app/src/main/assets/index.html', standaloneHTML);
-
-// Create simple MainActivity
-const mainActivityJava = `package com.wizone.standalone;
-
-import android.app.Activity;
-import android.os.Bundle;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.webkit.WebSettings;
-
-public class MainActivity extends Activity {
-    
-    private WebView webView;
-    
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        webView = findViewById(R.id.webview);
-        
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        
-        webView.setWebViewClient(new WebViewClient());
-        
-        // Load local HTML file
-        webView.loadUrl("file:///android_asset/index.html");
-    }
-    
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-    }
-}`;
-
-fs.writeFileSync('wizone-standalone-apk/app/src/main/java/com/wizone/standalone/MainActivity.java', mainActivityJava);
-
-console.log('✅ Created: Standalone HTML with embedded features');
-console.log('✅ Created: Simple MainActivity with WebView');
-console.log('✅ Created: Complete APK project structure');
-console.log('');
-console.log('📱 Standalone APK Project Ready!');
-console.log('📁 Location: wizone-standalone-apk/');
-console.log('');
-console.log('🎯 Features:');
-console.log('• Complete UI embedded in single HTML file');
-console.log('• No external server dependencies');
-console.log('• Simulated Wizone functionality');
-console.log('• Material Design interface');
-console.log('• Responsive mobile layout');
-console.log('');
-console.log('📦 APK Size: 1-2 MB');
-console.log('🚀 Guaranteed installation on all Android devices!');
-console.log('');
-console.log('💡 No more web server or deployment issues!');
+</html>
