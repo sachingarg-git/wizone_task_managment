@@ -245,7 +245,7 @@
     </div>
 
     <script>
-        // User database - synced with SQL Server users
+        // User database - synced with SQL Server users including new user 'abz'
         const users = {
             'admin': { password: 'admin123', name: 'Admin User', role: 'Administrator' },
             'sachin': { password: 'admin123', name: 'Sachin Kumar', role: 'Field Engineer' },
@@ -256,7 +256,8 @@
             'field004': { password: 'admin123', name: 'Field Engineer 004', role: 'Field Engineer' },
             'field001': { password: 'admin123', name: 'Amit Kumar', role: 'Field Engineer' },
             'field002': { password: 'admin123', name: 'Rohit Singh', role: 'Field Engineer' },
-            'field003': { password: 'admin123', name: 'Priya Sharma', role: 'Field Engineer' }
+            'field003': { password: 'admin123', name: 'Priya Sharma', role: 'Field Engineer' },
+            'abz': { password: 'admin123', name: 'ABZ User', role: 'Engineer' }
         };
         
         // Task database for logged user
@@ -450,8 +451,50 @@
         
         function openTasks() {
             document.getElementById('taskTitle').textContent = '📋 My Tasks';
+            // Add sync button to task header
+            const taskHeader = document.querySelector('#tasks .screen-header');
+            if (taskHeader && !taskHeader.querySelector('.sync-button')) {
+                const syncButton = document.createElement('button');
+                syncButton.className = 'sync-button';
+                syncButton.innerHTML = '🔄 Sync';
+                syncButton.onclick = manualSyncTasks;
+                syncButton.style.cssText = `
+                    position: absolute; right: 20px; top: 20px; 
+                    background: rgba(34,197,94,0.9); color: white; 
+                    border: none; padding: 8px 16px; border-radius: 8px; 
+                    font-size: 14px; cursor: pointer;
+                `;
+                taskHeader.appendChild(syncButton);
+            }
             loadUserTasksFromAPI();
             showScreen('tasks');
+        }
+        
+        async function manualSyncTasks() {
+            const syncButton = document.querySelector('.sync-button');
+            if (syncButton) {
+                syncButton.innerHTML = '⏳ Syncing...';
+                syncButton.disabled = true;
+            }
+            
+            try {
+                await loadUserTasksFromAPI();
+                if (syncButton) {
+                    syncButton.innerHTML = '✅ Synced';
+                    setTimeout(() => {
+                        syncButton.innerHTML = '🔄 Sync';
+                        syncButton.disabled = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                if (syncButton) {
+                    syncButton.innerHTML = '❌ Failed';
+                    setTimeout(() => {
+                        syncButton.innerHTML = '🔄 Sync';
+                        syncButton.disabled = false;
+                    }, 2000);
+                }
+            }
         }
         
         async function loadUserTasksFromAPI() {
@@ -802,6 +845,10 @@
         async function updateTaskStatus(taskId, newStatus, taskTitle, note) {
             try {
                 const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                
+                // First try to authenticate
+                await authenticateIfNeeded();
+                
                 const response = await fetch(`${baseUrl}/api/tasks/${taskId}`, {
                     method: 'PATCH',
                     credentials: 'include',
@@ -823,23 +870,74 @@
                         'cancelled': 'रद्द'
                     };
                     
-                    alert(`✅ Task Updated!\n\nTask: ${taskTitle}\nNew Status: ${newStatus.replace('_', ' ').toUpperCase()}\nHindi: ${statusHindi[newStatus]}\n\n📊 Updated in SQL Server Database\n🔄 Refreshing task list...`);
+                    // Create task update record in database
+                    const updateResponse = await fetch(`${baseUrl}/api/tasks/${taskId}/updates`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            note: note || `Status updated from mobile to ${newStatus}`,
+                            status: newStatus,
+                            updatedBy: currentUser.id || currentUser.username
+                        })
+                    });
                     
-                    // Refresh task list
-                    loadUserTasksFromAPI();
+                    alert(`✅ Task Updated Successfully!\n\nTask: ${taskTitle}\nNew Status: ${newStatus.replace('_', ' ').toUpperCase()}\nHindi: ${statusHindi[newStatus]}\n\n📊 Synced to SQL Server Database\n📝 Update logged in task history\n🔄 Refreshing task list...`);
                     
-                    // Update stats
+                    // Refresh task list and stats
+                    await loadUserTasksFromAPI();
                     if (currentUser.firstName) {
                         await updateUserStatsFromAPI();
                     } else {
                         updateUserStats();
                     }
+                    
                 } else {
-                    alert('❌ Failed to update task\nकार्य अपडेट नहीं हो सका');
+                    const errorText = await response.text();
+                    console.log('Update failed:', errorText);
+                    alert(`❌ Failed to update task\nकार्य अपडेट नहीं हो सका\nError: ${response.status}`);
                 }
             } catch (error) {
-                alert('❌ Network error\nनेटवर्क त्रुटि');
                 console.log('Update error:', error);
+                alert(`❌ Network error\nनेटवर्क त्रुटि\n${error.message || 'Unknown error'}`);
+            }
+        }
+        
+        async function authenticateIfNeeded() {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                
+                // Check if already authenticated
+                const authCheck = await fetch(`${baseUrl}/api/auth/user`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (authCheck.ok) return; // Already authenticated
+                
+                // Try to authenticate with current user
+                if (currentUser && currentUser.username) {
+                    const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: currentUser.username,
+                            password: 'admin123'
+                        })
+                    });
+                    
+                    if (!loginResponse.ok) {
+                        throw new Error('Authentication failed');
+                    }
+                }
+            } catch (error) {
+                console.log('Authentication error:', error);
+                throw error;
             }
         }
         

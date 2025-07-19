@@ -580,7 +580,70 @@ export class DatabaseStorage implements IStorage {
       .insert(tasks)
       .values({ ...task, ticketNumber })
       .returning();
+    
+    // Auto-sync task to SQL Server
+    try {
+      await this.syncTaskToSqlServer(newTask);
+      console.log(`✅ Task ${newTask.ticketNumber} synced to SQL Server`);
+    } catch (syncError) {
+      console.error('❌ Task SQL Server sync failed:', syncError);
+      // Don't fail task creation if SQL sync fails
+    }
+    
     return newTask;
+  }
+  
+  // Task sync helper function
+  async syncTaskToSqlServer(task: Task) {
+    try {
+      const mssql = await import('mssql');
+      const { ConnectionPool } = mssql.default || mssql;
+      
+      const sqlServerConfig = {
+        server: "14.102.70.90",
+        port: 1433,
+        database: "TASK_SCORE_WIZONE",
+        user: "sa",
+        password: "ss123456",
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+          enableArithAbort: true,
+        },
+        pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+        connectionTimeout: 30000,
+        requestTimeout: 30000,
+      };
+      
+      const pool = new ConnectionPool(sqlServerConfig);
+      await pool.connect();
+      
+      const insertQuery = `
+        INSERT INTO tasks (id, ticketNumber, title, description, priority, status, issueType, customerId, assignedTo, fieldEngineerId, fieldEngineerName, createdBy, createdAt, updatedAt)
+        VALUES (@id, @ticketNumber, @title, @description, @priority, @status, @issueType, @customerId, @assignedTo, @fieldEngineerId, @fieldEngineerName, @createdBy, GETDATE(), GETDATE())
+      `;
+      
+      const request = pool.request()
+        .input('id', task.id)
+        .input('ticketNumber', task.ticketNumber)
+        .input('title', task.title)
+        .input('description', task.description || null)
+        .input('priority', task.priority)
+        .input('status', task.status)
+        .input('issueType', task.issueType || null)
+        .input('customerId', task.customerId || null)
+        .input('assignedTo', task.assignedTo || null)
+        .input('fieldEngineerId', task.fieldEngineerId || null)
+        .input('fieldEngineerName', task.fieldEngineerName || null)
+        .input('createdBy', task.createdBy);
+      
+      await request.query(insertQuery);
+      await pool.close();
+      
+    } catch (syncError) {
+      console.error('Task SQL Server sync error:', syncError);
+      throw syncError;
+    }
   }
 
   async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
@@ -589,7 +652,78 @@ export class DatabaseStorage implements IStorage {
       .set({ ...task, updatedAt: new Date() })
       .where(eq(tasks.id, id))
       .returning();
+    
+    // Auto-sync task update to SQL Server
+    try {
+      await this.syncTaskUpdateToSqlServer(updatedTask);
+      console.log(`✅ Task ${updatedTask.ticketNumber} update synced to SQL Server`);
+    } catch (syncError) {
+      console.error('❌ Task update SQL Server sync failed:', syncError);
+      // Don't fail task update if SQL sync fails
+    }
+    
     return updatedTask;
+  }
+  
+  // Task update sync helper function
+  async syncTaskUpdateToSqlServer(task: Task) {
+    try {
+      const mssql = await import('mssql');
+      const { ConnectionPool } = mssql.default || mssql;
+      
+      const sqlServerConfig = {
+        server: "14.102.70.90",
+        port: 1433,
+        database: "TASK_SCORE_WIZONE",
+        user: "sa",
+        password: "ss123456",
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+          enableArithAbort: true,
+        },
+        pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+        connectionTimeout: 30000,
+        requestTimeout: 30000,
+      };
+      
+      const pool = new ConnectionPool(sqlServerConfig);
+      await pool.connect();
+      
+      const updateQuery = `
+        UPDATE tasks 
+        SET title = @title, 
+            description = @description, 
+            priority = @priority, 
+            status = @status, 
+            issueType = @issueType, 
+            customerId = @customerId, 
+            assignedTo = @assignedTo, 
+            fieldEngineerId = @fieldEngineerId, 
+            fieldEngineerName = @fieldEngineerName,
+            updatedAt = GETDATE()
+        WHERE id = @id
+      `;
+      
+      const request = pool.request()
+        .input('id', task.id)
+        .input('title', task.title)
+        .input('description', task.description || null)
+        .input('priority', task.priority)
+        .input('status', task.status)
+        .input('issueType', task.issueType || null)
+        .input('customerId', task.customerId || null)
+        .input('assignedTo', task.assignedTo || null)
+        .input('fieldEngineerId', task.fieldEngineerId || null)
+        .input('fieldEngineerName', task.fieldEngineerName || null);
+      
+      await request.query(updateQuery);
+      await pool.close();
+      
+    } catch (syncError) {
+      console.error('Task update SQL Server sync error:', syncError);
+      throw syncError;
+    }
   }
 
   async deleteTask(id: number): Promise<void> {
