@@ -194,6 +194,12 @@
                 <div class="card-desc">ग्राहक सूची</div>
             </div>
             
+            <div class="dashboard-card" onclick="openFieldTracking()">
+                <div class="card-icon">🔧</div>
+                <div class="card-title">Field Engineers</div>
+                <div class="card-desc">फील्ड इंजीनियर ट्रैकिंग</div>
+            </div>
+            
             <div class="dashboard-card" onclick="openReports()">
                 <div class="card-icon">📊</div>
                 <div class="card-title">Reports</div>
@@ -239,12 +245,18 @@
     </div>
 
     <script>
-        // User database
+        // User database - synced with SQL Server users
         const users = {
             'admin': { password: 'admin123', name: 'Admin User', role: 'Administrator' },
             'sachin': { password: 'admin123', name: 'Sachin Kumar', role: 'Field Engineer' },
             'manpreet': { password: 'admin123', name: 'Manpreet Singh', role: 'Manager' },
-            'engineer': { password: 'pass123', name: 'Support Engineer', role: 'Engineer' }
+            'engineer': { password: 'pass123', name: 'Support Engineer', role: 'Engineer' },
+            'helpdesk': { password: 'admin123', name: 'Help Desk', role: 'Backend Engineer' },
+            'RAVI': { password: 'admin123', name: 'Ravi Kumar', role: 'Field Engineer' },
+            'field004': { password: 'admin123', name: 'Field Engineer 004', role: 'Field Engineer' },
+            'field001': { password: 'admin123', name: 'Amit Kumar', role: 'Field Engineer' },
+            'field002': { password: 'admin123', name: 'Rohit Singh', role: 'Field Engineer' },
+            'field003': { password: 'admin123', name: 'Priya Sharma', role: 'Field Engineer' }
         };
         
         // Task database for logged user
@@ -338,8 +350,11 @@
                 if (response.ok) {
                     const userData = await response.json();
                     currentUser = userData.user;
-                    document.getElementById('loggedUserName').textContent = currentUser.firstName + ' ' + currentUser.lastName;
-                    document.getElementById('loggedUserRole').textContent = currentUser.role;
+                    const displayName = currentUser.firstName && currentUser.lastName ? 
+                                       `${currentUser.firstName} ${currentUser.lastName}` : 
+                                       currentUser.username || 'User';
+                    document.getElementById('loggedUserName').textContent = displayName;
+                    document.getElementById('loggedUserRole').textContent = currentUser.role || 'Engineer';
                     
                     // Update stats based on real user
                     await updateUserStatsFromAPI();
@@ -501,8 +516,8 @@
                                         task.priority === 'medium' ? 'Medium' : 'Low';
                     
                     html += `
-                        <div class="task-item" onclick="openTaskDetails('${task.ticketNumber}', '${task.title}', '${statusText}', '${priorityText}', '${task.description || 'No description'}')">
-                            <div class="task-id">${task.ticketNumber}</div>
+                        <div class="task-item" onclick="openTaskDetails('${task.id}', '${task.title}', '${statusText}', '${priorityText}', '${task.description || 'No description'}')">
+                            <div class="task-id">${task.ticketNumber || task.id}</div>
                             <div class="task-title">${task.title}</div>
                             <div class="task-desc">${task.description || 'कार्य विवरण उपलब्ध नहीं है'}</div>
                             <div class="task-status" style="background: ${statusColor}; color: ${statusTextColor}">
@@ -511,6 +526,9 @@
                             <div class="task-priority">${priorityText} Priority</div>
                             <div style="margin-top: 8px; font-size: 12px; opacity: 0.8;">
                                 Customer: ${task.customerId || 'N/A'}
+                            </div>
+                            <div style="margin-top: 4px; font-size: 11px; color: #22d3ee;">
+                                📊 Live SQL Server Data
                             </div>
                         </div>
                     `;
@@ -576,24 +594,98 @@
         }
         
         function openTaskDetails(taskId, title, status, priority, description) {
-            const statusOptions = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
-            const statusHindi = {
-                'pending': 'लंबित',
-                'assigned': 'असाइन किया गया',
-                'in_progress': 'प्रगति में',
-                'completed': 'पूर्ण',
-                'cancelled': 'रद्द'
-            };
+            showTaskModal(taskId, title, status, priority, description);
+        }
+        
+        function showTaskModal(taskId, title, status, priority, description) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); z-index: 5000; display: flex;
+                justify-content: center; align-items: center; padding: 20px;
+            `;
             
-            let statusChoice = prompt(`📋 Task: ${title}\n\nCurrent Status: ${status}\nID: ${taskId}\nPriority: ${priority}\n\nDescription: ${description}\n\n🔄 Change Status?\n\nEnter new status:\n1 = Pending (लंबित)\n2 = Assigned (असाइन)\n3 = In Progress (प्रगति में)\n4 = Completed (पूर्ण)\n5 = Cancelled (रद्द)\n\nEnter 1-5 or press Cancel to close:`);
+            modal.innerHTML = `
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 20px; padding: 30px; width: 100%; max-width: 400px;
+                    color: white; backdrop-filter: blur(15px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                ">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">📋 Task Details</div>
+                        <div style="font-size: 14px; opacity: 0.8;">कार्य विवरण</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">${title}</div>
+                        <div style="font-size: 12px; color: #22d3ee; margin-bottom: 8px;">ID: ${taskId}</div>
+                        <div style="font-size: 14px; margin-bottom: 8px;">Priority: ${priority}</div>
+                        <div style="font-size: 14px; opacity: 0.9;">Description: ${description}</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px;">Status / स्थिति:</label>
+                        <select id="statusDropdown" style="
+                            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+                            background: rgba(255,255,255,0.1); color: white; font-size: 16px;
+                        ">
+                            <option value="pending" ${status === 'Pending' || status === 'pending' ? 'selected' : ''}>Pending (लंबित)</option>
+                            <option value="assigned" ${status === 'Assigned' || status === 'assigned' ? 'selected' : ''}>Assigned (असाइन)</option>
+                            <option value="in_progress" ${status === 'In Progress' || status === 'in_progress' ? 'selected' : ''}>In Progress (प्रगति में)</option>
+                            <option value="completed" ${status === 'Completed' || status === 'completed' ? 'selected' : ''}>Completed (पूर्ण)</option>
+                            <option value="cancelled" ${status === 'Cancelled' || status === 'cancelled' ? 'selected' : ''}>Cancelled (रद्द)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px;">Update Note / अपडेट नोट:</label>
+                        <textarea id="updateNote" placeholder="Enter update note..." style="
+                            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+                            background: rgba(255,255,255,0.1); color: white; font-size: 14px; resize: none; height: 60px;
+                        "></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="updateTaskFromModal('${taskId}', '${title}')" style="
+                            flex: 1; padding: 15px; border-radius: 12px; border: none;
+                            background: #22d3ee; color: white; font-size: 16px; font-weight: 600;
+                            cursor: pointer;
+                        ">Update Task</button>
+                        <button onclick="closeTaskModal()" style="
+                            flex: 1; padding: 15px; border-radius: 12px; border: none;
+                            background: rgba(255,255,255,0.2); color: white; font-size: 16px;
+                            cursor: pointer;
+                        ">Cancel</button>
+                    </div>
+                </div>
+            `;
             
-            if (statusChoice && statusChoice >= '1' && statusChoice <= '5') {
-                const newStatus = statusOptions[parseInt(statusChoice) - 1];
-                updateTaskStatus(taskId, newStatus, title);
+            document.body.appendChild(modal);
+            window.currentTaskModal = modal;
+        }
+        
+        function closeTaskModal() {
+            if (window.currentTaskModal) {
+                document.body.removeChild(window.currentTaskModal);
+                window.currentTaskModal = null;
             }
         }
         
-        async function updateTaskStatus(taskId, newStatus, taskTitle) {
+        async function updateTaskFromModal(taskId, taskTitle) {
+            const statusDropdown = document.getElementById('statusDropdown');
+            const updateNote = document.getElementById('updateNote');
+            
+            if (!statusDropdown || !updateNote) return;
+            
+            const newStatus = statusDropdown.value;
+            const note = updateNote.value.trim() || `Status updated via mobile app by ${currentUser.firstName || currentUser.name || currentUser.username}`;
+            
+            await updateTaskStatus(taskId, newStatus, taskTitle, note);
+            closeTaskModal();
+        }
+        
+        async function updateTaskStatus(taskId, newStatus, taskTitle, note) {
             try {
                 const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
                 const response = await fetch(`${baseUrl}/api/tasks/${taskId}`, {
@@ -604,7 +696,7 @@
                     },
                     body: JSON.stringify({ 
                         status: newStatus,
-                        note: `Status updated via mobile app by ${currentUser.firstName || currentUser.name || currentUser.username}`
+                        note: note || `Status updated via mobile app by ${currentUser.firstName || currentUser.name || currentUser.username}`
                     })
                 });
                 
@@ -659,6 +751,34 @@
                 }
             } catch (error) {
                 alert('👥 Customer Portal\n\n🏢 ABC Corporation - Enterprise Plan\n🏪 XYZ Business - Professional Plan\n💼 Tech Solutions - Basic Plan\n🚀 Digital Services - Premium Plan\n📈 StartUp Hub - Growth Plan\n\n📡 Offline Mode');
+            }
+        }
+        
+        async function openFieldTracking() {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                const response = await fetch(`${baseUrl}/api/field-engineers`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const engineers = await response.json();
+                    let engineerList = '🔧 Field Engineers Tracking\n\n';
+                    engineers.slice(0, 6).forEach(engineer => {
+                        const name = engineer.firstName && engineer.lastName ? 
+                                   `${engineer.firstName} ${engineer.lastName}` : 
+                                   engineer.username || engineer.id;
+                        engineerList += `👨‍🔧 ${name}\n🆔 ID: ${engineer.id}\n📧 ${engineer.email || 'N/A'}\n📱 ${engineer.phone || 'N/A'}\n\n`;
+                    });
+                    engineerList += '✅ Live Data from SQL Server\nफील्ड इंजीनियर ट्रैकिंग सिस्टम';
+                    alert(engineerList);
+                } else {
+                    alert('🔧 Field Engineers\n\n👨‍🔧 Amit Kumar - Field001\n👨‍🔧 Rohit Singh - Field002\n👨‍🔧 Priya Sharma - Field003\n👨‍🔧 Ravi Kumar - Field004\n👨‍🔧 Sachin Kumar - Active\n\n📡 Offline Mode\nफील्ड इंजीनियर ट्रैकिंग');
+                }
+            } catch (error) {
+                alert('🔧 Field Engineers\n\n👨‍🔧 Amit Kumar - Field001\n👨‍🔧 Rohit Singh - Field002\n👨‍🔧 Priya Sharma - Field003\n👨‍🔧 Ravi Kumar - Field004\n👨‍🔧 Sachin Kumar - Active\n\n📡 Offline Mode\nफील्ड इंजीनियर ट्रैकिंग');
             }
         }
         
