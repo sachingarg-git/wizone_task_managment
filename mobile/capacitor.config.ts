@@ -5,12 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Wizone IT Support Portal',
   webDir: '../dist/public',
   bundledWebRuntime: false,
-  server: {
-    hostname: 'localhost',
-    androidScheme: 'https',
-    allowNavigation: ['*'],
-    cleartext: true
-  },
+
   android: {
     allowMixedContent: true,
     captureInput: true,
