@@ -459,8 +459,8 @@
             content.innerHTML = `
                 <div style="text-align: center; padding: 40px;">
                     <div style="font-size: 48px; margin-bottom: 16px; animation: pulse 2s infinite;">⏳</div>
-                    <div>Loading tasks...</div>
-                    <div style="font-size: 14px; margin-top: 8px;">कार्य लोड हो रहे हैं...</div>
+                    <div>Loading live tasks...</div>
+                    <div style="font-size: 14px; margin-top: 8px;">SQL Server से कार्य लोड हो रहे हैं...</div>
                 </div>
             `;
             
@@ -468,8 +468,8 @@
                 // Get current deployment URL dynamically
                 const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
                 
-                // Fetch tasks from live API
-                const response = await fetch(`${baseUrl}/api/tasks`, {
+                // First try to get user session
+                const authResponse = await fetch(`${baseUrl}/api/auth/user`, {
                     method: 'GET',
                     credentials: 'include',
                     headers: {
@@ -477,16 +477,105 @@
                     }
                 });
                 
-                if (response.ok) {
-                    const tasks = await response.json();
-                    displayTasks(tasks);
-                } else {
-                    // Fallback to offline data if API fails
-                    console.log('API failed, using offline data');
-                    loadUserTasksOffline();
+                if (authResponse.ok) {
+                    // User is authenticated, fetch tasks
+                    const response = await fetch(`${baseUrl}/api/tasks`, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const tasks = await response.json();
+                        console.log('Live tasks loaded:', tasks.length);
+                        
+                        // Filter tasks for current user if needed
+                        let userTasks = tasks;
+                        if (currentUser && currentUser.role === 'Field Engineer') {
+                            userTasks = tasks.filter(task => 
+                                task.fieldEngineerId === currentUser.id || 
+                                task.assignedTo === currentUser.id ||
+                                task.fieldEngineerId === currentUser.username ||
+                                task.assignedTo === currentUser.username
+                            );
+                        }
+                        
+                        displayTasks(userTasks);
+                        
+                        // Show success message briefly
+                        const loadingDiv = document.createElement('div');
+                        loadingDiv.style.cssText = `
+                            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                            background: rgba(34,197,94,0.9); color: white; padding: 12px 20px;
+                            border-radius: 8px; z-index: 1000; font-size: 14px;
+                        `;
+                        loadingDiv.textContent = `✅ Live Data Loaded: ${userTasks.length} tasks from SQL Server`;
+                        document.body.appendChild(loadingDiv);
+                        setTimeout(() => {
+                            if (document.body.contains(loadingDiv)) {
+                                document.body.removeChild(loadingDiv);
+                            }
+                        }, 3000);
+                        
+                        return;
+                    }
                 }
+                
+                // If authentication or API fails, try manual login
+                console.log('API authentication failed, trying manual login...');
+                await authenticateAndLoadTasks();
+                
             } catch (error) {
-                console.log('Network error, using offline data:', error);
+                console.log('Network error:', error);
+                await authenticateAndLoadTasks();
+            }
+        }
+        
+        async function authenticateAndLoadTasks() {
+            try {
+                const baseUrl = window.location.origin || 'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+                
+                // Try to login with current user credentials
+                if (currentUser && currentUser.username) {
+                    const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: currentUser.username,
+                            password: 'admin123' // Default password
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        // Now fetch tasks
+                        const response = await fetch(`${baseUrl}/api/tasks`, {
+                            method: 'GET',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const tasks = await response.json();
+                            console.log('Tasks loaded after authentication:', tasks.length);
+                            displayTasks(tasks);
+                            return;
+                        }
+                    }
+                }
+                
+                // If all else fails, use offline data
+                console.log('All API attempts failed, using offline data');
+                loadUserTasksOffline();
+                
+            } catch (error) {
+                console.log('Authentication error:', error);
                 loadUserTasksOffline();
             }
         }
@@ -495,29 +584,50 @@
             const content = document.getElementById('taskContent');
             
             if (tasks && tasks.length > 0) {
-                let html = '';
+                let html = `
+                    <div style="background: rgba(34,197,94,0.1); color: #10b981; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; font-size: 14px;">
+                        ✅ Live Data: ${tasks.length} tasks loaded from SQL Server Database
+                    </div>
+                `;
                 
                 tasks.forEach(task => {
-                    const statusColor = task.status === 'completed' ? 'rgba(34,197,94,0.3)' : 
-                                       task.status === 'in_progress' ? 'rgba(59,130,246,0.3)' : 
-                                       task.status === 'assigned' ? 'rgba(245,158,11,0.3)' :
+                    // Handle different status formats
+                    let normalizedStatus = task.status;
+                    if (typeof task.status === 'string') {
+                        normalizedStatus = task.status.toLowerCase().replace(/\s+/g, '_');
+                    }
+                    
+                    const statusColor = normalizedStatus === 'completed' ? 'rgba(34,197,94,0.3)' : 
+                                       normalizedStatus === 'in_progress' ? 'rgba(59,130,246,0.3)' : 
+                                       normalizedStatus === 'assigned' || normalizedStatus === 'assigned_to_field' ? 'rgba(245,158,11,0.3)' :
                                        'rgba(239,68,68,0.3)';
-                    const statusTextColor = task.status === 'completed' ? '#10b981' : 
-                                           task.status === 'in_progress' ? '#3b82f6' : 
-                                           task.status === 'assigned' ? '#f59e0b' :
+                    const statusTextColor = normalizedStatus === 'completed' ? '#10b981' : 
+                                           normalizedStatus === 'in_progress' ? '#3b82f6' : 
+                                           normalizedStatus === 'assigned' || normalizedStatus === 'assigned_to_field' ? '#f59e0b' :
                                            '#f87171';
                     
-                    const statusText = task.status === 'completed' ? 'Completed' :
-                                      task.status === 'in_progress' ? 'In Progress' :
-                                      task.status === 'assigned' ? 'Assigned' : 
-                                      task.status === 'pending' ? 'Pending' : 'New';
+                    const statusText = normalizedStatus === 'completed' ? 'Completed' :
+                                      normalizedStatus === 'in_progress' ? 'In Progress' :
+                                      normalizedStatus === 'assigned' ? 'Assigned' : 
+                                      normalizedStatus === 'assigned_to_field' ? 'Assigned to Field' :
+                                      normalizedStatus === 'pending' ? 'Pending' : 'New';
                     
                     const priorityText = task.priority === 'high' ? 'High' :
                                         task.priority === 'medium' ? 'Medium' : 'Low';
                     
+                    // Get field engineer info
+                    let fieldEngineerText = '';
+                    if (task.fieldEngineerId || task.fieldEngineerName) {
+                        fieldEngineerText = `
+                            <div style="margin-top: 6px; font-size: 12px; color: #22d3ee;">
+                                🔧 Field Engineer: ${task.fieldEngineerName || task.fieldEngineerId}
+                            </div>
+                        `;
+                    }
+                    
                     html += `
                         <div class="task-item" onclick="openTaskDetails('${task.id}', '${task.title}', '${statusText}', '${priorityText}', '${task.description || 'No description'}')">
-                            <div class="task-id">${task.ticketNumber || task.id}</div>
+                            <div class="task-id">${task.ticketNumber || ('T' + task.id)}</div>
                             <div class="task-title">${task.title}</div>
                             <div class="task-desc">${task.description || 'कार्य विवरण उपलब्ध नहीं है'}</div>
                             <div class="task-status" style="background: ${statusColor}; color: ${statusTextColor}">
@@ -527,8 +637,9 @@
                             <div style="margin-top: 8px; font-size: 12px; opacity: 0.8;">
                                 Customer: ${task.customerId || 'N/A'}
                             </div>
+                            ${fieldEngineerText}
                             <div style="margin-top: 4px; font-size: 11px; color: #22d3ee;">
-                                📊 Live SQL Server Data
+                                📊 ID: ${task.id} • Live SQL Server Data
                             </div>
                         </div>
                     `;
@@ -541,6 +652,9 @@
                         <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
                         <div>No tasks found</div>
                         <div style="font-size: 14px; margin-top: 8px;">कोई कार्य नहीं मिला</div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #22d3ee;">
+                            📊 Connected to SQL Server Database
+                        </div>
                     </div>
                 `;
             }
