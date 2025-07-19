@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
                 // Try fallback URL if local assets fail
                 if (failingUrl.contains("android_asset")) {
                     Toast.makeText(MainActivity.this, "Loading online version...", Toast.LENGTH_SHORT).show();
-                    webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+                    webView.loadUrl("https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
                 } else {
                     Toast.makeText(MainActivity.this, "Error: " + description, Toast.LENGTH_LONG).show();
                 }
@@ -111,7 +111,7 @@ public class MainActivity extends Activity {
             // Check if we have internet connectivity
             if (isNetworkAvailable()) {
                 // Load online version first (more reliable)
-                webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+                webView.loadUrl("https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
             } else {
                 // Fallback to local assets
                 webView.loadUrl("file:///android_asset/index.html");
