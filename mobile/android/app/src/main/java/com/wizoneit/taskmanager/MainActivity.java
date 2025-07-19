@@ -29,10 +29,10 @@ public class MainActivity extends BridgeActivity {
             settings.setDisplayZoomControls(false);
         }
         
-        // Load the self-contained app.html directly
+        // Load index.html from public directory
         try {
             getBridge().setServerBasePath("file:///android_asset/public/");
-            getBridge().setStartPath("app.html");
+            getBridge().setStartPath("index.html");
         } catch (Exception e) {
             e.printStackTrace();
         }

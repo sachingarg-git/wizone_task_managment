@@ -3,12 +3,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.wizoneit.taskmanager',
   appName: 'Wizone IT Support Portal',
-  webDir: 'android/app/src/main/assets/public',
+  webDir: 'public',
   bundledWebRuntime: false,
-  server: {
-    url: 'file:///android_asset/public/app.html',
-    allowNavigation: ['*']
-  },
 
   android: {
     allowMixedContent: true,
