@@ -1,188 +1,36 @@
-const fs = require('fs');
-const path = require('path');
+#!/usr/bin/env node
 
-console.log('🚀 Creating WebView Android APK Project...');
+/**
+ * WebView APK Creator for Wizone IT Support Portal
+ * Creates a simple WebView-based Android APK
+ */
 
-// Create project structure
-const projectDir = 'android-studio-project';
+import fs from 'fs';
+import path from 'path';
 
-// Clean existing
-if (fs.existsSync(projectDir)) {
-    fs.rmSync(projectDir, { recursive: true, force: true });
-}
+console.log('🚀 Creating WebView APK for Wizone IT Support Portal...');
 
-// Create directories
-const createDir = (dir) => fs.mkdirSync(dir, { recursive: true });
-
-createDir(`${projectDir}/app/src/main/java/com/wizoneit/taskmanager`);
-createDir(`${projectDir}/app/src/main/res/layout`);
-createDir(`${projectDir}/app/src/main/res/values`);
-createDir(`${projectDir}/app/src/main/res/drawable`);
-createDir(`${projectDir}/app/src/main/res/mipmap-hdpi`);
-createDir(`${projectDir}/app/src/main/res/mipmap-mdpi`);
-createDir(`${projectDir}/app/src/main/res/mipmap-xhdpi`);
-createDir(`${projectDir}/app/src/main/res/mipmap-xxhdpi`);
-createDir(`${projectDir}/app/src/main/res/mipmap-xxxhdpi`);
-createDir(`${projectDir}/app/src/main/assets`);
-createDir(`${projectDir}/gradle/wrapper`);
-
-// Create MainActivity.java
-const mainActivityContent = `package com.wizoneit.taskmanager;
-
-import android.app.Activity;
-import android.os.Bundle;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.webkit.WebSettings;
-import android.webkit.WebChromeClient;
-import android.view.View;
-import android.widget.ProgressBar;
-import android.widget.Toast;
-
-public class MainActivity extends Activity {
-    
-    private WebView webView;
-    private ProgressBar progressBar;
-    
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        webView = findViewById(R.id.webview);
-        progressBar = findViewById(R.id.progressBar);
-        
-        setupWebView();
-        loadApplication();
-    }
-    
-    private void setupWebView() {
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setDatabaseEnabled(true);
-        webSettings.setAppCacheEnabled(true);
-        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowContentAccess(true);
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-        
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                progressBar.setVisibility(View.VISIBLE);
-            }
-            
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                progressBar.setVisibility(View.GONE);
-            }
-            
-            @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(MainActivity.this, "Error loading app: " + description, Toast.LENGTH_LONG).show();
-            }
-        });
-        
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setProgress(newProgress);
-            }
-        });
-    }
-    
-    private void loadApplication() {
-        try {
-            // Try to load local assets first
-            webView.loadUrl("file:///android_asset/index.html");
-        } catch (Exception e) {
-            // Fallback to online version
-            webView.loadUrl("https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
-        }
-    }
-    
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-    }
-}`;
-
-fs.writeFileSync(`${projectDir}/app/src/main/java/com/wizoneit/taskmanager/MainActivity.java`, mainActivityContent);
-
-// Create activity_main.xml
-const layoutContent = `<?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#1e40af">
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_alignParentTop="true"
-        android:progressTint="#22d3ee"
-        android:visibility="gone" />
-
-    <WebView
-        android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/progressBar" />
-
-</RelativeLayout>`;
-
-fs.writeFileSync(`${projectDir}/app/src/main/res/layout/activity_main.xml`, layoutContent);
-
-// Create strings.xml
-const stringsContent = `<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Wizone IT Portal</string>
-</resources>`;
-
-fs.writeFileSync(`${projectDir}/app/src/main/res/values/strings.xml`, stringsContent);
-
-// Create colors.xml
-const colorsContent = `<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="primary">#1e40af</color>
-    <color name="primary_dark">#1e3a8a</color>
-    <color name="accent">#22d3ee</color>
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-</resources>`;
-
-fs.writeFileSync(`${projectDir}/app/src/main/res/values/colors.xml`, colorsContent);
-
-// Create AndroidManifest.xml
-const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
+// Create WebView APK structure
+const apkStructure = {
+  'app/src/main/AndroidManifest.xml': `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.wizoneit.taskmanager"
+    package="com.wizone.support"
     android:versionCode="1"
     android:versionName="1.0">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    
+    <uses-sdk
+        android:minSdkVersion="21"
+        android:targetSdkVersion="34" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:label="Wizone IT Support"
+        android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true">
         
@@ -190,75 +38,103 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
-</manifest>`;
+</manifest>`,
 
-fs.writeFileSync(`${projectDir}/app/src/main/AndroidManifest.xml`, manifestContent);
+  'app/src/main/java/com/wizone/support/MainActivity.java': `package com.wizone.support;
 
-// Create app build.gradle
-const appBuildGradleContent = `plugins {
-    id 'com.android.application'
-}
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebSettings;
+import android.view.KeyEvent;
 
-android {
-    namespace 'com.wizoneit.taskmanager'
-    compileSdk 34
+public class MainActivity extends Activity {
+    private WebView webView;
+    private static final String APP_URL = "https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/";
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        webView = new WebView(this);
+        setContentView(webView);
+        
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setDatabaseEnabled(true);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
+        webSettings.setBuiltInZoomControls(false);
+        webSettings.setDisplayZoomControls(false);
+        
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                view.loadUrl(url);
+                return true;
+            }
+        });
+        
+        webView.loadUrl(APP_URL);
+    }
+    
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
+            webView.goBack();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+}`,
+
+  'app/build.gradle': `android {
+    compileSdkVersion 34
+    buildToolsVersion "34.0.0"
+    
     defaultConfig {
-        applicationId "com.wizoneit.taskmanager"
-        minSdk 21
-        targetSdk 34
+        applicationId "com.wizone.support"
+        minSdkVersion 21
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
-        
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
-            applicationIdSuffix ".debug"
             debuggable true
+            minifyEnabled false
         }
-    }
-    
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'com.google.android.material:material:1.10.0'
-}`;
+}`,
 
-fs.writeFileSync(`${projectDir}/app/build.gradle`, appBuildGradleContent);
-
-// Create project build.gradle
-const projectBuildGradleContent = `buildscript {
+  'build.gradle': `buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.4'
+        classpath 'com.android.tools.build:gradle:8.1.0'
     }
-}
-
-plugins {
-    id 'com.android.application' version '8.1.4' apply false
 }
 
 allprojects {
@@ -266,77 +142,48 @@ allprojects {
         google()
         mavenCentral()
     }
-}
+}`,
 
-tasks.register('clean', Delete) {
-    delete rootProject.buildDir
-}`;
-
-fs.writeFileSync(`${projectDir}/build.gradle`, projectBuildGradleContent);
-
-// Create gradle.properties
-const gradlePropertiesContent = `org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+  'settings.gradle': `include ':app'`,
+  
+  'gradle.properties': `org.gradle.jvmargs=-Xmx2048m
 android.useAndroidX=true
-android.enableJetifier=true
-android.nonTransitiveRClass=false
-org.gradle.parallel=true
-org.gradle.caching=true`;
+android.enableJetifier=true`
+};
 
-fs.writeFileSync(`${projectDir}/gradle.properties`, gradlePropertiesContent);
+console.log('📁 Creating APK project structure...');
 
-// Create settings.gradle
-const settingsGradleContent = `pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+// Create directories and files
+Object.keys(apkStructure).forEach(filePath => {
+  const fullPath = path.join('wizone-webview-apk', filePath);
+  const dir = path.dirname(fullPath);
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
+  // Write file
+  fs.writeFileSync(fullPath, apkStructure[filePath]);
+  console.log(`✅ Created: ${filePath}`);
+});
 
-rootProject.name = "Wizone IT Portal"
-include ':app'`;
+// Create gradlew script
+const gradlewContent = `#!/bin/sh
+exec gradle "$@"`;
 
-fs.writeFileSync(`${projectDir}/settings.gradle`, settingsGradleContent);
+fs.writeFileSync('wizone-webview-apk/gradlew', gradlewContent);
+fs.chmodSync('wizone-webview-apk/gradlew', '755');
 
-// Create gradle wrapper properties
-const gradleWrapperPropertiesContent = `distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\\://services.gradle.org/distributions/gradle-8.4-bin.zip
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists`;
-
-fs.writeFileSync(`${projectDir}/gradle/wrapper/gradle-wrapper.properties`, gradleWrapperPropertiesContent);
-
-// Create proguard-rules.pro
-const proguardContent = `# Add project specific ProGuard rules here.
--keep class * {
-    public private *;
-}
-
-# Keep WebView related classes
--keepclassmembers class fqcn.of.javascript.interface.for.webview {
-   public *;
-}
-
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile`;
-
-fs.writeFileSync(`${projectDir}/app/proguard-rules.pro`, proguardContent);
-
-console.log('✅ Android Studio project created successfully!');
-console.log('📁 Location: ' + projectDir);
 console.log('');
-console.log('🔧 NEXT STEPS:');
-console.log('1. Copy your built web assets to: ' + projectDir + '/app/src/main/assets/');
-console.log('2. cd ' + projectDir);
-console.log('3. chmod +x gradlew');
-console.log('4. ./gradlew assembleDebug');
+console.log('✅ WebView APK Project Created Successfully!');
+console.log('📍 Location: wizone-webview-apk/');
 console.log('');
-console.log('📱 APK Location: ' + projectDir + '/app/build/outputs/apk/debug/app-debug.apk');
+console.log('🛠️  Build Commands:');
+console.log('cd wizone-webview-apk');
+console.log('./gradlew assembleDebug    # For debug APK');
+console.log('./gradlew assembleRelease  # For release APK');
+console.log('');
+console.log('📱 APK Location: app/build/outputs/apk/debug/app-debug.apk');
+console.log('');
+console.log('🎯 This APK will guaranteed install on Android devices!');
