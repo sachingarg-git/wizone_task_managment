@@ -6,7 +6,6 @@ const config: CapacitorConfig = {
   webDir: '../dist/public',
   bundledWebRuntime: false,
   server: {
-    url: 'file:///android_asset/public/app.html',
     hostname: 'localhost',
     androidScheme: 'https',
     allowNavigation: ['*'],

@@ -114,6 +114,18 @@ public class MainActivity extends BridgeActivity {
     }
     
     @Override
+    public void onStart() {
+        super.onStart();
+        
+        // Force load app.html directly on startup
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            Log.d(TAG, "🚀 Force loading app.html on startup");
+            webView.loadUrl("file:///android_asset/public/app.html");
+        }
+    }
+    
+    @Override
     public void onResume() {
         super.onResume();
         Log.d(TAG, "📱 App resumed");
