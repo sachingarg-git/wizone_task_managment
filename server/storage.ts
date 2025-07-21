@@ -619,8 +619,8 @@ export class DatabaseStorage implements IStorage {
       await pool.connect();
       
       const insertQuery = `
-        INSERT INTO tasks (id, ticket_number, title, description, priority, status, issue_type, customer_id, assigned_to, field_engineer_id, created_by, created_at, updated_at)
-        VALUES (@id, @ticket_number, @title, @description, @priority, @status, @issue_type, @customer_id, @assigned_to, @field_engineer_id, @created_by, GETDATE(), GETDATE())
+        INSERT INTO tasks (id, ticket_number, title, description, priority, status, issue_type, customer_id, assigned_to, created_by)
+        VALUES (@id, @ticket_number, @title, @description, @priority, @status, @issue_type, @customer_id, @assigned_to, @created_by)
       `;
       
       const request = pool.request()
@@ -633,7 +633,6 @@ export class DatabaseStorage implements IStorage {
         .input('issue_type', task.issueType || null)
         .input('customer_id', task.customerId || null)
         .input('assigned_to', task.assignedTo || null)
-        .input('field_engineer_id', task.fieldEngineerId || null)
         .input('created_by', task.createdBy);
       
       await request.query(insertQuery);
@@ -697,9 +696,7 @@ export class DatabaseStorage implements IStorage {
             status = @status, 
             issue_type = @issue_type, 
             customer_id = @customer_id, 
-            assigned_to = @assigned_to, 
-            field_engineer_id = @field_engineer_id,
-            updated_at = GETDATE()
+            assigned_to = @assigned_to
         WHERE id = @id
       `;
       
@@ -711,8 +708,7 @@ export class DatabaseStorage implements IStorage {
         .input('status', task.status)
         .input('issue_type', task.issueType || null)
         .input('customer_id', task.customerId || null)
-        .input('assigned_to', task.assignedTo || null)
-        .input('field_engineer_id', task.fieldEngineerId || null);
+        .input('assigned_to', task.assignedTo || null);
       
       await request.query(updateQuery);
       await pool.close();
