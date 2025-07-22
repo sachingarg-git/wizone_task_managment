@@ -1,7 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Base URL for API - adjust this to match your web app's backend
-const API_BASE_URL = 'http://localhost:5000'; // Change this to your actual backend URL
+// Base URL for API - dynamically detect the backend URL
+const getApiBaseUrl = () => {
+  // Check if running in production deployment
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // Development environment
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    
+    // Production environment - use same origin as web app
+    return window.location.origin;
+  }
+  
+  // Fallback for server-side rendering
+  return 'http://localhost:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 interface ApiResponse {
   [key: string]: any;

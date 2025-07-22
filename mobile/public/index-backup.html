@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Wizone IT Support Portal</title>
+
+    <base href="/" />
+
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <link rel="shortcut icon" type="image/png" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <meta name="theme-color" content="#1e293b" />
+    
+    <style>
+      html, body { 
+        margin: 0; 
+        padding: 0; 
+        height: 100%; 
+        background: #1e293b;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <script>
+      // Auto-redirect to mobile-app.html for mobile WebView
+      window.location.href = '/mobile-app.html';
+    </script>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

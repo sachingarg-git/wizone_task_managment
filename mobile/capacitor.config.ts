@@ -5,6 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Wizone IT Support Portal',
   webDir: 'public',
   bundledWebRuntime: false,
+  server: {
+    url: 'file:///android_asset/public/mobile-app.html',
+    cleartext: true
+  },
 
   android: {
     allowMixedContent: true,
@@ -12,9 +16,9 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: true,
     loggingBehavior: 'debug',
     minWebViewVersion: 60,
-    appendUserAgent: 'WizoneApp/1.0',
-    overrideUserAgent: null,
-    backgroundColor: '#667eea',
+    appendUserAgent: 'WizoneApp/1.0 (WebView)',
+    overrideUserAgent: undefined,
+    backgroundColor: '#1e293b',
     hideLogs: false
   },
   plugins: {
