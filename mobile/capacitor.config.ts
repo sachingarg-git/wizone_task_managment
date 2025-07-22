@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.wizoneit.taskmanager',
   appName: 'Wizone IT Support Portal',
   webDir: 'public',
-  bundledWebRuntime: false,
   server: {
     url: 'file:///android_asset/public/mobile-app.html',
     cleartext: true
@@ -18,8 +17,7 @@ const config: CapacitorConfig = {
     minWebViewVersion: 60,
     appendUserAgent: 'WizoneApp/1.0 (WebView)',
     overrideUserAgent: undefined,
-    backgroundColor: '#1e293b',
-    hideLogs: false
+    backgroundColor: '#1e293b'
   },
   plugins: {
     SplashScreen: {
