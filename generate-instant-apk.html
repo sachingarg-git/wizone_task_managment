@@ -1,264 +1,280 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant APK Generator - Wizone</title>
+    <title>Wizone APK Generator - Instant Mobile App</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
         }
         
         .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .header {
+            width: 100%;
             text-align: center;
-            margin-bottom: 30px;
         }
         
-        .header h1 {
-            font-size: 2.5rem;
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        h1 {
+            color: #333;
             margin-bottom: 10px;
+            font-size: 2.5em;
         }
         
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        .methods {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        .subtitle {
+            color: #666;
             margin-bottom: 30px;
+            font-size: 1.2em;
         }
         
         .method {
-            background: rgba(255,255,255,0.15);
-            padding: 25px;
+            background: #f8f9fa;
             border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
+            padding: 30px;
+            margin: 20px 0;
+            border-left: 5px solid;
+        }
+        
+        .method-1 {
+            border-left-color: #28a745;
+        }
+        
+        .method-2 {
+            border-left-color: #007bff;
+        }
+        
+        .method-3 {
+            border-left-color: #ffc107;
         }
         
         .method h3 {
-            font-size: 1.4rem;
+            color: #333;
             margin-bottom: 15px;
-            color: #ffd700;
+            font-size: 1.4em;
         }
         
-        .method p {
-            margin-bottom: 15px;
-            line-height: 1.6;
-        }
-        
-        .button {
+        .btn {
             display: inline-block;
-            background: #10b981;
-            color: white;
-            padding: 12px 24px;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 10px;
             text-decoration: none;
-            border-radius: 8px;
             font-weight: bold;
+            font-size: 1.1em;
             transition: all 0.3s ease;
-            margin: 5px;
+            cursor: pointer;
+            border: none;
         }
         
-        .button:hover {
-            background: #059669;
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .btn-primary:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40,167,69,0.3);
         }
         
-        .app-details {
-            background: rgba(255,255,255,0.1);
+        .btn-secondary {
+            background: linear-gradient(135deg, #007bff, #6f42c1);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,123,255,0.3);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #333;
+        }
+        
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255,193,7,0.3);
+        }
+        
+        .features {
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        
+        .feature::before {
+            content: "✅";
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+        
+        .note {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 10px;
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            color: #1976d2;
         }
         
         .url-box {
-            background: #1f2937;
+            background: #f1f3f4;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
             padding: 15px;
-            border-radius: 8px;
+            margin: 15px 0;
             font-family: monospace;
             word-break: break-all;
-            margin: 10px 0;
-            border: 1px solid #374151;
+            font-size: 0.9em;
+            color: #333;
         }
         
-        .steps {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 12px;
-            margin-top: 20px;
-        }
-        
-        .steps ol {
-            padding-left: 20px;
-        }
-        
-        .steps li {
-            margin-bottom: 10px;
-            line-height: 1.6;
-        }
-        
-        @media (max-width: 768px) {
-            .methods {
-                grid-template-columns: 1fr;
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
             }
             
-            .header h1 {
-                font-size: 2rem;
+            h1 {
+                font-size: 2em;
             }
-        }
-        
-        .success {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid rgba(34, 197, 94, 0.5);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
+            
+            .btn {
+                display: block;
+                margin: 10px 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📱 Instant APK Generator</h1>
-            <p>Wizone IT Support Portal को 2 मिनट में APK बनाएं</p>
+        <div class="logo">W</div>
+        <h1>Wizone APK Generator</h1>
+        <p class="subtitle">Generate your mobile APK in 2-3 minutes</p>
+        
+        <div class="note">
+            <strong>🎯 Mobile App Features:</strong> Exact web interface replica • Same SQL Server database • Same user rights • Real-time sync • All functionality preserved
         </div>
         
-        <div class="success">
-            ✅ Safe Mode Issues का समाधान - कोई configuration की जरूरत नहीं!
-        </div>
-        
-        <div class="app-details">
-            <h3>🎯 App Details</h3>
-            <p><strong>App Name:</strong> Wizone IT Support Portal</p>
-            <p><strong>App URL:</strong></p>
-            <div class="url-box" id="appUrl">
-                https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/
-            </div>
-            <button class="button" onclick="copyUrl()">📋 Copy URL</button>
-        </div>
-        
-        <div class="methods">
-            <div class="method">
-                <h3>🚀 Method 1: Website2APK</h3>
-                <p>सबसे तेज़ और आसान तरीका। Professional APK generator जो guaranteed काम करता है।</p>
-                <p><strong>Features:</strong></p>
-                <ul>
-                    <li>2-3 मिनट में APK ready</li>
-                    <li>Custom app icon support</li>
-                    <li>Offline capability</li>
-                    <li>Professional output</li>
-                </ul>
-                <a href="https://website2apk.com/" target="_blank" class="button">🔗 Open Website2APK</a>
+        <div class="method method-1">
+            <h3>🚀 Method 1: Online APK Builder (Recommended)</h3>
+            <p>Create APK file using online service - No Android Studio needed!</p>
+            
+            <div class="url-box" id="currentUrl">
+                Loading current URL...
             </div>
             
-            <div class="method">
-                <h3>⚡ Method 2: AppsGeyser</h3>
-                <p>Free APK builder with advanced customization options। बिना registration के use कर सकते हैं।</p>
-                <p><strong>Features:</strong></p>
-                <ul>
-                    <li>Free APK generation</li>
-                    <li>No registration required</li>
-                    <li>Multiple templates</li>
-                    <li>Instant download</li>
-                </ul>
-                <a href="https://appsgeyser.com/create/" target="_blank" class="button">🔗 Open AppsGeyser</a>
+            <a href="https://website2apk.com" target="_blank" class="btn btn-primary">
+                📱 Generate APK Now
+            </a>
+            <button onclick="copyUrl()" class="btn btn-secondary">
+                📋 Copy URL
+            </button>
+            
+            <div class="features">
+                <div class="feature">Enter the URL above in website2apk.com</div>
+                <div class="feature">App Name: "Wizone IT Support Portal"</div>
+                <div class="feature">Processing time: 2-3 minutes</div>
+                <div class="feature">Download ready APK file (8-12MB)</div>
             </div>
         </div>
         
-        <div class="steps">
-            <h3>📋 Step-by-Step Instructions</h3>
-            <ol>
-                <li><strong>Copy the App URL</strong> (ऊपर दिया गया URL copy करें)</li>
-                <li><strong>Choose Generator</strong> (Website2APK या AppsGeyser में से कोई एक खोलें)</li>
-                <li><strong>Enter Details:</strong>
-                    <ul>
-                        <li>App Name: "Wizone IT Support Portal"</li>
-                        <li>URL: (copied URL paste करें)</li>
-                        <li>Icon: Upload custom icon (optional)</li>
-                    </ul>
-                </li>
-                <li><strong>Generate APK</strong> (Generate/Create button पर click करें)</li>
-                <li><strong>Download APK</strong> (2-3 मिनट बाद APK file download करें)</li>
-                <li><strong>Install & Test</strong> (Android device में install करके test करें)</li>
-            </ol>
+        <div class="method method-2">
+            <h3>⚡ Method 2: PWA Installation (Instant)</h3>
+            <p>Install as Progressive Web App - Works like native app!</p>
+            
+            <button onclick="visitApp()" class="btn btn-secondary">
+                📲 Install as App
+            </button>
+            
+            <div class="features">
+                <div class="feature">Open link in Chrome on Android device</div>
+                <div class="feature">Menu → Add to Home Screen</div>
+                <div class="feature">Instant installation</div>
+                <div class="feature">Works exactly like native app</div>
+            </div>
         </div>
         
-        <div class="method" style="grid-column: 1/-1; margin-top: 20px;">
-            <h3>📱 Method 3: PWA Installation (Instant)</h3>
-            <p>अगर आप APK नहीं चाहते, तो आप direct PWA install कर सकते हैं:</p>
-            <ol>
-                <li>Android phone में Chrome browser खोलें</li>
-                <li>ऊपर दिया गया URL visit करें</li>
-                <li>Browser menu (⋮) पर click करें</li>
-                <li>"Add to Home Screen" select करें</li>
-                <li>App automatically install हो जाएगी</li>
-            </ol>
-            <a href="javascript:void(0)" onclick="openApp()" class="button">🌐 Open Web App</a>
+        <div class="method method-3">
+            <h3>🔧 Method 3: Android Studio Build</h3>
+            <p>Download project and build locally</p>
+            
+            <button onclick="downloadProject()" class="btn btn-warning">
+                📁 Download Project
+            </button>
+            
+            <div class="features">
+                <div class="feature">Download Android Studio project</div>
+                <div class="feature">Open in Android Studio</div>
+                <div class="feature">Build → Build Bundle(s) / APK(s) → Build APK(s)</div>
+                <div class="feature">APK created in app/build/outputs/apk/debug/</div>
+            </div>
         </div>
         
-        <div style="text-align: center; margin-top: 30px; opacity: 0.8;">
-            <p>यह methods guaranteed काम करती हैं और कोई technical setup की जरूरत नहीं है!</p>
+        <div class="note">
+            <strong>📱 Installation:</strong> Transfer APK to Android device → Enable "Unknown sources" → Install APK → Launch "Wizone IT Support Portal" → Login with web credentials
         </div>
     </div>
     
     <script>
+        // Get current URL and display it
+        const currentUrl = window.location.origin;
+        document.getElementById('currentUrl').textContent = currentUrl;
+        
         function copyUrl() {
-            const url = document.getElementById('appUrl').textContent.trim();
-            
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('✅ URL copied to clipboard!\\nअब आप generator website में paste कर सकते हैं।');
-                }).catch(() => {
-                    fallbackCopy(url);
-                });
-            } else {
-                fallbackCopy(url);
-            }
+            navigator.clipboard.writeText(currentUrl).then(() => {
+                alert('URL copied to clipboard! Paste it in website2apk.com');
+            });
         }
         
-        function fallbackCopy(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                alert('✅ URL copied!\\nअब आप generator website में paste कर सकते हैं।');
-            } catch (err) {
-                alert('❌ Copy failed. Please manually copy the URL.');
-            }
-            
-            document.body.removeChild(textArea);
+        function visitApp() {
+            window.open(currentUrl, '_blank');
         }
         
-        function openApp() {
-            const url = document.getElementById('appUrl').textContent.trim();
-            window.open(url, '_blank');
+        function downloadProject() {
+            // This would trigger download of the Android project
+            alert('Contact admin for Android Studio project download');
         }
         
-        // Auto-detect current URL if running on live server
-        if (window.location.origin !== 'null' && !window.location.href.includes('file://')) {
-            document.getElementById('appUrl').textContent = window.location.origin;
+        // Auto-detect mobile and show appropriate method
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            document.querySelector('.method-2').style.border = '3px solid #007bff';
+            document.querySelector('.method-2 h3').innerHTML = '⚡ Method 2: PWA Installation (Recommended for Mobile)';
         }
     </script>
 </body>
