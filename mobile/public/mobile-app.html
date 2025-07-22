@@ -153,7 +153,12 @@
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       webAppUrl = 'http://localhost:5000';
     } else {
-      webAppUrl = window.location.origin;
+      // Use production URL if available
+      if (window.location.origin.includes('replit')) {
+        webAppUrl = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+      } else {
+        webAppUrl = window.location.origin;
+      }
     }
     
     function loadWebApp() {
@@ -162,15 +167,231 @@
       
       console.log('Loading web app from:', webAppUrl);
       
-      // Set iframe source to web application
-      iframe.src = webAppUrl;
+      // Set iframe source to web application with mobile parameter
+      iframe.src = webAppUrl + '?mobile=true';
       
       // Hide loading after iframe loads
       iframe.onload = function() {
         console.log('Web app loaded successfully');
+        
+        // Inject mobile-specific styles after loading
         setTimeout(() => {
+          try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            if (iframeDoc) {
+              // Inject comprehensive mobile CSS
+              const mobileStyle = iframeDoc.createElement('style');
+              mobileStyle.innerHTML = `
+                /* Mobile Interface Optimizations */
+                body { 
+                  font-size: 14px !important; 
+                  overflow-x: hidden !important; 
+                }
+                
+                /* Header adjustments */
+                .header, .main-header { 
+                  padding: 8px 12px !important; 
+                  font-size: 14px !important; 
+                }
+                
+                /* Sidebar - keep same structure but optimize for mobile */
+                .sidebar { 
+                  width: 200px !important; 
+                  font-size: 13px !important; 
+                }
+                
+                /* Main content area */
+                .main-content, .content-area { 
+                  margin-left: 200px !important; 
+                  padding: 12px !important; 
+                }
+                
+                /* Tables - keep all columns but make scrollable */
+                .table-container { 
+                  overflow-x: auto !important; 
+                  -webkit-overflow-scrolling: touch !important; 
+                }
+                
+                table { 
+                  min-width: 800px !important; 
+                  font-size: 12px !important; 
+                }
+                
+                th, td { 
+                  padding: 8px 4px !important; 
+                  white-space: nowrap !important; 
+                }
+                
+                /* Buttons - touch friendly but keep same functionality */
+                button, .btn, .button { 
+                  min-height: 40px !important; 
+                  padding: 8px 12px !important; 
+                  font-size: 13px !important; 
+                  border-radius: 6px !important; 
+                }
+                
+                /* Form inputs */
+                input, textarea, select { 
+                  font-size: 16px !important; 
+                  padding: 10px !important; 
+                  border-radius: 6px !important; 
+                }
+                
+                /* Cards and containers */
+                .card, .container { 
+                  margin: 8px 4px !important; 
+                  padding: 12px !important; 
+                }
+                
+                /* Modal dialogs - keep same content but optimize size */
+                .modal-content, .dialog-content { 
+                  max-width: 95vw !important; 
+                  max-height: 90vh !important; 
+                  overflow-y: auto !important; 
+                }
+                
+                /* Dashboard stats - keep same layout */
+                .stats-grid, .dashboard-grid { 
+                  grid-template-columns: 1fr 1fr !important; 
+                  gap: 8px !important; 
+                }
+                
+                /* Analytics charts - responsive */
+                .chart-container { 
+                  width: 100% !important; 
+                  height: 250px !important; 
+                }
+                
+                /* Keep all user role permissions and functionality */
+                .admin-only, .manager-only, .engineer-only { 
+                  display: inherit !important; 
+                }
+                
+                /* Navigation menu - keep all options */
+                .nav-menu, .sidebar-menu { 
+                  font-size: 13px !important; 
+                }
+                
+                .nav-item, .menu-item { 
+                  padding: 8px 12px !important; 
+                }
+                
+                /* Task management - keep all columns */
+                .task-table th, .task-table td { 
+                  min-width: 80px !important; 
+                }
+                
+                .task-actions { 
+                  display: flex !important; 
+                  gap: 4px !important; 
+                }
+                
+                /* Customer management - preserve all fields */
+                .customer-table { 
+                  font-size: 11px !important; 
+                }
+                
+                /* User management - keep all admin rights */
+                .user-actions, .admin-controls { 
+                  display: flex !important; 
+                  flex-wrap: wrap !important; 
+                  gap: 4px !important; 
+                }
+                
+                /* Ensure no functionality is hidden */
+                .desktop-only { 
+                  display: inherit !important; 
+                }
+                
+                /* Performance optimizations */
+                * { 
+                  -webkit-tap-highlight-color: rgba(0,0,0,0.1) !important; 
+                  -webkit-touch-callout: none !important; 
+                }
+                
+                /* Scrollbar styling */
+                ::-webkit-scrollbar { 
+                  width: 8px !important; 
+                  height: 8px !important; 
+                }
+                
+                ::-webkit-scrollbar-track { 
+                  background: #f1f1f1 !important; 
+                }
+                
+                ::-webkit-scrollbar-thumb { 
+                  background: #c1c1c1 !important; 
+                  border-radius: 4px !important; 
+                }
+                
+                /* Mobile-specific media queries */
+                @media (max-width: 768px) {
+                  .sidebar { 
+                    position: fixed !important; 
+                    z-index: 1000 !important; 
+                    transform: translateX(-100%) !important; 
+                    transition: transform 0.3s ease !important; 
+                  }
+                  
+                  .sidebar.mobile-open { 
+                    transform: translateX(0) !important; 
+                  }
+                  
+                  .main-content { 
+                    margin-left: 0 !important; 
+                  }
+                  
+                  .mobile-menu-toggle { 
+                    display: block !important; 
+                  }
+                }
+              `;
+              iframeDoc.head.appendChild(mobileStyle);
+              
+              // Add mobile menu toggle functionality
+              const mobileScript = iframeDoc.createElement('script');
+              mobileScript.innerHTML = `
+                (function() {
+                  // Add mobile menu toggle button
+                  const header = document.querySelector('.header, .main-header');
+                  if (header && !document.querySelector('.mobile-menu-toggle')) {
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'mobile-menu-toggle';
+                    toggleBtn.innerHTML = '☰';
+                    toggleBtn.style.cssText = 'position: fixed; top: 10px; left: 10px; z-index: 1001; background: #22d3ee; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 16px; display: none;';
+                    
+                    toggleBtn.onclick = function() {
+                      const sidebar = document.querySelector('.sidebar');
+                      if (sidebar) {
+                        sidebar.classList.toggle('mobile-open');
+                      }
+                    };
+                    
+                    document.body.appendChild(toggleBtn);
+                    
+                    // Show toggle button on mobile
+                    if (window.innerWidth <= 768) {
+                      toggleBtn.style.display = 'block';
+                    }
+                  }
+                  
+                  // Handle window resize
+                  window.addEventListener('resize', function() {
+                    const toggleBtn = document.querySelector('.mobile-menu-toggle');
+                    if (toggleBtn) {
+                      toggleBtn.style.display = window.innerWidth <= 768 ? 'block' : 'none';
+                    }
+                  });
+                })();
+              `;
+              iframeDoc.head.appendChild(mobileScript);
+            }
+          } catch (error) {
+            console.log('CSS injection skipped due to cross-origin restrictions');
+          }
+          
           loadingOverlay.classList.add('hidden');
-        }, 1000);
+        }, 1500);
       };
       
       // Handle iframe load errors
@@ -181,11 +402,11 @@
       
       // Fallback timeout
       setTimeout(() => {
-        if (!iframe.contentDocument || iframe.contentDocument.readyState !== 'complete') {
+        if (!loadingOverlay.classList.contains('hidden')) {
           console.log('Fallback timeout - hiding loading');
           loadingOverlay.classList.add('hidden');
         }
-      }, 5000);
+      }, 8000);
     }
     
     function showError(title, message) {
