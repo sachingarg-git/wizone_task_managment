@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wizone IT Support Portal</title>
+    <meta name="description" content="Complete IT support management system">
+    <link rel="manifest" href="/mobile-app-manifest.json">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Wizone IT">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeOut 3s ease-in-out forwards;
+        }
+        
+        @keyframes fadeOut {
+            0%, 70% { opacity: 1; }
+            100% { opacity: 0; pointer-events: none; }
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 30px;
+        }
+        
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: white;
+            width: 0%;
+            animation: progress 3s ease-in-out forwards;
+        }
+        
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        .app-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out 3s forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .menu {
+            flex: 1;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            align-content: start;
+        }
+        
+        .menu-item {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+        }
+        
+        .menu-item:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+        }
+        
+        .menu-item .icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .menu-item .text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .footer {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.1);
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .web-access {
+            background: rgba(255,255,255,0.2);
+            margin: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .web-btn {
+            background: white;
+            color: #1e40af;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        @media (max-width: 480px) {
+            .menu {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .menu-item {
+                padding: 15px 10px;
+            }
+            
+            .menu-item .icon {
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+            
+            .menu-item .text {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen">
+        <div class="logo">W</div>
+        <div class="loading-text">Wizone IT Support</div>
+        <div class="loading-subtitle">Mobile Portal Loading...</div>
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+    </div>
+    
+    <!-- App Content -->
+    <div class="app-content">
+        <div class="header">
+            <h1>🏢 Wizone IT Support Portal</h1>
+            <p>Complete Mobile Interface • Same Database • Real-time Sync</p>
+        </div>
+        
+        <div class="menu">
+            <a href="#" class="menu-item" onclick="openWebApp()">
+                <span class="icon">🖥️</span>
+                <span class="text">Web Portal</span>
+            </a>
+            
+            <a href="#" class="menu-item" onclick="openTasks()">
+                <span class="icon">📋</span>
+                <span class="text">Task Management</span>
+            </a>
+            
+            <a href="#" class="menu-item" onclick="openCustomers()">
+                <span class="icon">👥</span>
+                <span class="text">Customers</span>
+            </a>
+            
+            <a href="#" class="menu-item" onclick="openAnalytics()">
+                <span class="icon">📊</span>
+                <span class="text">Analytics</span>
+            </a>
+            
+            <a href="#" class="menu-item" onclick="openUsers()">
+                <span class="icon">👤</span>
+                <span class="text">Users</span>
+            </a>
+            
+            <a href="#" class="menu-item" onclick="openSettings()">
+                <span class="icon">⚙️</span>
+                <span class="text">Settings</span>
+            </a>
+        </div>
+        
+        <div class="web-access">
+            <h3>🚀 Full Web Interface Access</h3>
+            <p>Same interface, same database, same rights as web application</p>
+            <button class="web-btn" onclick="openWebApp()">
+                Open Complete Portal
+            </button>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 Wizone IT Support Portal</p>
+            <p>SQL Server Connected • Real-time Sync Active</p>
+        </div>
+    </div>
+    
+    <script>
+        function openWebApp() {
+            // Navigate to the main web application
+            window.location.href = '/';
+        }
+        
+        function openTasks() {
+            window.location.href = '/#/tasks';
+        }
+        
+        function openCustomers() {
+            window.location.href = '/#/customers';
+        }
+        
+        function openAnalytics() {
+            window.location.href = '/#/analytics';
+        }
+        
+        function openUsers() {
+            window.location.href = '/#/users';
+        }
+        
+        function openSettings() {
+            window.location.href = '/#/settings';
+        }
+        
+        // Auto-install PWA prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button after loading
+            setTimeout(() => {
+                if (confirm('Install Wizone IT Support Portal as an app on your device?')) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            }, 4000);
+        });
+        
+        // Register service worker for offline capability
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/mobile-app-sw.js');
+        }
+    </script>
+</body>
+</html>

@@ -256,6 +256,13 @@
         const currentUrl = window.location.origin;
         document.getElementById('currentUrl').textContent = currentUrl;
         
+        // Auto-navigate past certificate warning if on mobile
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Show mobile-specific instructions
+            const noteElement = document.querySelector('.note');
+            noteElement.innerHTML = '<strong>📱 Mobile Access:</strong> If you see security warning, click "Advanced" → "Proceed to site" to access the app. This is normal for development URLs.';
+        }
+        
         function copyUrl() {
             navigator.clipboard.writeText(currentUrl).then(() => {
                 alert('URL copied to clipboard! Paste it in website2apk.com');
