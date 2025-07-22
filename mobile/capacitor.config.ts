@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: 'Wizone IT Support Portal',
   webDir: 'public',
   server: {
-    url: 'file:///android_asset/public/mobile-app.html',
     cleartext: true
   },
 
