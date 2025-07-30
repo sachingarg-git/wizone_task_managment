@@ -35,13 +35,172 @@
   --pink: 236 72 153; /* Pink */
 }
 
-/* Critical CSS for white page fix */
+/* Enhanced Font Visibility CSS */
 html, body {
   margin: 0;
   padding: 0;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* Enhanced font visibility for better readability */
+* {
+  font-weight: 500;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: rgb(17, 24, 39) !important;
+}
+
+/* Form elements enhanced visibility */
+input, textarea, select {
+  font-weight: 500 !important;
+  color: rgb(31, 41, 55) !important;
+  border: 2px solid rgb(209, 213, 219) !important;
+  font-size: 14px !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: rgb(59, 130, 246) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Label and form text enhancement */
+label {
+  font-weight: 600 !important;
+  color: rgb(31, 41, 55) !important;
+  font-size: 14px !important;
+}
+
+/* Button text enhancement */
+button {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+/* Table text enhancement */
+table {
+  color: rgb(31, 41, 55) !important;
+}
+
+th {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 14px !important;
+}
+
+td {
+  font-weight: 500 !important;
+  color: rgb(31, 41, 55) !important;
+  font-size: 14px !important;
+}
+
+/* Card and content text enhancement */
+.card, .card-content {
+  color: rgb(31, 41, 55) !important;
+}
+
+/* Navigation and sidebar text enhancement */
+.nav-item, .sidebar a {
+  font-weight: 600 !important;
+  color: rgb(31, 41, 55) !important;
+}
+
+/* General text enhancement */
+p, span, div {
+  color: rgb(31, 41, 55) !important;
+  font-weight: 500;
+}
+
+/* Modal and dialog text enhancement */
+.modal-content, .dialog-content {
+  color: rgb(31, 41, 55) !important;
+}
+
+/* Form field specific enhancements */
+.form-field label {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 15px !important;
+}
+
+.form-field input, .form-field textarea, .form-field select {
+  font-weight: 600 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 15px !important;
+  border: 2px solid rgb(209, 213, 219) !important;
+}
+
+/* Task and content cards enhancement */
+.task-card, .content-card {
+  color: rgb(31, 41, 55) !important;
+}
+
+.task-card h3, .content-card h3 {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+}
+
+/* Stats and metrics text enhancement */
+.stats-value {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 16px !important;
+}
+
+.stats-label {
+  font-weight: 600 !important;
+  color: rgb(75, 85, 99) !important;
+  font-size: 14px !important;
+}
+
+/* Badge and status text enhancement */
+.badge, .status-badge {
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+/* Menu and dropdown text enhancement */
+.menu-item, .dropdown-item {
+  font-weight: 600 !important;
+  color: rgb(31, 41, 55) !important;
+}
+
+/* Card titles and headers enhancement */
+.card-title, .section-title {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 16px !important;
+}
+
+/* Enhanced visibility for small text */
+.text-sm, .small-text {
+  font-weight: 500 !important;
+  color: rgb(55, 65, 81) !important;
+  font-size: 14px !important;
+}
+
+/* Login page specific enhancements */
+.login-container input {
+  font-weight: 600 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 16px !important;
+  border: 2px solid rgb(209, 213, 219) !important;
+}
+
+.login-container label {
+  font-weight: 700 !important;
+  color: rgb(17, 24, 39) !important;
+  font-size: 15px !important;
+}
+
+.login-container h1, .login-container h2 {
+  font-weight: 800 !important;
+  color: rgb(17, 24, 39) !important;
 }
 
 /* Override any dark theme remnants */

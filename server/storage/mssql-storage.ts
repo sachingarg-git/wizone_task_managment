@@ -1127,7 +1127,7 @@ export class MSSQLStorage implements IStorage {
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingTasks
         FROM tasks
-        WHERE createdAt >= DATEADD(day, -@days, GETDATE())
+        WHERE DATEDIFF(day, createdAt, GETDATE()) <= @days
         GROUP BY CAST(createdAt as DATE)
         ORDER BY date DESC
       `);
@@ -1141,6 +1141,62 @@ export class MSSQLStorage implements IStorage {
     } catch (error) {
       console.error('Error getting trends analytics:', error);
       return { dailyTasks: [], totalTrend: 0 };
+    }
+  }
+
+  // Method to get task statistics - Fixed implementation
+  async getTaskStats(): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      const result = await request.query(`
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+          SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority
+        FROM tasks
+      `);
+      return result.recordset[0] || { total: 0, pending: 0, inProgress: 0, completed: 0, high_priority: 0 };
+    } catch (error) {
+      console.error('Error getting task stats:', error);
+      return { total: 0, pending: 0, inProgress: 0, completed: 0, high_priority: 0 };
+    }
+  }
+
+  // Method to get available field engineers - Fixed implementation
+  async getAvailableFieldEngineers(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      const result = await request.query(`
+        SELECT id, firstName, lastName, email, department, role
+        FROM users 
+        WHERE role = 'Field Engineer' OR department = 'Field Operations'
+        ORDER BY firstName, lastName
+      `);
+      return result.recordset || [];
+    } catch (error) {
+      console.error('Error getting field engineers:', error);
+      return [];
+    }
+  }
+
+  // Method to get all SQL connections - Fixed implementation
+  async getAllSqlConnections(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      const result = await request.query(`
+        SELECT id, name, host, port, database_name, username, ssl_enabled, status, created_at, updated_at
+        FROM sql_connections
+        ORDER BY name
+      `);
+      return result.recordset || [];
+    } catch (error) {
+      console.error('Error getting SQL connections:', error);
+      return [];
     }
   }
 }
