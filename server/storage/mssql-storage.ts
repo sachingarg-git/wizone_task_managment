@@ -1083,6 +1083,66 @@ export class MSSQLStorage implements IStorage {
       return [];
     }
   }
+
+  async getPerformanceAnalytics(days: number): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('days', days);
+      
+      const result = await request.query(`
+        SELECT 
+          u.firstName + ' ' + u.lastName as engineerName,
+          u.role,
+          COALESCE(pm.tasksCompleted, 0) as tasksCompleted,
+          COALESCE(pm.averageResolutionTime, 24) as avgResolutionTime,
+          COALESCE(pm.customerSatisfactionScore, 85.0) as satisfactionScore
+        FROM users u
+        LEFT JOIN performance_metrics pm ON u.id = pm.userId
+        WHERE u.role IN ('engineer', 'backend_engineer', 'field_engineer') AND u.isActive = 1
+        ORDER BY COALESCE(pm.tasksCompleted, 0) DESC
+      `);
+      
+      return {
+        engineers: result.recordset,
+        totalTasks: result.recordset.reduce((sum: number, eng: any) => sum + eng.tasksCompleted, 0),
+        averageTime: result.recordset.reduce((sum: number, eng: any) => sum + eng.avgResolutionTime, 0) / Math.max(result.recordset.length, 1)
+      };
+    } catch (error) {
+      console.error('Error getting performance analytics:', error);
+      return { engineers: [], totalTasks: 0, averageTime: 24 };
+    }
+  }
+
+  async getTrendsAnalytics(days: number): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('days', days);
+      
+      const result = await request.query(`
+        SELECT 
+          CAST(createdAt as DATE) as date,
+          COUNT(*) as taskCount,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingTasks
+        FROM tasks
+        WHERE createdAt >= DATEADD(day, -@days, GETDATE())
+        GROUP BY CAST(createdAt as DATE)
+        ORDER BY date DESC
+      `);
+      
+      return {
+        dailyTasks: result.recordset,
+        totalTrend: result.recordset.length > 0 ? 
+          ((result.recordset[0].taskCount - (result.recordset[result.recordset.length - 1]?.taskCount || 0)) / 
+           Math.max(result.recordset[result.recordset.length - 1]?.taskCount || 1, 1)) * 100 : 0
+      };
+    } catch (error) {
+      console.error('Error getting trends analytics:', error);
+      return { dailyTasks: [], totalTrend: 0 };
+    }
+  }
 }
 
 export const storage = new MSSQLStorage();

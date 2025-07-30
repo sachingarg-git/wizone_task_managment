@@ -21,6 +21,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
+// Stats card colors for light theme
+const getStatsCardColor = (title: string) => {
+  const colors = {
+    'Total Tasks': 'from-blue-500 to-blue-600',
+    'Completed': 'from-green-500 to-green-600', 
+    'Pending': 'from-orange-500 to-orange-600',
+    'In Progress': 'from-purple-500 to-purple-600',
+    'High Priority': 'from-red-500 to-red-600',
+    'Performance': 'from-cyan-500 to-cyan-600'
+  };
+  return colors[title] || 'from-gray-500 to-gray-600';
+};
+
 export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -91,7 +104,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gray-50">
       <Header 
         title="Dashboard"
         subtitle="Overview of your performance and tasks"
@@ -102,9 +115,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           {statsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="bg-slate-800 border-slate-700">
+              <Card key={i} className="bg-white border-gray-200 shadow-sm">
                 <CardContent className="p-6">
-                  <Skeleton className="h-16 w-full bg-slate-700" />
+                  <Skeleton className="h-16 w-full bg-gray-200" />
                 </CardContent>
               </Card>
             ))
@@ -114,8 +127,8 @@ export default function Dashboard() {
                 title="Total Tasks"
                 value={dashboardStats?.totalTasks?.toString() || "0"}
                 icon={ListTodo}
-                iconColor="text-blue-400"
-                iconBg="bg-blue-600/20"
+                iconColor="text-blue-500"
+                iconBg="bg-blue-500/10"
                 trend="+12% from last month"
                 trendUp={true}
                 clickable={true}
@@ -126,8 +139,8 @@ export default function Dashboard() {
                 title="Completed"
                 value={dashboardStats?.completedTasks?.toString() || "0"}
                 icon={CheckCircle}
-                iconColor="text-green-400"
-                iconBg="bg-green-600/20"
+                iconColor="text-green-500"
+                iconBg="bg-green-500/10"
                 trend={`${completionRate.toFixed(1)}% completion rate`}
                 trendUp={completionRate > 70}
                 clickable={true}
@@ -138,8 +151,8 @@ export default function Dashboard() {
                 title="In Progress"
                 value={dashboardStats?.inProgressTasks?.toString() || "0"}
                 icon={PlayCircle}
-                iconColor="text-cyan-400"
-                iconBg="bg-cyan-600/20"
+                iconColor="text-purple-500"
+                iconBg="bg-purple-500/10"
                 trend="Active tasks"
                 trendUp={true}
                 clickable={true}
@@ -150,8 +163,8 @@ export default function Dashboard() {
                 title="Cancelled"
                 value={dashboardStats?.cancelledTasks?.toString() || "0"}
                 icon={XCircle}
-                iconColor="text-red-400"
-                iconBg="bg-red-600/20"
+                iconColor="text-red-500"
+                iconBg="bg-red-500/10"
                 trend="Cancelled tasks"
                 trendUp={false}
                 clickable={true}
@@ -162,8 +175,8 @@ export default function Dashboard() {
                 title="Pending"
                 value={dashboardStats?.pendingTasks?.toString() || "0"}
                 icon={Clock}
-                iconColor="text-orange-400"
-                iconBg="bg-orange-600/20"
+                iconColor="text-orange-500"
+                iconBg="bg-orange-500/10"
                 trend="Pending tasks"
                 trendUp={false}
                 clickable={true}
@@ -174,8 +187,8 @@ export default function Dashboard() {
                 title="Resolved"
                 value={dashboardStats?.resolvedTasks?.toString() || "0"}
                 icon={CheckCircle}
-                iconColor="text-green-400"
-                iconBg="bg-green-600/20"
+                iconColor="text-emerald-500"
+                iconBg="bg-emerald-500/10"
                 trend="Resolved tasks"
                 trendUp={true}
                 clickable={true}
@@ -186,8 +199,8 @@ export default function Dashboard() {
                 title="Performance Score"
                 value={dashboardStats?.avgPerformanceScore?.toFixed(1) || "0.0"}
                 icon={Star}
-                iconColor="text-yellow-400"
-                iconBg="bg-yellow-600/20"
+                iconColor="text-yellow-500"
+                iconBg="bg-yellow-500/10"
                 trend="+5.2 points this week"
                 trendUp={true}
               />
@@ -196,8 +209,8 @@ export default function Dashboard() {
                 title="Avg Response"
                 value={`${dashboardStats?.avgResponseTime?.toFixed(1) || "0.0"}h`}
                 icon={Clock}
-                iconColor="text-purple-400"
-                iconBg="bg-purple-600/20"
+                iconColor="text-indigo-500"
+                iconBg="bg-indigo-500/10"
                 trend="-20min faster than target"
                 trendUp={true}
               />
@@ -205,24 +218,27 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent ListTodo and Performance Chart */}
+        {/* Recent Tasks and Performance Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent ListTodo */}
-          <Card className="bg-slate-800 border-slate-700">
+          {/* Recent Tasks */}
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-white">Recent ListTodo</CardTitle>
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <ListTodo className="w-5 h-5 text-blue-500" />
+                Recent Tasks
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {tasksLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full bg-slate-700" />
+                    <Skeleton key={i} className="h-16 w-full bg-gray-200" />
                   ))}
                 </div>
               ) : recentTasks && recentTasks.length > 0 ? (
                 <div className="space-y-4">
                   {recentTasks.map((task: any) => (
-                    <div key={task.id} className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                    <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
                       <div className="flex items-center space-x-4">
                         <div className={`w-2 h-2 rounded-full ${
                           task.priority === 'high' ? 'bg-red-500' :
@@ -230,32 +246,32 @@ export default function Dashboard() {
                           'bg-green-500'
                         }`} />
                         <div>
-                          <p className="font-medium text-white">
+                          <p className="font-medium text-gray-900">
                             {task.issueType || 'Task'}
                           </p>
-                          <p className="text-sm text-gray-300">
+                          <p className="text-sm text-gray-600">
                             {task.customer?.name || 'Unknown Customer'} - {task.ticketNumber}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge className="bg-purple-600/20 text-purple-300 border border-purple-500/30">
+                        <Badge className="bg-purple-100 text-purple-700 border border-purple-200">
                           {task.priority}
                         </Badge>
-                        <Badge className="bg-blue-600/20 text-blue-300 border border-blue-500/30">
+                        <Badge className="bg-blue-100 text-blue-700 border border-blue-200">
                           {task.status?.replace('_', ' ')}
                         </Badge>
                       </div>
                     </div>
                   ))}
-                  <Button variant="ghost" className="w-full mt-4 text-gray-300 hover:text-white hover:bg-slate-700">
-                    View All ListTodo
+                  <Button variant="outline" className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400">
+                    View All Tasks
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <ListTodo className="w-12 h-12 mx-auto mb-4 text-gray-500" />
+                <div className="text-center py-8 text-gray-500">
+                  <ListTodo className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                   <p>No recent tasks found</p>
                 </div>
               )}
@@ -263,18 +279,21 @@ export default function Dashboard() {
           </Card>
 
           {/* Performance Trend */}
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-white">Performance Trend</CardTitle>
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-500" />
+                Performance Trend
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-300">Task Completion Rate</span>
-                    <span className="text-sm font-bold text-white">{completionRate.toFixed(1)}%</span>
+                    <span className="text-sm font-medium text-gray-600">Task Completion Rate</span>
+                    <span className="text-sm font-bold text-gray-900">{completionRate.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full transition-all duration-300" 
                       style={{ width: `${Math.min(completionRate, 100)}%` }}
@@ -284,12 +303,12 @@ export default function Dashboard() {
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-300">Average Response Time</span>
-                    <span className="text-sm font-bold text-white">
+                    <span className="text-sm font-medium text-gray-600">Average Response Time</span>
+                    <span className="text-sm font-bold text-gray-900">
                       {dashboardStats?.avgResponseTime?.toFixed(1) || "0.0"} hrs
                     </span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
                       style={{ width: "76%" }}
@@ -299,20 +318,20 @@ export default function Dashboard() {
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-300">Customer Satisfaction</span>
-                    <span className="text-sm font-bold text-white">4.6/5.0</span>
+                    <span className="text-sm font-medium text-gray-600">Customer Satisfaction</span>
+                    <span className="text-sm font-bold text-gray-900">4.6/5.0</span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-yellow-500 h-2 rounded-full transition-all duration-300" style={{ width: "92%" }} />
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-300">First Call Resolution</span>
-                    <span className="text-sm font-bold text-white">73.2%</span>
+                    <span className="text-sm font-medium text-gray-600">First Call Resolution</span>
+                    <span className="text-sm font-bold text-gray-900">73.2%</span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-purple-500 h-2 rounded-full transition-all duration-300" style={{ width: "73.2%" }} />
                   </div>
                 </div>

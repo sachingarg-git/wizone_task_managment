@@ -65,7 +65,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -73,18 +73,26 @@ export default function LoginPage() {
             <img 
               src={wizoneLogoPath} 
               alt="Wizone Logo" 
-              className="w-40 h-auto object-contain rounded-lg bg-white/10 p-2 backdrop-blur-sm"
+              className="w-16 h-16 rounded-xl shadow-lg object-cover ring-4 ring-blue-200/50"
             />
           </div>
-          <p className="text-gray-300 mt-2 font-medium">IT Support Portal</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome Back
+          </h2>
+          <p className="text-gray-600">
+            Sign in to your Wizone IT Support account
+          </p>
         </div>
 
-        {/* Login Form */}
-        <Card className="bg-white/10 backdrop-blur-md shadow-2xl border border-white/20">
-          <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl text-center text-white">Welcome back</CardTitle>
-            <CardDescription className="text-center text-gray-300">
-              Enter your credentials to access your account
+        {/* Login Card */}
+        <Card className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center text-gray-900 flex items-center justify-center gap-2">
+              <LogIn className="w-6 h-6 text-blue-500" />
+              Sign In
+            </CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              Enter your credentials to access the portal
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -95,13 +103,13 @@ export default function LoginPage() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Username</FormLabel>
+                      <FormLabel className="text-gray-700 font-medium">Username</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
+                          <User className="absolute left-3 top-3 h-4 w-4 text-blue-500" />
                           <Input
                             placeholder="Enter your username"
-                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus:bg-white/20"
+                            className="pl-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
                           />
                         </div>
@@ -116,27 +124,27 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Password</FormLabel>
+                      <FormLabel className="text-gray-700 font-medium">Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-green-500" />
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
-                            className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus:bg-white/20"
+                            className="pl-10 pr-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-green-500 focus:ring-green-500"
                             {...field}
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-50 text-gray-500 hover:text-gray-700"
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-gray-300" />
+                              <EyeOff className="h-4 w-4" />
                             ) : (
-                              <Eye className="h-4 w-4 text-gray-300" />
+                              <Eye className="h-4 w-4" />
                             )}
                           </Button>
                         </div>
@@ -148,7 +156,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-lg transition-all duration-300"
+                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0 shadow-lg transition-all duration-300 hover:shadow-xl"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? "Signing in..." : "Sign in"}
