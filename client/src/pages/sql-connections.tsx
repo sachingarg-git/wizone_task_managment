@@ -29,7 +29,8 @@ import {
   Clock,
   Server,
   Download,
-  Sprout
+  Sprout,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -39,6 +40,7 @@ type SqlConnectionFormData = z.infer<typeof insertSqlConnectionSchema>;
 export default function SqlConnectionsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<SqlConnection | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -169,6 +171,34 @@ export default function SqlConnectionsPage() {
     },
   });
 
+  // MSSQL Migration function
+  const handleMigrationToMSSQL = async () => {
+    if (!confirm('This will migrate all tables and data to MS SQL Server. Continue?')) {
+      return;
+    }
+
+    setIsMigrating(true);
+    try {
+      const response = await apiRequest('POST', '/api/migrate-to-mssql');
+      const result = await response.json();
+      
+      toast({
+        title: "Migration Successful! 🎉",
+        description: `All ${result.tables} tables and data migrated to MSSQL successfully`,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/sql-connections'] });
+    } catch (error: any) {
+      toast({
+        title: "Migration Failed",
+        description: error.message || "Failed to migrate to MSSQL",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   const form = useForm<SqlConnectionFormData>({
     resolver: zodResolver(insertSqlConnectionSchema),
     defaultValues: {
@@ -249,7 +279,26 @@ export default function SqlConnectionsPage() {
           <h1 className="text-3xl font-bold text-gray-900">SQL Connections</h1>
           <p className="text-gray-600">Manage external database connections</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <div className="flex gap-3">
+          <Button 
+            onClick={handleMigrationToMSSQL}
+            variant="outline"
+            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+            disabled={isMigrating}
+          >
+            {isMigrating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Migrating...
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                Migrate All Tables to MSSQL
+              </>
+            )}
+          </Button>
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
               onClick={() => {

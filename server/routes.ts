@@ -637,6 +637,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete MSSQL Migration route
+  app.post('/api/migrate-to-mssql', isAuthenticated, async (req: any, res) => {
+    try {
+      const { MSSQLMigration } = await import('./migrate-to-mssql.js');
+      const migration = new MSSQLMigration();
+      
+      console.log('🚀 Starting complete MSSQL migration...');
+      const result = await migration.runFullMigration();
+      
+      res.json({
+        success: true,
+        message: 'Complete migration to MSSQL completed successfully',
+        details: result,
+        tables: 15,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("MSSQL Migration failed:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "MSSQL migration failed", 
+        error: error.message 
+      });
+    }
+  });
+
   // Customer system details routes
   app.get('/api/customer-portal/system-details', isCustomerAuthenticated, async (req, res) => {
     try {

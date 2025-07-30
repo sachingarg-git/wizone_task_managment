@@ -229,6 +229,13 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     // Automatically sync to SQL Server (permanently configured)
+    await this.syncUserToSQLServer(user);
+    
+    return user;
+  }
+
+  // Enhanced SQL Server sync with UPSERT logic
+  private async syncUserToSQLServer(user: User): Promise<void> {
     try {
       const mssql = await import('mssql');
       const { ConnectionPool } = mssql.default || mssql;
@@ -249,13 +256,35 @@ export class DatabaseStorage implements IStorage {
         requestTimeout: 30000,
       };
       
-      console.log(`🔄 Auto-syncing user ${userData.username} to SQL Server...`);
+      console.log(`🔄 Auto-syncing user ${user.username} to SQL Server...`);
       const pool = new ConnectionPool(sqlServerConfig);
       await pool.connect();
       
-      const insertQuery = `
-        INSERT INTO users (id, username, password, email, firstName, lastName, phone, profileImageUrl, role, department, isActive, createdAt, updatedAt)
-        VALUES (@id, @username, @password, @email, @firstName, @lastName, @phone, @profileImageUrl, @role, @department, @isActive, GETDATE(), GETDATE())
+      // Use MERGE (UPSERT) to handle duplicates
+      const upsertQuery = `
+        MERGE users AS target
+        USING (SELECT @id AS id, @username AS username, @password AS password, @email AS email, 
+                      @firstName AS firstName, @lastName AS lastName, @phone AS phone,
+                      @profileImageUrl AS profileImageUrl, @role AS role, @department AS department,
+                      @isActive AS isActive, @createdAt AS createdAt, @updatedAt AS updatedAt) AS source
+        ON target.id = source.id
+        WHEN MATCHED THEN
+          UPDATE SET 
+            username = source.username,
+            password = source.password,
+            email = source.email,
+            firstName = source.firstName,
+            lastName = source.lastName,
+            phone = source.phone,
+            profileImageUrl = source.profileImageUrl,
+            role = source.role,
+            department = source.department,
+            isActive = source.isActive,
+            updatedAt = GETDATE()
+        WHEN NOT MATCHED THEN
+          INSERT (id, username, password, email, firstName, lastName, phone, profileImageUrl, role, department, isActive, createdAt, updatedAt)
+          VALUES (source.id, source.username, source.password, source.email, source.firstName, source.lastName, 
+                  source.phone, source.profileImageUrl, source.role, source.department, source.isActive, GETDATE(), GETDATE());
       `;
       
       const request = pool.request()
@@ -269,18 +298,18 @@ export class DatabaseStorage implements IStorage {
         .input('profileImageUrl', user.profileImageUrl || null)
         .input('role', user.role)
         .input('department', user.department || 'WIZONE HELP DESK')
-        .input('isActive', user.isActive);
+        .input('isActive', user.isActive)
+        .input('createdAt', user.createdAt)
+        .input('updatedAt', user.updatedAt);
       
-      await request.query(insertQuery);
+      await request.query(upsertQuery);
       await pool.close();
       
-      console.log(`✅ User ${userData.username} synced to SQL Server successfully!`);
+      console.log(`✅ User ${user.username} synced to SQL Server successfully!`);
     } catch (syncError) {
-      console.error('❌ SQL Server sync failed:', syncError);
+      console.error(`❌ SQL Server sync failed for ${user.username}:`, syncError.message);
       // Don't fail user creation if SQL sync fails
     }
-    
-    return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
