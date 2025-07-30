@@ -30,7 +30,9 @@ router.post('/test-connection', async (req, res) => {
       if (masterConnected) {
         // Create the database
         try {
-          const { ConnectionPool } = await import('mssql');
+          const mssql = await import('mssql');
+          console.log('mssql import:', Object.keys(mssql));
+          const ConnectionPool = mssql.default || mssql;
           const mssqlConfig = {
             server: config.host,
             port: config.port,
@@ -46,7 +48,7 @@ router.post('/test-connection', async (req, res) => {
             requestTimeout: 30000,
           };
 
-          const pool = new ConnectionPool(mssqlConfig);
+          const pool = new ConnectionPool.ConnectionPool(mssqlConfig);
           await pool.connect();
           
           const request = pool.request();
