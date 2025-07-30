@@ -291,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return httpServer;
   }
   
-  console.log('Database configured and initialized, starting normal operation');
+  console.log('✅ Database configured and initialized - serving main application');
   // Configure multer for file uploads
   const upload = multer({
     dest: 'uploads/',
