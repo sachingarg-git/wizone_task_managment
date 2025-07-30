@@ -16,7 +16,7 @@ import Performance from "@/pages/performance";
 import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
-import SqlConnections from "@/pages/sql-connections-temp";
+import SqlConnections from "@/pages/sql-connections-fixed";
 import BotConfiguration from "@/pages/bot-configuration";
 import APKDownload from "@/pages/apk-download";
 import TrackingHistory from "@/pages/tracking-history";
@@ -112,15 +112,7 @@ function Router() {
       <Sidebar />
       <div className="flex-1 ml-64">
         <Switch>
-          <Route path="/" component={(props) => {
-            const { user } = useAuth();
-            // Redirect field engineers to portal instead of dashboard
-            if (user?.role === 'field_engineer') {
-              window.location.href = '/portal';
-              return null;
-            }
-            return <Dashboard {...props} />;
-          }} />
+          <Route path="/" component={Dashboard} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/customers" component={Customers} />
           <Route path="/performance" component={Performance} />
@@ -152,7 +144,7 @@ function Router() {
       }}>
         <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
           <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Router Error</h1>
-          <p style={{ marginBottom: '16px' }}>Error: {error.message}</p>
+          <p style={{ marginBottom: '16px' }}>Error: {String(error)}</p>
           <button 
             onClick={() => window.location.reload()} 
             style={{ 
