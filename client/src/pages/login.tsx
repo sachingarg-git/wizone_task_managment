@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, LogIn, User, Lock, ListTodo } from "lucide-react";
-import wizoneLogoPath from "@/assets/wizone-logo.jpg";
+// Remove problematic import - use direct path instead
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -71,7 +71,7 @@ export default function LoginPage() {
         <div className="text-center">
           <div className="mx-auto mb-4 flex justify-center">
             <img 
-              src={wizoneLogoPath} 
+              src="/uploads/wizone-logo.png" 
               alt="Wizone Logo" 
               className="w-16 h-16 rounded-xl shadow-lg object-cover ring-4 ring-blue-200/50"
             />

@@ -1199,6 +1199,101 @@ export class MSSQLStorage implements IStorage {
       return [];
     }
   }
+
+  // Method to get customer system details
+  async getCustomerSystemDetails(customerId: number): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('customerId', customerId);
+      
+      const result = await request.query(`
+        SELECT * FROM customer_system_details 
+        WHERE customer_id = @customerId
+        ORDER BY created_at DESC
+      `);
+      
+      return result.recordset || [];
+    } catch (error) {
+      console.error('Error getting customer system details:', error);
+      return [];
+    }
+  }
+
+  // Method to create customer system details
+  async createCustomerSystemDetails(detailsData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('customerId', detailsData.customerId);
+      request.input('systemType', detailsData.systemType || null);
+      request.input('specifications', detailsData.specifications || null);
+      request.input('notes', detailsData.notes || null);
+      
+      const result = await request.query(`
+        INSERT INTO customer_system_details (
+          customer_id, system_type, specifications, notes, created_at, updated_at
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @customerId, @systemType, @specifications, @notes, GETDATE(), GETDATE()
+        )
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating customer system details:', error);
+      throw error;
+    }
+  }
+
+  // Method to update customer system details
+  async updateCustomerSystemDetails(id: number, updates: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const updateFields = [];
+      if (updates.systemType !== undefined) {
+        updateFields.push('system_type = @systemType');
+        request.input('systemType', updates.systemType);
+      }
+      if (updates.specifications !== undefined) {
+        updateFields.push('specifications = @specifications');
+        request.input('specifications', updates.specifications);
+      }
+      if (updates.notes !== undefined) {
+        updateFields.push('notes = @notes');
+        request.input('notes', updates.notes);
+      }
+      
+      if (updateFields.length === 0) {
+        return null;
+      }
+      
+      updateFields.push('updated_at = GETDATE()');
+      request.input('id', id);
+      
+      await request.query(`
+        UPDATE customer_system_details 
+        SET ${updateFields.join(', ')}
+        WHERE id = @id
+      `);
+      
+      // Return updated record
+      const selectRequest = pool.request();
+      selectRequest.input('id', id);
+      const result = await selectRequest.query(`
+        SELECT * FROM customer_system_details WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error updating customer system details:', error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new MSSQLStorage();
