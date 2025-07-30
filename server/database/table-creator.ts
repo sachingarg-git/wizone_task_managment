@@ -1,10 +1,17 @@
 import { getConnection } from './mssql-connection';
-import { TABLE_SCHEMAS, TABLE_ORDER } from './table-schemas';
+import { tableSchemas, indexStatements, tableOrder } from './table-schemas';
 
 export interface TableCreationResult {
-  tableName: string;
+  table: string;
   success: boolean;
   error?: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  missingTables: string[];
+  totalTables: number;
+  existingTables: string[];
 }
 
 export async function createAllTables(): Promise<TableCreationResult[]> {
@@ -13,62 +20,109 @@ export async function createAllTables(): Promise<TableCreationResult[]> {
   try {
     const pool = await getConnection();
     
-    console.log('Starting table creation...');
-    
-    for (const tableName of TABLE_ORDER) {
+    // Create tables in order to respect foreign key dependencies
+    for (const tableName of tableOrder) {
       try {
         console.log(`Creating table: ${tableName}`);
         
         // Check if table already exists
-        const checkRequest = pool.request();
-        const checkResult = await checkRequest.query(`
-          SELECT COUNT(*) as count
+        const checkResult = await pool.request().query(`
+          SELECT COUNT(*) as count 
           FROM INFORMATION_SCHEMA.TABLES 
-          WHERE TABLE_NAME = '${tableName}'
+          WHERE TABLE_NAME = '${tableName}' AND TABLE_TYPE = 'BASE TABLE'
         `);
         
         if (checkResult.recordset[0].count > 0) {
           console.log(`Table ${tableName} already exists, skipping...`);
           results.push({
-            tableName,
+            table: tableName,
             success: true,
             error: 'Already exists'
           });
           continue;
         }
         
-        // Create table
-        const createRequest = pool.request();
-        const sql = TABLE_SCHEMAS[tableName as keyof typeof TABLE_SCHEMAS];
-        
-        if (!sql) {
-          throw new Error(`No schema found for table: ${tableName}`);
+        // Create the table
+        const schema = tableSchemas[tableName as keyof typeof tableSchemas];
+        if (!schema) {
+          throw new Error(`Schema not found for table: ${tableName}`);
         }
         
-        await createRequest.query(sql);
+        await pool.request().query(schema);
         
-        console.log(`✅ Table ${tableName} created successfully`);
         results.push({
-          tableName,
+          table: tableName,
           success: true
         });
+        
+        console.log(`✅ Table ${tableName} created successfully`);
         
       } catch (error) {
         console.error(`❌ Failed to create table ${tableName}:`, error);
         results.push({
-          tableName,
+          table: tableName,
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
     
-    console.log('Table creation completed');
-    return results;
+    // Create indexes
+    console.log('Creating indexes...');
+    for (const indexStatement of indexStatements) {
+      try {
+        await pool.request().query(indexStatement);
+        console.log(`✅ Index created: ${indexStatement.substring(0, 50)}...`);
+      } catch (error) {
+        console.log(`⚠️ Index creation warning: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Indexes are not critical, continue on error
+      }
+    }
+    
+    console.log(`Database table creation completed. ${results.filter(r => r.success).length}/${results.length} tables created successfully.`);
     
   } catch (error) {
-    console.error('Failed to create tables:', error);
-    throw error;
+    console.error('Fatal error in table creation:', error);
+    results.push({
+      table: 'CONNECTION_ERROR',
+      success: false,
+      error: error instanceof Error ? error.message : 'Database connection failed'
+    });
+  }
+  
+  return results;
+}
+
+export async function validateAllTables(): Promise<ValidationResult> {
+  try {
+    const pool = await getConnection();
+    
+    // Get all existing tables
+    const result = await pool.request().query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_TYPE = 'BASE TABLE'
+    `);
+    
+    const existingTables = result.recordset.map((row: any) => row.TABLE_NAME.toLowerCase());
+    const expectedTables = tableOrder.map((t: string) => t.toLowerCase());
+    const missingTables = expectedTables.filter((table: string) => !existingTables.includes(table));
+    
+    return {
+      isValid: missingTables.length === 0,
+      missingTables,
+      totalTables: expectedTables.length,
+      existingTables: existingTables.filter((table: string) => expectedTables.includes(table))
+    };
+    
+  } catch (error) {
+    console.error('Error validating tables:', error);
+    return {
+      isValid: false,
+      missingTables: tableOrder,
+      totalTables: tableOrder.length,
+      existingTables: []
+    };
   }
 }
 
@@ -76,87 +130,49 @@ export async function dropAllTables(): Promise<void> {
   try {
     const pool = await getConnection();
     
-    console.log('Dropping all tables...');
+    // Drop tables in reverse order to respect foreign key dependencies
+    const reversedOrder = [...tableOrder].reverse();
     
-    // Drop in reverse order to handle foreign key constraints
-    const reverseOrder = [...TABLE_ORDER].reverse();
-    
-    for (const tableName of reverseOrder) {
+    for (const tableName of reversedOrder) {
       try {
-        const request = pool.request();
-        await request.query(`DROP TABLE IF EXISTS ${tableName}`);
-        console.log(`✅ Table ${tableName} dropped`);
+        await pool.request().query(`
+          IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '${tableName}')
+          DROP TABLE ${tableName}
+        `);
+        console.log(`Dropped table: ${tableName}`);
       } catch (error) {
-        console.error(`❌ Failed to drop table ${tableName}:`, error);
+        console.log(`Warning: Could not drop table ${tableName}:`, error instanceof Error ? error.message : 'Unknown error');
       }
     }
     
     console.log('All tables dropped successfully');
+    
   } catch (error) {
-    console.error('Failed to drop tables:', error);
+    console.error('Error dropping tables:', error);
     throw error;
   }
 }
 
-export async function checkTableExists(tableName: string): Promise<boolean> {
+export async function getTableStats(): Promise<{ [tableName: string]: number }> {
   try {
     const pool = await getConnection();
-    const request = pool.request();
+    const stats: { [tableName: string]: number } = {};
     
-    const result = await request.query(`
-      SELECT COUNT(*) as count
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_NAME = '${tableName}'
-    `);
-    
-    return result.recordset[0].count > 0;
-  } catch (error) {
-    console.error(`Error checking table ${tableName}:`, error);
-    return false;
-  }
-}
-
-export async function getTableInfo(): Promise<any[]> {
-  try {
-    const pool = await getConnection();
-    const request = pool.request();
-    
-    const result = await request.query(`
-      SELECT 
-        TABLE_NAME as tableName,
-        (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = t.TABLE_NAME) as columnCount
-      FROM INFORMATION_SCHEMA.TABLES t
-      WHERE TABLE_TYPE = 'BASE TABLE'
-      ORDER BY TABLE_NAME
-    `);
-    
-    return result.recordset;
-  } catch (error) {
-    console.error('Error getting table info:', error);
-    return [];
-  }
-}
-
-export async function validateAllTables(): Promise<{isValid: boolean, missingTables: string[]}> {
-  try {
-    const missingTables: string[] = [];
-    
-    for (const tableName of TABLE_ORDER) {
-      const exists = await checkTableExists(tableName);
-      if (!exists) {
-        missingTables.push(tableName);
+    for (const tableName of tableOrder) {
+      try {
+        const result = await pool.request().query(`
+          SELECT COUNT(*) as count FROM ${tableName}
+        `);
+        stats[tableName] = result.recordset[0].count;
+      } catch (error) {
+        stats[tableName] = -1; // Table doesn't exist or error
       }
     }
     
-    return {
-      isValid: missingTables.length === 0,
-      missingTables
-    };
+    return stats;
+    
   } catch (error) {
-    console.error('Error validating tables:', error);
-    return {
-      isValid: false,
-      missingTables: TABLE_ORDER
-    };
+    console.error('Error getting table stats:', error);
+    return {};
   }
 }

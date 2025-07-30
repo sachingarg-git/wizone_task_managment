@@ -1,9 +1,9 @@
 {
-  "host": "14.102.70.90",
+  "host": "localhost",
   "port": 1433,
-  "database": "WIZONE_TASK_MANAGER",
+  "database": "master",
   "username": "sa",
-  "password": "ss123456",
+  "password": "password123",
   "ssl": false,
   "trustCertificate": true
 }

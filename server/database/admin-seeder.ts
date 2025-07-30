@@ -12,13 +12,13 @@ export interface AdminUserConfig {
   lastName: string;
 }
 
-const DEFAULT_ADMIN: AdminUserConfig = {
-  username: 'admin',
-  password: 'admin123',
-  email: 'admin@wizoneit.com',
-  firstName: 'System',
-  lastName: 'Administrator'
-};
+export interface InitializationResult {
+  success: boolean;
+  adminCreated: boolean;
+  usersCreated: number;
+  customersCreated: number;
+  error?: string;
+}
 
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString('hex');
@@ -26,224 +26,182 @@ async function hashPassword(password: string): Promise<string> {
   return `${derivedKey.toString('hex')}.${salt}`;
 }
 
-export async function createDefaultAdmin(adminConfig?: AdminUserConfig): Promise<boolean> {
+export async function initializeDatabase(adminConfig: AdminUserConfig): Promise<InitializationResult> {
   try {
     const pool = await getConnection();
-    const config = adminConfig || DEFAULT_ADMIN;
-    
-    console.log('Creating default admin user...');
-    
-    // Check if admin user already exists
-    const checkRequest = pool.request();
-    checkRequest.input('username', config.username);
-    
-    const existingUser = await checkRequest.query(`
-      SELECT COUNT(*) as count FROM users WHERE username = @username
-    `);
-    
-    if (existingUser.recordset[0].count > 0) {
-      console.log('Admin user already exists, skipping...');
-      return true;
-    }
-    
-    // Hash password
-    const hashedPassword = await hashPassword(config.password);
+    const request = pool.request();
     
     // Create admin user
-    const insertRequest = pool.request();
-    insertRequest.input('id', 'admin001');
-    insertRequest.input('username', config.username);
-    insertRequest.input('password', hashedPassword);
-    insertRequest.input('email', config.email);
-    insertRequest.input('firstName', config.firstName);
-    insertRequest.input('lastName', config.lastName);
-    insertRequest.input('role', 'admin');
-    insertRequest.input('department', 'WIZONE IT SUPPORT');
-    insertRequest.input('isActive', true);
+    const adminId = `admin_${Date.now()}`;
+    const hashedPassword = await hashPassword(adminConfig.password);
     
-    await insertRequest.query(`
+    request.input('adminId', adminId);
+    request.input('username', adminConfig.username);
+    request.input('password', hashedPassword);
+    request.input('email', adminConfig.email);
+    request.input('firstName', adminConfig.firstName);
+    request.input('lastName', adminConfig.lastName);
+    
+    await request.query(`
       INSERT INTO users (
-        id, username, password, email, firstName, lastName, 
+        id, username, password, email, firstName, lastName,
         role, department, isActive, createdAt, updatedAt
       )
       VALUES (
-        @id, @username, @password, @email, @firstName, @lastName,
-        @role, @department, @isActive, GETDATE(), GETDATE()
+        @adminId, @username, @password, @email, @firstName, @lastName,
+        'admin', 'Administration', 1, GETDATE(), GETDATE()
       )
     `);
     
-    console.log(`✅ Default admin user created: ${config.username}/${config.password}`);
-    return true;
+    console.log(`✅ Admin user created: ${adminConfig.username}`);
     
-  } catch (error) {
-    console.error('Failed to create default admin user:', error);
-    return false;
-  }
-}
-
-export async function createSampleUsers(): Promise<boolean> {
-  try {
-    const pool = await getConnection();
-    
-    console.log('Creating sample users...');
-    
+    // Create sample field engineers
     const sampleUsers = [
       {
-        id: 'field001',
-        username: 'RAVI',
-        password: 'admin123',
+        username: 'ravi_engineer',
+        password: 'field123',
         email: 'ravi@wizoneit.com',
-        firstName: 'RAVI',
-        lastName: 'SAINI',
+        firstName: 'Ravi',
+        lastName: 'Kumar',
         role: 'field_engineer',
-        department: 'FIELD OPERATIONS'
+        department: 'Field Operations'
       },
       {
-        id: 'field002',
-        username: 'sachin',
-        password: 'admin123',
+        username: 'sachin_engineer',
+        password: 'field123',
         email: 'sachin@wizoneit.com',
         firstName: 'Sachin',
-        lastName: 'Garg',
+        lastName: 'Sharma', 
         role: 'field_engineer',
-        department: 'FIELD OPERATIONS'
+        department: 'Field Operations'
       },
       {
-        id: 'manager001',
-        username: 'manpreet',
-        password: 'admin123',
-        email: 'manpreet@wizoneit.com',
-        firstName: 'Manpreet',
-        lastName: 'Singh',
+        username: 'backend_engineer',
+        password: 'backend123',
+        email: 'backend@wizoneit.com',
+        firstName: 'Backend',
+        lastName: 'Engineer',
+        role: 'backend_engineer',
+        department: 'Technical Support'
+      },
+      {
+        username: 'manager_user',
+        password: 'manager123',
+        email: 'manager@wizoneit.com',
+        firstName: 'System',
+        lastName: 'Manager',
         role: 'manager',
-        department: 'OPERATIONS'
+        department: 'Management'
       }
     ];
+    
+    let usersCreated = 1; // Admin already created
     
     for (const user of sampleUsers) {
       try {
-        // Check if user exists
-        const checkRequest = pool.request();
-        checkRequest.input('username', user.username);
+        const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const userPassword = await hashPassword(user.password);
         
-        const existingUser = await checkRequest.query(`
-          SELECT COUNT(*) as count FROM users WHERE username = @username
-        `);
+        const userRequest = pool.request();
+        userRequest.input('userId', userId);
+        userRequest.input('username', user.username);
+        userRequest.input('password', userPassword);
+        userRequest.input('email', user.email);
+        userRequest.input('firstName', user.firstName);
+        userRequest.input('lastName', user.lastName);
+        userRequest.input('role', user.role);
+        userRequest.input('department', user.department);
         
-        if (existingUser.recordset[0].count > 0) {
-          console.log(`User ${user.username} already exists, skipping...`);
-          continue;
-        }
-        
-        // Hash password
-        const hashedPassword = await hashPassword(user.password);
-        
-        // Create user
-        const insertRequest = pool.request();
-        insertRequest.input('id', user.id);
-        insertRequest.input('username', user.username);
-        insertRequest.input('password', hashedPassword);
-        insertRequest.input('email', user.email);
-        insertRequest.input('firstName', user.firstName);
-        insertRequest.input('lastName', user.lastName);
-        insertRequest.input('role', user.role);
-        insertRequest.input('department', user.department);
-        insertRequest.input('isActive', true);
-        
-        await insertRequest.query(`
+        await userRequest.query(`
           INSERT INTO users (
-            id, username, password, email, firstName, lastName, 
+            id, username, password, email, firstName, lastName,
             role, department, isActive, createdAt, updatedAt
           )
           VALUES (
-            @id, @username, @password, @email, @firstName, @lastName,
-            @role, @department, @isActive, GETDATE(), GETDATE()
+            @userId, @username, @password, @email, @firstName, @lastName,
+            @role, @department, 1, GETDATE(), GETDATE()
           )
         `);
         
+        usersCreated++;
         console.log(`✅ Sample user created: ${user.username}`);
         
       } catch (error) {
-        console.error(`Failed to create user ${user.username}:`, error);
+        console.log(`⚠️ Warning: Could not create user ${user.username}:`, error instanceof Error ? error.message : 'Unknown error');
       }
     }
     
-    return true;
-    
-  } catch (error) {
-    console.error('Failed to create sample users:', error);
-    return false;
-  }
-}
-
-export async function createSampleCustomers(): Promise<boolean> {
-  try {
-    const pool = await getConnection();
-    
-    console.log('Creating sample customers...');
-    
+    // Create sample customers
     const sampleCustomers = [
       {
-        customerId: 'C001001',
-        name: 'Rahul Sharma',
-        email: 'rahul.sharma@gmail.com',
+        customerId: 'CUST001',
+        name: 'Rajesh Kumar',
+        email: 'rajesh.kumar@example.com',
         phone: '+91-9876543210',
-        address: '123 MG Road, Delhi',
-        serviceType: 'Broadband',
+        address: 'House No. 123, Sector 15, Gurgaon, Haryana',
+        serviceType: 'Broadband Internet',
         connectionStatus: 'active',
-        monthlyCharge: 899.00
+        monthlyCharge: 999.00
       },
       {
-        customerId: 'C001002',
-        name: 'Priya Singh',
-        email: 'priya.singh@yahoo.com',
+        customerId: 'CUST002', 
+        name: 'Priya Sharma',
+        email: 'priya.sharma@example.com',
         phone: '+91-9876543211',
-        address: '456 CP Road, Mumbai',
-        serviceType: 'Fiber',
+        address: 'Flat No. 456, Block A, Dwarka, New Delhi',
+        serviceType: 'Fiber Internet + TV',
         connectionStatus: 'active',
-        monthlyCharge: 1299.00
+        monthlyCharge: 1499.00
       },
       {
-        customerId: 'C001003',
-        name: 'Amit Kumar',
-        email: 'amit.kumar@hotmail.com',
+        customerId: 'CUST003',
+        name: 'Amit Singh',
+        email: 'amit.singh@example.com', 
         phone: '+91-9876543212',
-        address: '789 Brigade Road, Bangalore',
-        serviceType: 'Cable',
+        address: 'Plot No. 789, Phase 2, Noida, UP',
+        serviceType: 'Business Internet',
+        connectionStatus: 'active',
+        monthlyCharge: 2999.00
+      },
+      {
+        customerId: 'CUST004',
+        name: 'Sunita Devi',
+        email: 'sunita.devi@example.com',
+        phone: '+91-9876543213',
+        address: 'House No. 321, Lajpat Nagar, New Delhi',
+        serviceType: 'Basic Internet',
         connectionStatus: 'pending',
-        monthlyCharge: 699.00
+        monthlyCharge: 599.00
+      },
+      {
+        customerId: 'CUST005',
+        name: 'Rohit Gupta',
+        email: 'rohit.gupta@example.com',
+        phone: '+91-9876543214',
+        address: 'Apartment 567, Cyber City, Gurgaon, Haryana',
+        serviceType: 'Premium Internet + TV + Phone',
+        connectionStatus: 'active',
+        monthlyCharge: 1999.00
       }
     ];
     
+    let customersCreated = 0;
+    
     for (const customer of sampleCustomers) {
       try {
-        // Check if customer exists
-        const checkRequest = pool.request();
-        checkRequest.input('customerId', customer.customerId);
+        const customerRequest = pool.request();
+        customerRequest.input('customerId', customer.customerId);
+        customerRequest.input('name', customer.name);
+        customerRequest.input('email', customer.email);
+        customerRequest.input('phone', customer.phone);
+        customerRequest.input('address', customer.address);
+        customerRequest.input('serviceType', customer.serviceType);
+        customerRequest.input('connectionStatus', customer.connectionStatus);
+        customerRequest.input('monthlyCharge', customer.monthlyCharge);
         
-        const existingCustomer = await checkRequest.query(`
-          SELECT COUNT(*) as count FROM customers WHERE customerId = @customerId
-        `);
-        
-        if (existingCustomer.recordset[0].count > 0) {
-          console.log(`Customer ${customer.customerId} already exists, skipping...`);
-          continue;
-        }
-        
-        // Create customer
-        const insertRequest = pool.request();
-        insertRequest.input('customerId', customer.customerId);
-        insertRequest.input('name', customer.name);
-        insertRequest.input('email', customer.email);
-        insertRequest.input('phone', customer.phone);
-        insertRequest.input('address', customer.address);
-        insertRequest.input('serviceType', customer.serviceType);
-        insertRequest.input('connectionStatus', customer.connectionStatus);
-        insertRequest.input('monthlyCharge', customer.monthlyCharge);
-        
-        await insertRequest.query(`
+        await customerRequest.query(`
           INSERT INTO customers (
-            customerId, name, email, phone, address, serviceType, 
+            customerId, name, email, phone, address, serviceType,
             connectionStatus, monthlyCharge, createdAt, updatedAt
           )
           VALUES (
@@ -252,56 +210,108 @@ export async function createSampleCustomers(): Promise<boolean> {
           )
         `);
         
-        console.log(`✅ Sample customer created: ${customer.name}`);
+        customersCreated++;
+        console.log(`✅ Sample customer created: ${customer.name} (${customer.customerId})`);
         
       } catch (error) {
-        console.error(`Failed to create customer ${customer.name}:`, error);
+        console.log(`⚠️ Warning: Could not create customer ${customer.customerId}:`, error instanceof Error ? error.message : 'Unknown error');
       }
     }
     
-    return true;
-    
-  } catch (error) {
-    console.error('Failed to create sample customers:', error);
-    return false;
-  }
-}
-
-export async function initializeDatabase(adminConfig?: AdminUserConfig): Promise<{
-  success: boolean;
-  adminCreated: boolean;
-  usersCreated: boolean;
-  customersCreated: boolean;
-}> {
-  try {
-    console.log('Initializing database with sample data...');
-    
-    const adminCreated = await createDefaultAdmin(adminConfig);
-    const usersCreated = await createSampleUsers();
-    const customersCreated = await createSampleCustomers();
-    
-    const success = adminCreated && usersCreated && customersCreated;
-    
-    if (success) {
-      console.log('✅ Database initialization completed successfully');
-    } else {
-      console.log('⚠️ Database initialization completed with some errors');
+    // Create a sample task
+    try {
+      const taskRequest = pool.request();
+      taskRequest.input('ticketNumber', 'TSK001');
+      taskRequest.input('title', 'Internet Connection Setup');
+      taskRequest.input('description', 'New customer requires internet connection installation and setup');
+      taskRequest.input('customerName', 'Rajesh Kumar');
+      taskRequest.input('status', 'pending');
+      taskRequest.input('priority', 'medium');
+      taskRequest.input('issueType', 'Installation');
+      
+      await taskRequest.query(`
+        INSERT INTO tasks (
+          ticketNumber, title, description, customerId, customerName,
+          status, priority, issueType, createdAt, updatedAt
+        )
+        VALUES (
+          @ticketNumber, @title, @description, 1, @customerName,
+          @status, @priority, @issueType, GETDATE(), GETDATE()
+        )
+      `);
+      
+      console.log('✅ Sample task created');
+      
+    } catch (error) {
+      console.log('⚠️ Warning: Could not create sample task:', error instanceof Error ? error.message : 'Unknown error');
     }
     
+    // Create a default chat room
+    try {
+      const chatRequest = pool.request();
+      chatRequest.input('name', 'General Support');
+      chatRequest.input('description', 'General communication channel for all team members');
+      chatRequest.input('createdBy', adminId);
+      
+      await chatRequest.query(`
+        INSERT INTO chat_rooms (
+          name, description, isActive, createdBy, createdAt, updatedAt
+        )
+        VALUES (
+          @name, @description, 1, @createdBy, GETDATE(), GETDATE()
+        )
+      `);
+      
+      console.log('✅ Default chat room created');
+      
+    } catch (error) {
+      console.log('⚠️ Warning: Could not create chat room:', error instanceof Error ? error.message : 'Unknown error');
+    }
+    
+    console.log(`🎉 Database initialization completed successfully!`);
+    console.log(`📊 Summary: ${usersCreated} users, ${customersCreated} customers created`);
+    
     return {
-      success,
-      adminCreated,
+      success: true,
+      adminCreated: true,
       usersCreated,
       customersCreated
     };
     
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error('❌ Database initialization failed:', error);
     return {
       success: false,
       adminCreated: false,
-      usersCreated: false,
-      customersCreated: false
+      usersCreated: 0,
+      customersCreated: 0,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
+  }
+}
+
+export async function createDefaultBotConfiguration(): Promise<void> {
+  try {
+    const pool = await getConnection();
+    const request = pool.request();
+    
+    request.input('name', 'Wizone Telegram Bot');
+    request.input('botToken', 'YOUR_BOT_TOKEN_HERE');
+    request.input('chatId', 'YOUR_CHAT_ID_HERE');
+    
+    await request.query(`
+      INSERT INTO bot_configurations (
+        name, botToken, chatId, isActive, notifyOnTaskCreate,
+        notifyOnTaskUpdate, notifyOnTaskComplete, createdAt, updatedAt
+      )
+      VALUES (
+        @name, @botToken, @chatId, 0, 1, 1, 1, GETDATE(), GETDATE()
+      )
+    `);
+    
+    console.log('✅ Default bot configuration created');
+    
+  } catch (error) {
+    console.log('⚠️ Warning: Could not create bot configuration:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
