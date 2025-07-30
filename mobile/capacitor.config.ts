@@ -1,33 +1,26 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/core';
 
 const config: CapacitorConfig = {
-  appId: 'com.wizoneit.taskmanager',
-  appName: 'Wizone IT Support Portal',
-  webDir: 'public',
+  appId: 'com.wizone.fieldengineer',
+  appName: 'Wizone Field Engineer',
+  webDir: 'client',
   server: {
-    cleartext: true
+    androidScheme: 'https'
   },
-
   android: {
-    allowMixedContent: true,
-    captureInput: true,
-    webContentsDebuggingEnabled: true,
-    loggingBehavior: 'debug',
-    minWebViewVersion: 60,
-    appendUserAgent: 'WizoneApp/1.0 (WebView)',
-    overrideUserAgent: undefined,
-    backgroundColor: '#1e293b'
+    buildOptions: {
+      keystorePath: undefined,
+      keystorePassword: undefined,
+      keystoreAlias: undefined,
+      keystoreAliasPassword: undefined,
+      releaseType: 'APK'
+    }
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1000,
+      launchShowDuration: 2000,
       backgroundColor: "#667eea",
-      showSpinner: true,
-      spinnerColor: "#22d3ee",
-      androidSpinnerStyle: "large",
-      iosSpinnerStyle: "small",
-      splashFullScreen: true,
-      splashImmersive: false
+      showSpinner: false
     }
   }
 };

@@ -1,62 +1,13 @@
-import {
-  User,
-  UpsertUser,
-  Customer,
-  InsertCustomer,
-  Task,
-  InsertTask,
-  TaskWithRelations,
-  TaskUpdate,
-  InsertTaskUpdate,
-  TaskUpdateWithUser,
-  PerformanceMetrics,
-  InsertPerformanceMetrics,
-  UserWithMetrics,
-  Domain,
-  InsertDomain,
-  SqlConnection,
-  InsertSqlConnection,
-  ChatRoom,
-  InsertChatRoom,
-  ChatMessage,
-  InsertChatMessage,
-  ChatParticipant,
-  InsertChatParticipant,
-  ChatRoomWithParticipants,
-  ChatMessageWithSender,
-  ChatRoomWithMessages,
-  CustomerComment,
-  InsertCustomerComment,
-  CustomerCommentWithUser,
-  CustomerSystemDetails,
-  InsertCustomerSystemDetails,
-  UserLocation,
-  InsertUserLocation,
-  UserLocationWithRelations,
-  GeofenceZone,
-  InsertGeofenceZone,
-  GeofenceZoneWithRelations,
-  GeofenceEvent,
-  InsertGeofenceEvent,
-  GeofenceEventWithRelations,
-  TripTracking,
-  InsertTripTracking,
-  TripTrackingWithRelations,
-  OfficeLocation,
-  InsertOfficeLocation,
-  OfficeLocationSuggestion,
-  InsertOfficeLocationSuggestion,
-  EngineerTrackingHistory,
-  InsertEngineerTrackingHistory,
-  BotConfiguration,
-  InsertBotConfiguration,
-  NotificationLog,
-  InsertNotificationLog,
-} from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory, botConfigurations, notificationLogs } from "./db.js";
-import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
-import postgres from "postgres";
-import { eq, desc, asc, and, or, ilike, sql, count, gte, lte } from "drizzle-orm";
+// MS SQL Storage Implementation - Replaces PostgreSQL
+import { 
+  storage as mssqlStorage, 
+  type User, 
+  type InsertUser, 
+  type UpsertUser,
+  type Customer,
+  type Task,
+  type IStorage
+} from "./mssql-storage.js";
 import { inArray } from "drizzle-orm";
 
 export interface IStorage {

@@ -16,7 +16,7 @@ import Performance from "@/pages/performance";
 import Users from "@/pages/users";
 import Analytics from "@/pages/analytics";
 import Domains from "@/pages/domains";
-import SqlConnections from "@/pages/sql-connections";
+import SqlConnections from "@/pages/sql-connections-temp";
 import BotConfiguration from "@/pages/bot-configuration";
 import APKDownload from "@/pages/apk-download";
 import TrackingHistory from "@/pages/tracking-history";

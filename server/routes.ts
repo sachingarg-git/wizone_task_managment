@@ -3,9 +3,9 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage";
-import { setupAuth } from "./auth";
-import { seedDatabase } from "./seed";
+import { storage } from "./mssql-storage.js";
+// import { setupAuth } from "./auth"; // Disabled during migration
+// import { seedDatabase } from "./seed"; // Disabled during migration
 import { 
   insertTaskSchema, 
   insertCustomerSchema, 
@@ -321,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Auth middleware
-  setupAuth(app);
+  // setupAuth(app); // Disabled during MS SQL migration
 
   // Skip user seeding for Windows compatibility
   console.log("User seeding skipped for Windows compatibility");

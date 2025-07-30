@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Field Engineer</title>
+    <meta name="description" content="Wizone Field Engineer mobile app for task management">
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="./icon-192x192.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        .loading-logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .main-content {
+            display: none;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #d00;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #efe;
+            color: #0a0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .offline-mode {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .role-text {
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        .tasks-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .task-card {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .task-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .task-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-in_progress { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-on_hold { background: #f8d7da; color: #721c24; }
+        
+        .refresh-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .logout-btn {
+            width: 100%;
+            padding: 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-logo">🔧</div>
+        <div class="loading-text">Wizone Field Engineer</div>
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainContent" class="main-content">
+        <div class="container">
+            <!-- Login Section -->
+            <div id="loginSection">
+                <div class="header">
+                    <div class="logo">🔧 Wizone</div>
+                    <div class="subtitle">Field Engineer Portal</div>
+                </div>
+                
+                <div class="login-card">
+                    <div class="connection-status" id="connectionStatus">
+                        <span id="connectionText">🔄 Checking connection...</span>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage"></div>
+                    <div class="success-message" id="successMessage"></div>
+                    
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" required placeholder="Enter your username" value="RAVI">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" required placeholder="Enter your password" value="admin123">
+                        </div>
+                        
+                        <button type="submit" class="login-btn" id="loginBtn">
+                            Login to Field Portal
+                        </button>
+                    </form>
+                    
+                    <div class="offline-mode" id="offlineMode" style="display: none;">
+                        📱 Offline mode: Using demo data
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div id="dashboardSection" class="dashboard">
+                <div class="dashboard-header">
+                    <div class="welcome-text" id="welcomeText">Welcome!</div>
+                    <div class="role-text">Field Engineer</div>
+                </div>
+                
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalTasks">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingTasks">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="inProgressTasks">0</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedTasks">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+                
+                <div class="tasks-section">
+                    <div class="section-title">📋 My Assigned Tasks</div>
+                    <div id="tasksList">
+                        <div style="text-align: center; color: #666; padding: 20px;">Loading tasks...</div>
+                    </div>
+                </div>
+                
+                <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.protocol === 'file:' ? 
+            'http://localhost:3002/api' : 
+            '/api';
+        
+        // Global variables
+        let currentUser = null;
+        let isOnline = true;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+        
+        // DOM elements
+        const loadingScreen = document.getElementById('loadingScreen');
+        const mainContent = document.getElementById('mainContent');
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const loginBtn = document.getElementById('loginBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionText = document.getElementById('connectionText');
+        const offlineMode = document.getElementById('offlineMode');
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                initializeApp();
+            }, 2000); // Show loading screen for 2 seconds
+        });
+        
+        async function initializeApp() {
+            loadingScreen.style.display = 'none';
+            mainContent.style.display = 'block';
+            
+            // Check connection
+            await checkConnection();
+            
+            // Set up login form
+            setupLoginForm();
+        }
+        
+        // Check API connection
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE.replace('/api', '')}/health`, {
+                    method: 'GET',
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    isOnline = true;
+                    connectionStatus.className = 'connection-status status-online';
+                    connectionText.textContent = '✅ Connected to server';
+                    offlineMode.style.display = 'none';
+                } else {
+                    throw new Error('Server unreachable');
+                }
+            } catch (error) {
+                console.warn('Connection check failed:', error);
+                isOnline = false;
+                connectionStatus.className = 'connection-status status-offline';
+                connectionText.textContent = '⚠️ Offline mode';
+                offlineMode.style.display = 'block';
+            }
+        }
+        
+        // Setup login form
+        function setupLoginForm() {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleLogin();
+            });
+        }
+        
+        // Handle login
+        async function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                showError('Please enter both username and password');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            if (isOnline) {
+                await attemptOnlineLogin(username, password);
+            } else {
+                await attemptOfflineLogin(username, password);
+            }
+            
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login to Field Portal';
+        }
+        
+        // Online login
+        async function attemptOnlineLogin(username, password) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    showSuccess('Login successful! Loading dashboard...');
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 1000);
+                } else {
+                    showError(data.message || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Online login error:', error);
+                retryCount++;
+                
+                if (retryCount < MAX_RETRIES) {
+                    showError(`Connection failed. Retrying... (${retryCount}/${MAX_RETRIES})`);
+                    setTimeout(() => attemptOnlineLogin(username, password), 2000);
+                } else {
+                    showError('Unable to connect. Switching to offline mode...');
+                    isOnline = false;
+                    setTimeout(() => attemptOfflineLogin(username, password), 1000);
+                }
+            }
+        }
+        
+        // Offline login with demo credentials
+        async function attemptOfflineLogin(username, password) {
+            const validCredentials = [
+                { username: 'RAVI', password: 'admin123', name: 'Ravi Kumar', role: 'Field Engineer' },
+                { username: 'sachin', password: 'admin123', name: 'Sachin Patel', role: 'Field Engineer' }
+            ];
+            
+            const user = validCredentials.find(u => 
+                u.username.toLowerCase() === username.toLowerCase() && u.password === password
+            );
+            
+            if (user) {
+                currentUser = {
+                    username: user.username,
+                    first_name: user.name.split(' ')[0],
+                    last_name: user.name.split(' ')[1],
+                    role: user.role
+                };
+                
+                showSuccess('Offline login successful!');
+                setTimeout(() => {
+                    showDashboard();
+                }, 1000);
+            } else {
+                showError('Invalid credentials. Try: RAVI/admin123 or sachin/admin123');
+            }
+        }
+        
+        // Show dashboard
+        async function showDashboard() {
+            loginSection.style.display = 'none';
+            dashboardSection.style.display = 'block';
+            
+            // Update welcome text
+            document.getElementById('welcomeText').textContent = 
+                `Welcome, ${currentUser.first_name || currentUser.username}!`;
+            
+            // Load dashboard data
+            await loadDashboardData();
+        }
+        
+        // Load dashboard data
+        async function loadDashboardData() {
+            if (isOnline) {
+                await Promise.all([
+                    loadOnlineStats(),
+                    loadOnlineTasks()
+                ]);
+            } else {
+                loadOfflineData();
+            }
+        }
+        
+        // Load online statistics
+        async function loadOnlineStats() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats/${currentUser.username}`);
+                const stats = await response.json();
+                
+                updateStats(stats);
+            } catch (error) {
+                console.error('Stats loading error:', error);
+                loadOfflineStats();
+            }
+        }
+        
+        // Load online tasks
+        async function loadOnlineTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/tasks/${currentUser.username}`);
+                const tasks = await response.json();
+                
+                displayTasks(tasks);
+            } catch (error) {
+                console.error('Tasks loading error:', error);
+                loadOfflineTasks();
+            }
+        }
+        
+        // Load offline demo data
+        function loadOfflineData() {
+            loadOfflineStats();
+            loadOfflineTasks();
+        }
+        
+        function loadOfflineStats() {
+            const demoStats = {
+                total_tasks: 8,
+                pending_tasks: 3,
+                in_progress_tasks: 2,
+                completed_tasks: 3,
+                on_hold_tasks: 0
+            };
+            updateStats(demoStats);
+        }
+        
+        function loadOfflineTasks() {
+            const demoTasks = [
+                {
+                    id: 1,
+                    title: 'Network Setup - Office Building',
+                    ticket_number: 'WZ-2025-001',
+                    priority: 'high',
+                    status: 'pending',
+                    customer_name: 'Tech Solutions Ltd'
+                },
+                {
+                    id: 2,
+                    title: 'Router Configuration',
+                    ticket_number: 'WZ-2025-002',
+                    priority: 'medium',
+                    status: 'in_progress',
+                    customer_name: 'Digital Systems'
+                },
+                {
+                    id: 3,
+                    title: 'Cable Installation',
+                    ticket_number: 'WZ-2025-003',
+                    priority: 'low',
+                    status: 'completed',
+                    customer_name: 'Metro Communications'
+                }
+            ];
+            displayTasks(demoTasks);
+        }
+        
+        // Update statistics display
+        function updateStats(stats) {
+            document.getElementById('totalTasks').textContent = stats.total_tasks || 0;
+            document.getElementById('pendingTasks').textContent = stats.pending_tasks || 0;
+            document.getElementById('inProgressTasks').textContent = stats.in_progress_tasks || 0;
+            document.getElementById('completedTasks').textContent = stats.completed_tasks || 0;
+        }
+        
+        // Display tasks
+        function displayTasks(tasks) {
+            const tasksList = document.getElementById('tasksList');
+            
+            if (!tasks || tasks.length === 0) {
+                tasksList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No tasks assigned</div>';
+                return;
+            }
+            
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="task-card" onclick="selectTask(${task.id}, '${task.title}')">
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-meta">
+                        Ticket: ${task.ticket_number} | 
+                        Priority: ${task.priority} | 
+                        Customer: ${task.customer_name || 'N/A'}
+                    </div>
+                    <span class="task-status status-${task.status}">${task.status.replace('_', ' ')}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Select task
+        function selectTask(taskId, taskTitle) {
+            if (confirm(`Open task "${taskTitle}"?\n\nTask detail management coming in next update.`)) {
+                // Future: Navigate to task detail page
+                console.log('Task selected:', taskId);
+            }
+        }
+        
+        // Refresh data
+        async function refreshData() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            refreshBtn.textContent = '🔄 Refreshing...';
+            refreshBtn.disabled = true;
+            
+            await checkConnection();
+            await loadDashboardData();
+            
+            refreshBtn.textContent = '🔄 Refresh Data';
+            refreshBtn.disabled = false;
+            
+            showSuccess('Data refreshed successfully!');
+            setTimeout(hideMessages, 2000);
+        }
+        
+        // Logout
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                currentUser = null;
+                dashboardSection.style.display = 'none';
+                loginSection.style.display = 'block';
+                
+                // Clear form
+                document.getElementById('username').value = 'RAVI';
+                document.getElementById('password').value = 'admin123';
+                
+                hideMessages();
+                retryCount = 0;
+            }
+        }
+        
+        // Utility functions
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+        
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+        
+        // Auto-hide messages
+        setInterval(() => {
+            const errorVisible = errorMessage.style.display === 'block';
+            const successVisible = successMessage.style.display === 'block';
+            
+            if (errorVisible || successVisible) {
+                setTimeout(hideMessages, 5000);
+            }
+        }, 1000);
+        
+        // Service Worker for PWA (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
