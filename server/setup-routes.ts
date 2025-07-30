@@ -5,7 +5,7 @@ import { initializeDatabase, AdminUserConfig } from './database/admin-seeder';
 
 const router = express.Router();
 
-// Test database connection
+// Test database connection and create database if needed
 router.post('/test-connection', async (req, res) => {
   try {
     const config = req.body;
@@ -17,7 +17,59 @@ router.post('/test-connection', async (req, res) => {
       });
     }
 
-    const isConnected = await testConnection(config);
+    // First try to connect to the specified database
+    let isConnected = await testConnection(config);
+    
+    if (!isConnected) {
+      // If connection fails, try to connect to master database and create the target database
+      console.log(`Database ${config.database} not found, attempting to create it...`);
+      
+      const masterConfig = { ...config, database: 'master' };
+      const masterConnected = await testConnection(masterConfig);
+      
+      if (masterConnected) {
+        // Create the database
+        try {
+          const { ConnectionPool } = await import('mssql');
+          const mssqlConfig = {
+            server: config.host,
+            port: config.port,
+            database: 'master',
+            user: config.username,
+            password: config.password,
+            options: {
+              encrypt: config.ssl || false,
+              trustServerCertificate: config.trustCertificate !== false,
+              enableArithAbort: true,
+            },
+            connectionTimeout: 30000,
+            requestTimeout: 30000,
+          };
+
+          const pool = new ConnectionPool(mssqlConfig);
+          await pool.connect();
+          
+          const request = pool.request();
+          await request.query(`
+            IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${config.database}')
+            CREATE DATABASE [${config.database}]
+          `);
+          
+          await pool.close();
+          
+          console.log(`✅ Database ${config.database} created successfully`);
+          
+          // Test connection to the newly created database
+          isConnected = await testConnection(config);
+        } catch (createError) {
+          console.error('Failed to create database:', createError);
+          return res.status(400).json({ 
+            success: false, 
+            error: `Failed to create database: ${createError instanceof Error ? createError.message : 'Unknown error'}` 
+          });
+        }
+      }
+    }
     
     if (isConnected) {
       res.json({ success: true, message: 'Connection successful' });
