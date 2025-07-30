@@ -1,14 +1,5 @@
-// MS SQL Storage Implementation - Replaces PostgreSQL
-import { 
-  storage as mssqlStorage, 
-  type User, 
-  type InsertUser, 
-  type UpsertUser,
-  type Customer,
-  type Task,
-  type IStorage
-} from "./mssql-storage.js";
-import { inArray } from "drizzle-orm";
+// Import MS SQL Storage Implementation
+import { storage as mssqlStorage, type IStorage } from "./storage-mssql-complete";
 
 export interface IStorage {
   // User operations
@@ -156,6 +147,10 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: string): Promise<void>;
 }
 
+// Use MS SQL Storage as primary storage
+export const storage = mssqlStorage;
+
+// Legacy class for compatibility (deprecated)
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
