@@ -1,4 +1,4 @@
-// Seed functionality disabled for MS SQL migration
+import { db, users, customers, tasks, taskUpdates, performanceMetrics } from "./db.js";
 
 // Auto-run seeding when this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {

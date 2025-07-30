@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 
-// Import components
+// Import components with fallback
 import Landing from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -32,123 +32,138 @@ function Router() {
   console.log("Router component rendering...");
   
   try {
+    // Original router logic
     const { isAuthenticated, isLoading, error } = useAuth();
     const [location] = useLocation();
     const [customerUser, setCustomerUser] = useState(null);
     
     console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
 
-    // Check for stored customer session
-    useEffect(() => {
-      const storedCustomer = localStorage.getItem("customerPortalUser");
-      if (storedCustomer) {
-        setCustomerUser(JSON.parse(storedCustomer));
-      }
-    }, []);
-
-    // Handle admin login
-    const handleAdminLogin = (user: any) => {
-      window.location.reload();
-    };
-
-    // Handle customer login  
-    const handleCustomerLogin = (customer: any) => {
-      setCustomerUser(customer);
-      localStorage.setItem("customerPortalUser", JSON.stringify(customer));
-    };
-
-    // If customer is logged in, show customer portal
-    if (customerUser) {
-      return <CustomerPortal />;
+  // Check for stored customer session
+  useEffect(() => {
+    const storedCustomer = localStorage.getItem("customerPortalUser");
+    if (storedCustomer) {
+      setCustomerUser(JSON.parse(storedCustomer));
     }
+  }, []);
 
-    // Show loading state
-    if (isLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-white">Loading application...</p>
-          </div>
-        </div>
-      );
-    }
+  // Handle admin login
+  const handleAdminLogin = (user: any) => {
+    // Admin login is handled by the existing useAuth hook
+    // The user will be redirected automatically after successful login
+    window.location.reload();
+  };
 
-    // Show error state
-    if (error) {
-      console.error("Auth error:", error);
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-purple-900 to-indigo-900">
-          <div className="text-center">
-            <h2 className="text-white text-xl mb-4">Authentication Error</h2>
-            <p className="text-white mb-4">Unable to verify authentication status</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-white text-black px-4 py-2 rounded hover:bg-gray-200"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      );
-    }
+  // Handle customer login  
+  const handleCustomerLogin = (customer: any) => {
+    setCustomerUser(customer);
+    localStorage.setItem("customerPortalUser", JSON.stringify(customer));
+  };
 
-    // Special routes that don't require authentication
-    if (location === "/login" || location === "/portal" || location === "/unified-login") {
-      if (location === "/login") {
-        return <LoginPage />;
-      }
-      if (location === "/portal") {
-        return <Portal />;
-      }
-      if (location === "/unified-login") {
-        return <UnifiedLogin onAdminLogin={handleAdminLogin} onCustomerLogin={handleCustomerLogin} />;
-      }
-    }
+  // If customer is logged in, show customer portal
+  if (customerUser) {
+    return <CustomerPortal />;
+  }
 
-    // If not authenticated, show unified login
-    if (!isAuthenticated) {
-      return <UnifiedLogin onAdminLogin={handleAdminLogin} onCustomerLogin={handleCustomerLogin} />;
-    }
-
-    // If authenticated, show main application with sidebar
+  // Show loading state
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-slate-900">
-        <Sidebar />
-        <div className="flex-1 ml-64">
-          <div className="container mx-auto px-6 py-8">
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/tasks" component={Tasks} />
-              <Route path="/customers" component={Customers} />
-              <Route path="/performance" component={Performance} />
-              <Route path="/users" component={Users} />
-              <Route path="/analytics" component={Analytics} />
-              <Route path="/domains" component={Domains} />
-              <Route path="/sql-connections" component={SqlConnections} />
-              <Route path="/bot-configuration" component={BotConfiguration} />
-              <Route path="/apk-download" component={APKDownload} />
-              <Route path="/tracking-history" component={TrackingHistory} />
-              <Route path="/office-management" component={OfficeManagement} />
-              <Route path="/chat" component={Chat} />
-              <Route component={NotFound} />
-            </Switch>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading application...</p>
         </div>
       </div>
     );
+  }
 
-  } catch (error: any) {
-    console.error("Router error:", error);
+  // Show error state if there's a fetch error (not auth error)
+  if (error && !error.message.includes('401')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-purple-900 to-indigo-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         <div className="text-center">
-          <h2 className="text-white text-xl mb-4">Application Error</h2>
-          <p className="text-white mb-4">{error?.message || "An unexpected error occurred"}</p>
+          <p className="text-white mb-4">Unable to load application</p>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-white text-black px-4 py-2 rounded hover:bg-gray-200"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If admin is not authenticated, show unified login
+  if (!isAuthenticated) {
+    console.log("Showing unified login...");
+    return (
+      <UnifiedLogin 
+        onAdminLogin={handleAdminLogin}
+        onCustomerLogin={handleCustomerLogin}
+      />
+    );
+  }
+
+  // Admin is authenticated, show admin dashboard
+  console.log("Showing admin dashboard...");
+  return (
+    <div className="flex min-h-screen bg-slate-900">
+      <Sidebar />
+      <div className="flex-1 ml-64">
+        <Switch>
+          <Route path="/" component={(props) => {
+            const { user } = useAuth();
+            // Redirect field engineers to portal instead of dashboard
+            if (user?.role === 'field_engineer') {
+              window.location.href = '/portal';
+              return null;
+            }
+            return <Dashboard {...props} />;
+          }} />
+          <Route path="/tasks" component={Tasks} />
+          <Route path="/customers" component={Customers} />
+          <Route path="/performance" component={Performance} />
+          <Route path="/users" component={Users} />
+          <Route path="/analytics" component={Analytics} />
+          <Route path="/domains" component={Domains} />
+          <Route path="/sql-connections" component={SqlConnections} />
+          <Route path="/bot-configuration" component={BotConfiguration} />
+          <Route path="/apk-download" component={APKDownload} />
+
+          <Route path="/tracking-history" component={TrackingHistory} />
+          <Route path="/office-management" component={OfficeManagement} />
+          <Route path="/chat" component={Chat} />
+          <Route path="/portal" component={Portal} />
+          <Route component={NotFound} />
+        </Switch>
+      </div>
+    </div>
+  );
+  } catch (error) {
+    console.error("Router error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+      }}>
+        <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
+          <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Router Error</h1>
+          <p style={{ marginBottom: '16px' }}>Error: {error.message}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              padding: '12px 24px', 
+              background: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
           >
             Reload Application
           </button>
@@ -159,17 +174,50 @@ function Router() {
 }
 
 function App() {
-  console.log("App component starting...");
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="app-container">
-          <Router />
-          <Toaster />
+  console.log("App component rendering...");
+  
+  try {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <div className="app-container">
+            <Router />
+            <Toaster />
+          </div>
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  } catch (error) {
+    console.error("App rendering error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ color: '#ef4444', marginBottom: '16px' }}>Application Error</h1>
+          <p style={{ color: '#6b7280' }}>Something went wrong loading the application.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              marginTop: '16px', 
+              padding: '8px 16px', 
+              backgroundColor: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Reload Page
+          </button>
         </div>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+      </div>
+    );
+  }
 }
 
 export default App;

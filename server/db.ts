@@ -1,47 +1,42 @@
-import mssql from "mssql";
-const { ConnectionPool } = mssql;
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "../shared/schema.js";
 
-// MS SQL Server Configuration
-const config = {
-  server: '14.102.70.90',
-  port: 1433,
-  database: 'TASK_SCORE_WIZONE',
-  user: 'sa',
-  password: 'ss123456',
-  options: {
-    encrypt: false,
-    trustServerCertificate: true,
-    enableArithAbort: true,
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
-};
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required");
+}
 
-// Create and export the MS SQL connection pool
-export const pool = new ConnectionPool(config);
-
-// Initialize connection
-pool.connect().then(() => {
-  console.log("✅ Connected to MS SQL Server: 14.102.70.90:1433");
-}).catch(err => {
-  console.error("❌ MS SQL Connection Error:", err);
+// Create the PostgreSQL connection with SSL
+const sql = postgres(process.env.DATABASE_URL, {
+  ssl: 'require',
+  max: 1,
 });
 
-// Export a simplified db object for compatibility
-export const db = {
-  pool,
-  query: async (sql: string, params?: any[]) => {
-    const request = pool.request();
-    if (params) {
-      params.forEach((param, index) => {
-        request.input(`param${index}`, param);
-      });
-    }
-    return await request.query(sql);
-  }
-};
+// Create the database instance with schema
+export const db = drizzle(sql, { schema });
 
-// Database is now MS SQL - no schema exports needed
+// Export schema elements for convenience
+export const {
+  users,
+  customers,
+  tasks,
+  taskUpdates,
+  performanceMetrics,
+  domains,
+  sqlConnections,
+  sessions,
+  chatRooms,
+  chatMessages,
+  chatParticipants,
+  customerComments,
+  customerSystemDetails,
+  userLocations,
+  geofenceZones,
+  geofenceEvents,
+  tripTracking,
+  officeLocations,
+  officeLocationSuggestions,
+  engineerTrackingHistory,
+  botConfigurations,
+  notificationLogs,
+} = schema;

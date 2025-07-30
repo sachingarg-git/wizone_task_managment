@@ -3,9 +3,9 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
-import { storage } from "./mssql-storage.js";
-// import { setupAuth } from "./auth"; // Disabled during migration
-// import { seedDatabase } from "./seed"; // Disabled during migration
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { seedDatabase } from "./seed";
 import { 
   insertTaskSchema, 
   insertCustomerSchema, 
@@ -321,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Auth middleware
-  // setupAuth(app); // Disabled during MS SQL migration
+  setupAuth(app);
 
   // Skip user seeding for Windows compatibility
   console.log("User seeding skipped for Windows compatibility");
@@ -634,32 +634,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error seeding database:", error);
       res.status(500).json({ message: "Failed to seed database" });
-    }
-  });
-
-  // Complete MSSQL Migration route
-  app.post('/api/migrate-to-mssql', isAuthenticated, async (req: any, res) => {
-    try {
-      const { MSSQLMigration } = await import('./migrate-to-mssql.js');
-      const migration = new MSSQLMigration();
-      
-      console.log('🚀 Starting complete MSSQL migration...');
-      const result = await migration.runFullMigration();
-      
-      res.json({
-        success: true,
-        message: 'Complete migration to MSSQL completed successfully',
-        details: result,
-        tables: 15,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("MSSQL Migration failed:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "MSSQL migration failed", 
-        error: error.message 
-      });
     }
   });
 
