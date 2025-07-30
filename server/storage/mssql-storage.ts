@@ -1,0 +1,831 @@
+import { getConnection } from '../database/mssql-connection';
+import { scrypt, randomBytes } from 'crypto';
+import { promisify } from 'util';
+
+const scryptAsync = promisify(scrypt);
+
+export interface IStorage {
+  // User operations
+  getUser(id: string): Promise<any | undefined>;
+  getUserByUsername(username: string): Promise<any | undefined>;
+  createUser(user: any): Promise<any>;
+  updateUser(id: string, updates: any): Promise<any>;
+  getAllUsers(): Promise<any[]>;
+  
+  // Customer operations
+  getCustomer(id: number): Promise<any | undefined>;
+  getAllCustomers(): Promise<any[]>;
+  createCustomer(customer: any): Promise<any>;
+  updateCustomer(id: number, updates: any): Promise<any>;
+  deleteCustomer(id: number): Promise<boolean>;
+  
+  // Task operations
+  getTask(id: number): Promise<any | undefined>;
+  getAllTasks(): Promise<any[]>;
+  createTask(task: any): Promise<any>;
+  updateTask(id: number, updates: any): Promise<any>;
+  deleteTask(id: number): Promise<boolean>;
+  
+  // Task update operations
+  createTaskUpdate(update: any): Promise<any>;
+  getTaskUpdates(taskId: number): Promise<any[]>;
+  
+  // Performance metrics
+  createPerformanceMetric(metric: any): Promise<any>;
+  getPerformanceMetrics(userId: string): Promise<any[]>;
+  
+  // Bot configurations
+  getAllBotConfigurations(): Promise<any[]>;
+  createBotConfiguration(config: any): Promise<any>;
+  updateBotConfiguration(id: number, updates: any): Promise<any>;
+  deleteBotConfiguration(id: number): Promise<boolean>;
+  
+  // Notification logs
+  createNotificationLog(log: any): Promise<any>;
+  getAllNotificationLogs(): Promise<any[]>;
+}
+
+export class MSSQLStorage implements IStorage {
+  
+  private async hashPassword(password: string): Promise<string> {
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+    return `${derivedKey.toString('hex')}.${salt}`;
+  }
+
+  private async verifyPassword(password: string, hash: string): Promise<boolean> {
+    try {
+      const [derivedKey, salt] = hash.split('.');
+      const keyBuffer = await scryptAsync(password, salt, 64) as Buffer;
+      return keyBuffer.toString('hex') === derivedKey;
+    } catch {
+      return false;
+    }
+  }
+
+  // User operations
+  async getUser(id: string): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      const result = await request.query(`
+        SELECT * FROM users WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return undefined;
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('username', username);
+      
+      const result = await request.query(`
+        SELECT * FROM users WHERE username = @username
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting user by username:', error);
+      return undefined;
+    }
+  }
+
+  async createUser(userData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      // Generate ID if not provided
+      const userId = userData.id || `user_${Date.now()}`;
+      
+      // Hash password if provided
+      let hashedPassword = userData.password;
+      if (userData.password && !userData.password.includes('.')) {
+        hashedPassword = await this.hashPassword(userData.password);
+      }
+      
+      request.input('id', userId);
+      request.input('username', userData.username);
+      request.input('password', hashedPassword);
+      request.input('email', userData.email || null);
+      request.input('firstName', userData.firstName || null);
+      request.input('lastName', userData.lastName || null);
+      request.input('phone', userData.phone || null);
+      request.input('profileImageUrl', userData.profileImageUrl || null);
+      request.input('role', userData.role || 'field_engineer');
+      request.input('department', userData.department || null);
+      request.input('isActive', userData.isActive !== false);
+      
+      await request.query(`
+        INSERT INTO users (
+          id, username, password, email, firstName, lastName, 
+          phone, profileImageUrl, role, department, isActive, 
+          createdAt, updatedAt
+        )
+        VALUES (
+          @id, @username, @password, @email, @firstName, @lastName,
+          @phone, @profileImageUrl, @role, @department, @isActive,
+          GETDATE(), GETDATE()
+        )
+      `);
+      
+      return await this.getUser(userId);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
+  }
+
+  async updateUser(id: string, updates: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      // Build dynamic update query
+      const updateFields = [];
+      const params = [];
+      
+      if (updates.username !== undefined) {
+        updateFields.push('username = @username');
+        request.input('username', updates.username);
+      }
+      if (updates.password !== undefined) {
+        const hashedPassword = await this.hashPassword(updates.password);
+        updateFields.push('password = @password');
+        request.input('password', hashedPassword);
+      }
+      if (updates.email !== undefined) {
+        updateFields.push('email = @email');
+        request.input('email', updates.email);
+      }
+      if (updates.firstName !== undefined) {
+        updateFields.push('firstName = @firstName');
+        request.input('firstName', updates.firstName);
+      }
+      if (updates.lastName !== undefined) {
+        updateFields.push('lastName = @lastName');
+        request.input('lastName', updates.lastName);
+      }
+      if (updates.phone !== undefined) {
+        updateFields.push('phone = @phone');
+        request.input('phone', updates.phone);
+      }
+      if (updates.role !== undefined) {
+        updateFields.push('role = @role');
+        request.input('role', updates.role);
+      }
+      if (updates.department !== undefined) {
+        updateFields.push('department = @department');
+        request.input('department', updates.department);
+      }
+      if (updates.isActive !== undefined) {
+        updateFields.push('isActive = @isActive');
+        request.input('isActive', updates.isActive);
+      }
+      
+      if (updateFields.length === 0) {
+        return await this.getUser(id);
+      }
+      
+      updateFields.push('updatedAt = GETDATE()');
+      request.input('id', id);
+      
+      await request.query(`
+        UPDATE users 
+        SET ${updateFields.join(', ')}
+        WHERE id = @id
+      `);
+      
+      return await this.getUser(id);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  }
+
+  async getAllUsers(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const result = await request.query(`
+        SELECT * FROM users ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      return [];
+    }
+  }
+
+  // Customer operations
+  async getCustomer(id: number): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      const result = await request.query(`
+        SELECT * FROM customers WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting customer:', error);
+      return undefined;
+    }
+  }
+
+  async getAllCustomers(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const result = await request.query(`
+        SELECT * FROM customers ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting all customers:', error);
+      return [];
+    }
+  }
+
+  async createCustomer(customerData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('customerId', customerData.customerId);
+      request.input('name', customerData.name);
+      request.input('email', customerData.email || null);
+      request.input('phone', customerData.phone || null);
+      request.input('address', customerData.address || null);
+      request.input('serviceType', customerData.serviceType || null);
+      request.input('connectionStatus', customerData.connectionStatus || 'active');
+      request.input('installationDate', customerData.installationDate || null);
+      request.input('monthlyCharge', customerData.monthlyCharge || null);
+      request.input('lastPaymentDate', customerData.lastPaymentDate || null);
+      
+      const result = await request.query(`
+        INSERT INTO customers (
+          customerId, name, email, phone, address, serviceType,
+          connectionStatus, installationDate, monthlyCharge, lastPaymentDate,
+          createdAt, updatedAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @customerId, @name, @email, @phone, @address, @serviceType,
+          @connectionStatus, @installationDate, @monthlyCharge, @lastPaymentDate,
+          GETDATE(), GETDATE()
+        )
+      `);
+      
+      const newId = result.recordset[0].id;
+      return await this.getCustomer(newId);
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      throw error;
+    }
+  }
+
+  async updateCustomer(id: number, updates: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      // Build dynamic update query
+      const updateFields = [];
+      
+      if (updates.name !== undefined) {
+        updateFields.push('name = @name');
+        request.input('name', updates.name);
+      }
+      if (updates.email !== undefined) {
+        updateFields.push('email = @email');
+        request.input('email', updates.email);
+      }
+      if (updates.phone !== undefined) {
+        updateFields.push('phone = @phone');
+        request.input('phone', updates.phone);
+      }
+      if (updates.address !== undefined) {
+        updateFields.push('address = @address');
+        request.input('address', updates.address);
+      }
+      if (updates.serviceType !== undefined) {
+        updateFields.push('serviceType = @serviceType');
+        request.input('serviceType', updates.serviceType);
+      }
+      if (updates.connectionStatus !== undefined) {
+        updateFields.push('connectionStatus = @connectionStatus');
+        request.input('connectionStatus', updates.connectionStatus);
+      }
+      if (updates.monthlyCharge !== undefined) {
+        updateFields.push('monthlyCharge = @monthlyCharge');
+        request.input('monthlyCharge', updates.monthlyCharge);
+      }
+      
+      if (updateFields.length === 0) {
+        return await this.getCustomer(id);
+      }
+      
+      updateFields.push('updatedAt = GETDATE()');
+      request.input('id', id);
+      
+      await request.query(`
+        UPDATE customers 
+        SET ${updateFields.join(', ')}
+        WHERE id = @id
+      `);
+      
+      return await this.getCustomer(id);
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      throw error;
+    }
+  }
+
+  async deleteCustomer(id: number): Promise<boolean> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      await request.query(`DELETE FROM customers WHERE id = @id`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      return false;
+    }
+  }
+
+  // Task operations
+  async getTask(id: number): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      const result = await request.query(`
+        SELECT * FROM tasks WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting task:', error);
+      return undefined;
+    }
+  }
+
+  async getAllTasks(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const result = await request.query(`
+        SELECT * FROM tasks ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting all tasks:', error);
+      return [];
+    }
+  }
+
+  async createTask(taskData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('ticketNumber', taskData.ticketNumber);
+      request.input('title', taskData.title);
+      request.input('description', taskData.description || null);
+      request.input('customerId', taskData.customerId || null);
+      request.input('customerName', taskData.customerName || null);
+      request.input('status', taskData.status || 'pending');
+      request.input('priority', taskData.priority || 'medium');
+      request.input('issueType', taskData.issueType || null);
+      request.input('assignedTo', taskData.assignedTo || null);
+      request.input('fieldEngineerId', taskData.fieldEngineerId || null);
+      request.input('backendEngineerId', taskData.backendEngineerId || null);
+      
+      const result = await request.query(`
+        INSERT INTO tasks (
+          ticketNumber, title, description, customerId, customerName,
+          status, priority, issueType, assignedTo, fieldEngineerId,
+          backendEngineerId, createdAt, updatedAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @ticketNumber, @title, @description, @customerId, @customerName,
+          @status, @priority, @issueType, @assignedTo, @fieldEngineerId,
+          @backendEngineerId, GETDATE(), GETDATE()
+        )
+      `);
+      
+      const newId = result.recordset[0].id;
+      return await this.getTask(newId);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
+  }
+
+  async updateTask(id: number, updates: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      // Build dynamic update query
+      const updateFields = [];
+      
+      if (updates.title !== undefined) {
+        updateFields.push('title = @title');
+        request.input('title', updates.title);
+      }
+      if (updates.description !== undefined) {
+        updateFields.push('description = @description');
+        request.input('description', updates.description);
+      }
+      if (updates.status !== undefined) {
+        updateFields.push('status = @status');
+        request.input('status', updates.status);
+        
+        // Set resolvedAt if status is completed
+        if (updates.status === 'completed') {
+          updateFields.push('resolvedAt = GETDATE()');
+        }
+      }
+      if (updates.priority !== undefined) {
+        updateFields.push('priority = @priority');
+        request.input('priority', updates.priority);
+      }
+      if (updates.assignedTo !== undefined) {
+        updateFields.push('assignedTo = @assignedTo');
+        request.input('assignedTo', updates.assignedTo);
+      }
+      if (updates.fieldEngineerId !== undefined) {
+        updateFields.push('fieldEngineerId = @fieldEngineerId');
+        request.input('fieldEngineerId', updates.fieldEngineerId);
+      }
+      if (updates.backendEngineerId !== undefined) {
+        updateFields.push('backendEngineerId = @backendEngineerId');
+        request.input('backendEngineerId', updates.backendEngineerId);
+      }
+      
+      if (updateFields.length === 0) {
+        return await this.getTask(id);
+      }
+      
+      updateFields.push('updatedAt = GETDATE()');
+      request.input('id', id);
+      
+      await request.query(`
+        UPDATE tasks 
+        SET ${updateFields.join(', ')}
+        WHERE id = @id
+      `);
+      
+      return await this.getTask(id);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      await request.query(`DELETE FROM tasks WHERE id = @id`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return false;
+    }
+  }
+
+  // Task update operations
+  async createTaskUpdate(updateData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('taskId', updateData.taskId);
+      request.input('status', updateData.status || null);
+      request.input('note', updateData.note || null);
+      request.input('updatedBy', updateData.updatedBy || null);
+      request.input('filePath', updateData.filePath || null);
+      request.input('fileName', updateData.fileName || null);
+      request.input('fileType', updateData.fileType || null);
+      
+      const result = await request.query(`
+        INSERT INTO task_updates (
+          taskId, status, note, updatedBy, filePath, fileName, fileType, createdAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @taskId, @status, @note, @updatedBy, @filePath, @fileName, @fileType, GETDATE()
+        )
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating task update:', error);
+      throw error;
+    }
+  }
+
+  async getTaskUpdates(taskId: number): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('taskId', taskId);
+      
+      const result = await request.query(`
+        SELECT * FROM task_updates 
+        WHERE taskId = @taskId 
+        ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting task updates:', error);
+      return [];
+    }
+  }
+
+  // Performance metrics
+  async createPerformanceMetric(metricData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('userId', metricData.userId);
+      request.input('tasksCompleted', metricData.tasksCompleted || 0);
+      request.input('averageResolutionTime', metricData.averageResolutionTime || null);
+      request.input('customerSatisfactionScore', metricData.customerSatisfactionScore || null);
+      request.input('month', metricData.month);
+      request.input('year', metricData.year);
+      
+      const result = await request.query(`
+        INSERT INTO performance_metrics (
+          userId, tasksCompleted, averageResolutionTime, customerSatisfactionScore,
+          month, year, createdAt, updatedAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @userId, @tasksCompleted, @averageResolutionTime, @customerSatisfactionScore,
+          @month, @year, GETDATE(), GETDATE()
+        )
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating performance metric:', error);
+      throw error;
+    }
+  }
+
+  async getPerformanceMetrics(userId: string): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('userId', userId);
+      
+      const result = await request.query(`
+        SELECT * FROM performance_metrics 
+        WHERE userId = @userId 
+        ORDER BY year DESC, month DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting performance metrics:', error);
+      return [];
+    }
+  }
+
+  // Bot configurations
+  async getAllBotConfigurations(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const result = await request.query(`
+        SELECT * FROM bot_configurations ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting bot configurations:', error);
+      return [];
+    }
+  }
+
+  async createBotConfiguration(configData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('name', configData.name);
+      request.input('botToken', configData.botToken);
+      request.input('chatId', configData.chatId);
+      request.input('isActive', configData.isActive !== false);
+      request.input('notifyOnTaskCreate', configData.notifyOnTaskCreate !== false);
+      request.input('notifyOnTaskUpdate', configData.notifyOnTaskUpdate !== false);
+      request.input('notifyOnTaskComplete', configData.notifyOnTaskComplete !== false);
+      
+      const result = await request.query(`
+        INSERT INTO bot_configurations (
+          name, botToken, chatId, isActive, notifyOnTaskCreate,
+          notifyOnTaskUpdate, notifyOnTaskComplete, createdAt, updatedAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @name, @botToken, @chatId, @isActive, @notifyOnTaskCreate,
+          @notifyOnTaskUpdate, @notifyOnTaskComplete, GETDATE(), GETDATE()
+        )
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating bot configuration:', error);
+      throw error;
+    }
+  }
+
+  async updateBotConfiguration(id: number, updates: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const updateFields = [];
+      
+      if (updates.name !== undefined) {
+        updateFields.push('name = @name');
+        request.input('name', updates.name);
+      }
+      if (updates.botToken !== undefined) {
+        updateFields.push('botToken = @botToken');
+        request.input('botToken', updates.botToken);
+      }
+      if (updates.chatId !== undefined) {
+        updateFields.push('chatId = @chatId');
+        request.input('chatId', updates.chatId);
+      }
+      if (updates.isActive !== undefined) {
+        updateFields.push('isActive = @isActive');
+        request.input('isActive', updates.isActive);
+      }
+      if (updates.notifyOnTaskCreate !== undefined) {
+        updateFields.push('notifyOnTaskCreate = @notifyOnTaskCreate');
+        request.input('notifyOnTaskCreate', updates.notifyOnTaskCreate);
+      }
+      if (updates.notifyOnTaskUpdate !== undefined) {
+        updateFields.push('notifyOnTaskUpdate = @notifyOnTaskUpdate');
+        request.input('notifyOnTaskUpdate', updates.notifyOnTaskUpdate);
+      }
+      if (updates.notifyOnTaskComplete !== undefined) {
+        updateFields.push('notifyOnTaskComplete = @notifyOnTaskComplete');
+        request.input('notifyOnTaskComplete', updates.notifyOnTaskComplete);
+      }
+      
+      if (updateFields.length === 0) {
+        return { id };
+      }
+      
+      updateFields.push('updatedAt = GETDATE()');
+      request.input('id', id);
+      
+      await request.query(`
+        UPDATE bot_configurations 
+        SET ${updateFields.join(', ')}
+        WHERE id = @id
+      `);
+      
+      return { id, ...updates };
+    } catch (error) {
+      console.error('Error updating bot configuration:', error);
+      throw error;
+    }
+  }
+
+  async deleteBotConfiguration(id: number): Promise<boolean> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      await request.query(`DELETE FROM bot_configurations WHERE id = @id`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting bot configuration:', error);
+      return false;
+    }
+  }
+
+  // Notification logs
+  async createNotificationLog(logData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('eventType', logData.eventType);
+      request.input('messageText', logData.messageText);
+      request.input('userId', logData.userId || null);
+      request.input('customerId', logData.customerId || null);
+      request.input('taskId', logData.taskId || null);
+      request.input('status', logData.status || 'pending');
+      request.input('sentAt', logData.sentAt || null);
+      
+      const result = await request.query(`
+        INSERT INTO notification_logs (
+          eventType, messageText, userId, customerId, taskId, status, sentAt, createdAt
+        )
+        OUTPUT INSERTED.id
+        VALUES (
+          @eventType, @messageText, @userId, @customerId, @taskId, @status, @sentAt, GETDATE()
+        )
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error creating notification log:', error);
+      throw error;
+    }
+  }
+
+  async getAllNotificationLogs(): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      const result = await request.query(`
+        SELECT * FROM notification_logs ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting notification logs:', error);
+      return [];
+    }
+  }
+
+  // Verify password for authentication
+  async verifyUserPassword(username: string, password: string): Promise<any | null> {
+    try {
+      const user = await this.getUserByUsername(username);
+      if (!user) return null;
+      
+      const isValid = await this.verifyPassword(password, user.password);
+      if (!isValid) return null;
+      
+      // Don't return password in response
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      console.error('Error verifying user password:', error);
+      return null;
+    }
+  }
+
+  // Additional methods for compatibility
+  async getUserByEmail(email: string): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('email', email);
+      
+      const result = await request.query(`
+        SELECT * FROM users WHERE email = @email
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      return undefined;
+    }
+  }
+
+  async createUserWithPassword(userData: any): Promise<any> {
+    // This is an alias for createUser for compatibility
+    return await this.createUser(userData);
+  }
+}
+
+export const storage = new MSSQLStorage();

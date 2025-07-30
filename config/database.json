@@ -1,0 +1,9 @@
+{
+  "host": "14.102.70.90",
+  "port": 1433,
+  "database": "WIZONE_TASK_MANAGER",
+  "username": "sa",
+  "password": "ss123456",
+  "ssl": false,
+  "trustCertificate": true
+}

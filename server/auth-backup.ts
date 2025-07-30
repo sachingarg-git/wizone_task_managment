@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage/mssql-storage";
 import { User as SelectUser } from "@shared/schema";
+// Session storage will be handled by MS SQL Server directly
 
 declare global {
   namespace Express {
@@ -117,16 +118,57 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      const existingUserByEmail = await storage.getUserByEmail(email);
-      if (existingUserByEmail) {
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      const user = await storage.createUserWithPassword({ username, password, firstName, lastName, email, role, department });
-      res.status(201).json({ message: "User created successfully", user: { id: user.id, username: user.username, email: user.email } });
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUserWithPassword({
+        id: username,
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        email,
+        role,
+        department,
+      });
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json(user);
+      });
     } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
+}
+
+export async function createDefaultUsers() {
+  try {
+    console.log("Setting up default user credentials...");
+    
+    // Update the current user to have admin credentials if no admin exists
+    const adminExists = await storage.getUserByUsername("admin");
+    if (!adminExists) {
+      // Find the first user and make them admin
+      const users = await storage.getAllUsers();
+      if (users.length > 0) {
+        const firstUser = users[0];
+        const hashedPassword = await hashPassword("admin123");
+        await storage.updateUser(firstUser.id, {
+          username: "admin",
+          password: hashedPassword,
+          role: "admin",
+        });
+        console.log("Updated existing user to admin: admin/admin123");
+      }
+    }
+
+    console.log("Default user setup complete");
+  } catch (error) {
+    console.error("Error setting up default users:", error);
+  }
 }

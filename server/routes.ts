@@ -3,9 +3,10 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage";
+import { storage } from "./storage/mssql-storage";
 import { setupAuth } from "./auth";
 import { seedDatabase } from "./seed";
+import { setupRoutes } from "./setup-routes";
 import { 
   insertTaskSchema, 
   insertCustomerSchema, 
@@ -23,6 +24,7 @@ import { promisify } from "util";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
 import { healthCheck } from "./health";
+import { loadDatabaseConfig, isDatabaseInitialized } from "./database/mssql-connection";
 
 // SQL Server sync helper function
 async function syncUserToSqlServer(user: any, connection: any) {
@@ -260,6 +262,36 @@ async function sendTaskNotification(task: any, eventType: string) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Check if database is configured and initialized
+  const dbConfig = await loadDatabaseConfig();
+  const isInitialized = dbConfig ? await isDatabaseInitialized() : false;
+  
+  // Setup routes for database configuration
+  app.use('/api/setup', setupRoutes);
+  
+  // If database is not configured, serve setup wizard
+  if (!dbConfig || !isInitialized) {
+    console.log('Database not configured, serving setup wizard');
+    
+    // Serve setup page for all non-API routes
+    app.get('/setup*', (req, res) => {
+      res.sendFile(path.join(process.cwd(), 'dist/public/setup.html'));
+    });
+    
+    // Redirect all other routes to setup
+    app.get('*', (req, res) => {
+      if (req.path.startsWith('/api/setup')) {
+        return; // Let API routes pass through
+      }
+      res.redirect('/setup');
+    });
+    
+    const httpServer = createServer(app);
+    return httpServer;
+  }
+  
+  console.log('Database configured and initialized, starting normal operation');
   // Configure multer for file uploads
   const upload = multer({
     dest: 'uploads/',

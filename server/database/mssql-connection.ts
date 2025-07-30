@@ -1,4 +1,6 @@
-import { ConnectionPool, config as MSSQLConfig } from 'mssql';
+import sql from 'mssql';
+const { ConnectionPool } = sql;
+type MSSQLConfig = sql.config;
 import fs from 'fs/promises';
 import path from 'path';
 
