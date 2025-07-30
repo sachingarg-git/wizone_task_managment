@@ -1,0 +1,54 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="url(#gradient)" stroke="#164e63" stroke-width="8"/>
+  
+  <!-- Support/Help Icon -->
+  <g transform="translate(512,512)">
+    <!-- Main screen/monitor -->
+    <rect x="-120" y="-80" width="240" height="160" rx="16" fill="#ffffff" stroke="#164e63" stroke-width="4"/>
+    <rect x="-100" y="-60" width="200" height="120" fill="#f0f9ff"/>
+    
+    <!-- Tools (wrench and gear) -->
+    <g transform="translate(-60,-20)">
+      <!-- Wrench -->
+      <path d="M-15,-15 L15,15 M-10,-20 L-20,-10 M20,10 L10,20" stroke="#22d3ee" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="-15" cy="-15" r="8" fill="none" stroke="#22d3ee" stroke-width="4"/>
+      <circle cx="15" cy="15" r="8" fill="none" stroke="#22d3ee" stroke-width="4"/>
+    </g>
+    
+    <g transform="translate(60,-20)">
+      <!-- Gear -->
+      <circle cx="0" cy="0" r="20" fill="none" stroke="#0891b2" stroke-width="4"/>
+      <circle cx="0" cy="0" r="8" fill="#0891b2"/>
+      <!-- Gear teeth -->
+      <g stroke="#0891b2" stroke-width="3" stroke-linecap="round">
+        <line x1="0" y1="-25" x2="0" y2="-30"/>
+        <line x1="18" y1="-13" x2="21" y2="-15"/>
+        <line x1="18" y1="13" x2="21" y2="15"/>
+        <line x1="0" y1="25" x2="0" y2="30"/>
+        <line x1="-18" y1="13" x2="-21" y2="15"/>
+        <line x1="-18" y1="-13" x2="-21" y2="-15"/>
+      </g>
+    </g>
+    
+    <!-- Network/connection lines -->
+    <g stroke="#0891b2" stroke-width="3" opacity="0.7">
+      <line x1="-60" y1="40" x2="60" y2="40"/>
+      <line x1="-40" y1="60" x2="40" y2="60"/>
+      <circle cx="-40" cy="40" r="3" fill="#0891b2"/>
+      <circle cx="0" cy="40" r="3" fill="#0891b2"/>
+      <circle cx="40" cy="40" r="3" fill="#0891b2"/>
+    </g>
+  </g>
+  
+  <!-- Company text -->
+  <text x="512" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#164e63">WIZONE</text>
+  <text x="512" y="950" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#0891b2">IT Support</text>
+</svg>

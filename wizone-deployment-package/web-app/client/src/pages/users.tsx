@@ -1,0 +1,1035 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Header from "@/components/layout/header";
+import UserFormModal from "@/components/modals/user-form-modal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  UserPlus, 
+  Search, 
+  Shield, 
+  Users, 
+  UserCheck, 
+  UserX,
+  Eye,
+  Edit,
+  Ban,
+  X,
+  Key
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth } from "@/hooks/useAuth";
+
+// Edit User Form Schema
+const editUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  role: z.string().min(1, "Role is required"),
+  department: z.string().optional(),
+  newPassword: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine((data) => {
+  // Only validate password confirmation if newPassword is provided
+  if (data.newPassword && data.newPassword.length > 0) {
+    if (!data.confirmPassword || data.confirmPassword.length === 0) {
+      return false;
+    }
+    if (data.newPassword.length < 6) {
+      return false;
+    }
+    return data.newPassword === data.confirmPassword;
+  }
+  return true;
+}, {
+  message: "Passwords don't match or password must be at least 6 characters",
+  path: ["confirmPassword"],
+});
+
+// Reset Password Form Schema
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password confirmation is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type EditUserFormData = z.infer<typeof editUserSchema>;
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+interface ResetPasswordFormProps {
+  user: any;
+  onClose: () => void;
+}
+
+function ResetPasswordForm({ user, onClose }: ResetPasswordFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordFormData) => {
+      await apiRequest("PUT", `/api/users/${user.id}/reset-password`, { newPassword: data.newPassword });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to reset password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ResetPasswordFormData) => {
+    resetPasswordMutation.mutate(data);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          <strong>Reset Password for:</strong> {user.firstName} {user.lastName} ({user.email})
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="newPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>New Password *</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Enter new password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm Password *</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Confirm new password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={resetPasswordMutation.isPending}>
+              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+interface EditUserFormProps {
+  user: any;
+  onClose: () => void;
+}
+
+function EditUserForm({ user, onClose }: EditUserFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
+
+  const form = useForm<EditUserFormData>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: {
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      username: user.username || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || "engineer",
+      department: user.department || "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: EditUserFormData) => {
+      // If password is provided, handle password reset separately for admin users
+      if (data.newPassword && data.newPassword.length > 0 && isAdmin) {
+        await apiRequest("PUT", `/api/users/${user.id}/reset-password`, { 
+          newPassword: data.newPassword 
+        });
+      }
+      
+      // Update user details (excluding password fields)
+      const { newPassword, confirmPassword, ...userUpdateData } = data;
+      await apiRequest("PUT", `/api/users/${user.id}`, userUpdateData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: EditUserFormData) => {
+    updateUserMutation.mutate(data);
+  };
+
+  return (
+    <div className="p-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter first name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter last name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address *</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="Enter email address" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Username Field - Admin Only and Read-Only for Security */}
+          {isAdmin && (
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username (Login ID)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter username for login" 
+                      {...field}
+                      className="bg-gray-50 border-gray-300"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-xs text-gray-500">
+                    Username used for system login. Only admins can modify usernames.
+                  </p>
+                </FormItem>
+              )}
+            />
+          )}
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter phone number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin - Full system access</SelectItem>
+                      <SelectItem value="manager">Manager - Task oversight, analytics</SelectItem>
+                      <SelectItem value="engineer">Engineer - General engineering tasks</SelectItem>
+                      <SelectItem value="backend_engineer">Backend Engineer - System backend tasks</SelectItem>
+                      <SelectItem value="field_engineer">Field Engineer - Field service tasks</SelectItem>
+                      <SelectItem value="support">Support - Customer support</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter department" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Password Reset Section - Admin Only */}
+          {isAdmin && (
+            <div className="space-y-4 pt-6 border-t border-gray-200">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                  <Key className="w-4 h-4 mr-2" />
+                  Reset Password (Admin Only)
+                </h4>
+                <p className="text-sm text-blue-700">
+                  Leave password fields empty to keep current password unchanged.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="newPassword"
+                  render={({ field }: { field: any }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password (min 6 chars)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }: { field: any }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Confirm new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateUserMutation.isPending}>
+              {updateUserMutation.isPending ? "Updating..." : "Update User"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+export default function UsersPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showRoleManagement, setShowRoleManagement] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ["/api/users"],
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: string }) => {
+      await apiRequest("PUT", `/api/users/${id}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive",
+      });
+    },
+  });
+
+
+
+  const usersArray = Array.isArray(users) ? users : [];
+  
+  const filteredUsers = usersArray.filter((user: any) => {
+    const matchesSearch = !searchQuery || 
+      `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const totalUsers = usersArray.length;
+  const activeUsers = usersArray.filter((u: any) => u.isActive).length;
+  const adminUsers = usersArray.filter((u: any) => u.role === 'admin').length;
+  const pendingUsers = Math.floor(totalUsers * 0.05); // Mock calculation
+
+  const getRoleColor = (role: string) => {
+    switch (role?.toLowerCase()) {
+      case 'admin': return 'bg-error/10 text-error';
+      case 'manager': return 'bg-purple-100 text-purple-800';
+      case 'engineer': return 'bg-primary/10 text-primary';
+      case 'backend_engineer': return 'bg-blue-100 text-blue-800';
+      case 'field_engineer': return 'bg-green-100 text-green-800';
+      case 'support': return 'bg-success/10 text-success';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getPerformanceScore = (user: any) => {
+    const latestMetrics = user.performanceMetrics?.[0];
+    return latestMetrics?.performanceScore ? parseFloat(latestMetrics.performanceScore) : 0;
+  };
+
+  const getLastActive = (_user: any) => {
+    // Mock last active calculation
+    const hours = Math.floor(Math.random() * 24);
+    if (hours === 0) return "Online now";
+    if (hours === 1) return "1 hour ago";
+    return `${hours} hours ago`;
+  };
+
+  const handleRoleChange = (userId: string, newRole: string) => {
+    updateRoleMutation.mutate({ id: userId, role: newRole });
+  };
+
+  const handleViewUser = (user: any) => {
+    setSelectedUser(user);
+    setShowUserDetails(true);
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setShowEditUser(true);
+  };
+
+  const handleResetPassword = (user: any) => {
+    setSelectedUser(user);
+    setShowResetPassword(true);
+  };
+
+  // Check if current user is admin
+  const isAdmin = currentUser?.role === 'admin';
+
+  return (
+    <div className="min-h-screen">
+      <Header 
+        title="User Management"
+        subtitle="Manage system users and their permissions"
+      >
+        <div className="flex space-x-3">
+          <Button variant="outline" onClick={() => setShowRoleManagement(true)}>
+            <Shield className="w-4 h-4 mr-2" />
+            Manage Roles
+          </Button>
+          <Button onClick={() => setShowAddUserModal(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+        </div>
+      </Header>
+      
+      <div className="p-6 space-y-8">
+        {/* User Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
+                </div>
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active Today</p>
+                  <p className="text-2xl font-bold text-gray-900">{activeUsers}</p>
+                </div>
+                <UserCheck className="w-5 h-5 text-success" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Administrators</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminUsers}</p>
+                </div>
+                <Shield className="w-5 h-5 text-warning" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Approval</p>
+                  <p className="text-2xl font-bold text-gray-900">{pendingUsers}</p>
+                </div>
+                <UserX className="w-5 h-5 text-error" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <CardTitle>System Users</CardTitle>
+              <div className="flex space-x-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="engineer">Engineer</SelectItem>
+                    <SelectItem value="support">Support</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {usersLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredUsers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>User ID</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Last Active</TableHead>
+                      <TableHead>Performance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user: any) => {
+                      const performanceScore = getPerformanceScore(user);
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              {user.profileImageUrl ? (
+                                <img 
+                                  src={user.profileImageUrl} 
+                                  alt={`${user.firstName} ${user.lastName}`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-gray-600">
+                                    {user.firstName?.[0]}{user.lastName?.[0]}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                              {user.id}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Select 
+                              value={user.role} 
+                              onValueChange={(value: string) => handleRoleChange(user.id, value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <Badge className={getRoleColor(user.role)}>
+                                  {user.role === 'backend_engineer' ? 'Backend Engineer' : 
+                                   user.role === 'field_engineer' ? 'Field Engineer' : 
+                                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Administrator</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="engineer">Engineer</SelectItem>
+                                <SelectItem value="backend_engineer">Backend Engineer</SelectItem>
+                                <SelectItem value="field_engineer">Field Engineer</SelectItem>
+                                <SelectItem value="support">Support</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>{user.department || 'Unassigned'}</TableCell>
+                          <TableCell className="text-sm text-gray-500">{getLastActive(user)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-success h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${Math.min(performanceScore, 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-900">{performanceScore.toFixed(1)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={user.isActive ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleViewUser(user)}
+                                title="View User Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleEditUser(user)}
+                                title="Edit User"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {isAdmin && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleResetPassword(user)}
+                                  title="Reset Password"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <Key className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-error hover:text-error"
+                                title="Deactivate User"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No users found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add User Modal */}
+      <UserFormModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+      />
+
+      {/* User Details Modal */}
+      <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>User Details</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowUserDetails(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-6">
+              {/* User Profile */}
+              <div className="flex items-center space-x-4">
+                {selectedUser.profileImageUrl ? (
+                  <img 
+                    src={selectedUser.profileImageUrl} 
+                    alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-lg font-medium text-gray-600">
+                      {selectedUser.firstName?.[0]}{selectedUser.lastName?.[0]}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </h3>
+                  <p className="text-gray-600">{selectedUser.email}</p>
+                  <Badge className={getRoleColor(selectedUser.role)}>
+                    {selectedUser.role === 'backend_engineer' ? 'Backend Engineer' : 
+                     selectedUser.role === 'field_engineer' ? 'Field Engineer' : 
+                     selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* User Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">Contact Information</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Email</span>
+                      <p className="text-gray-900">{selectedUser.email}</p>
+                    </div>
+                    {selectedUser.phone && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Phone</span>
+                        <p className="text-gray-900">{selectedUser.phone}</p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Department</span>
+                      <p className="text-gray-900">{selectedUser.department || 'Not assigned'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">System Information</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">User ID</span>
+                      <p className="text-gray-900 font-mono text-sm">{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Status</span>
+                      <div>
+                        <Badge className={selectedUser.isActive ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}>
+                          {selectedUser.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Last Active</span>
+                      <p className="text-gray-900">{getLastActive(selectedUser)}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Performance Score</span>
+                      <p className="text-gray-900">{getPerformanceScore(selectedUser).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowUserDetails(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  setShowUserDetails(false);
+                  handleEditUser(selectedUser);
+                }}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit User
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Modal */}
+      <Dialog open={showEditUser} onOpenChange={setShowEditUser}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Edit User</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowEditUser(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          {selectedUser && <EditUserForm user={selectedUser} onClose={() => setShowEditUser(false)} />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Management Modal */}
+      <Dialog open={showRoleManagement} onOpenChange={setShowRoleManagement}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Role Management</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowRoleManagement(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="p-4">
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">Available Roles</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-red-700">Admin</span>
+                      <p className="text-sm text-gray-600">Full system access, user management</p>
+                    </div>
+                    <Badge className="bg-red-100 text-red-800">Highest</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-purple-700">Manager</span>
+                      <p className="text-sm text-gray-600">Task oversight, performance tracking</p>
+                    </div>
+                    <Badge className="bg-purple-100 text-purple-800">High</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-blue-700">Engineer</span>
+                      <p className="text-sm text-gray-600">Task execution, customer interaction</p>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-800">Standard</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-indigo-700">Backend Engineer</span>
+                      <p className="text-sm text-gray-600">Backend systems, API development</p>
+                    </div>
+                    <Badge className="bg-indigo-100 text-indigo-800">Technical</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-emerald-700">Field Engineer</span>
+                      <p className="text-sm text-gray-600">On-site installations, field work</p>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-800">Field</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-green-700">Support</span>
+                      <p className="text-sm text-gray-600">Customer support, basic tasks</p>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">Basic</Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> You can change user roles directly from the users table using the dropdown in the "Role" column.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button variant="outline" onClick={() => setShowRoleManagement(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Modal - Admin Only */}
+      {isAdmin && (
+        <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>Reset Password</DialogTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowResetPassword(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+            {selectedUser && <ResetPasswordForm user={selectedUser} onClose={() => setShowResetPassword(false)} />}
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
