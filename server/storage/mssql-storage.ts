@@ -1221,6 +1221,87 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
+  // Assign multiple field engineers to a task
+  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], userId: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const originalTask = await this.getTask(taskId);
+      
+      if (!originalTask) {
+        throw new Error('Task not found');
+      }
+
+      const tasks = [];
+      
+      // For each field engineer, create a copy of the task
+      for (let i = 0; i < fieldEngineerIds.length; i++) {
+        const fieldEngineerId = fieldEngineerIds[i];
+        
+        if (i === 0) {
+          // Update the original task with first field engineer
+          const request = pool.request();
+          request.input('taskId', taskId);
+          request.input('fieldEngineerId', fieldEngineerId);
+          request.input('updatedBy', userId);
+          
+          await request.query(`
+            UPDATE tasks 
+            SET fieldEngineerId = @fieldEngineerId, 
+                assignedTo = @fieldEngineerId,
+                updatedAt = GETDATE()
+            WHERE id = @taskId
+          `);
+          
+          const updatedTask = await this.getTask(taskId);
+          tasks.push(updatedTask);
+        } else {
+          // Create duplicate tasks for additional field engineers
+          const request = pool.request();
+          const newTicketNumber = `${originalTask.ticketNumber}-${i + 1}`;
+          
+          request.input('ticketNumber', newTicketNumber);
+          request.input('title', originalTask.title);
+          request.input('description', originalTask.description);
+          request.input('customerId', originalTask.customerId);
+          request.input('customerName', originalTask.customerName);
+          request.input('status', originalTask.status);
+          request.input('priority', originalTask.priority);
+          request.input('issueType', originalTask.issueType);
+          request.input('fieldEngineerId', fieldEngineerId);
+          request.input('assignedTo', fieldEngineerId);
+          request.input('backendEngineerId', originalTask.backendEngineerId);
+          
+          const result = await request.query(`
+            INSERT INTO tasks (
+              ticketNumber, title, description, customerId, customerName,
+              status, priority, issueType, assignedTo, fieldEngineerId,
+              backendEngineerId, createdAt, updatedAt
+            )
+            OUTPUT INSERTED.id
+            VALUES (
+              @ticketNumber, @title, @description, @customerId, @customerName,
+              @status, @priority, @issueType, @assignedTo, @fieldEngineerId,
+              @backendEngineerId, GETDATE(), GETDATE()
+            )
+          `);
+          
+          const newTaskId = result.recordset[0].id;
+          const newTask = await this.getTask(newTaskId);
+          tasks.push(newTask);
+        }
+      }
+      
+      return { 
+        success: true, 
+        message: `Task assigned to ${fieldEngineerIds.length} field engineers`, 
+        tasks: tasks 
+      };
+    } catch (error) {
+      console.error('Error assigning multiple field engineers:', error);
+      throw error;
+    }
+  }
+
   // Method to get all SQL connections - Fixed implementation
   async getAllSqlConnections(): Promise<any[]> {
     try {

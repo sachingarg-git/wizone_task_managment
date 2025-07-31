@@ -1207,6 +1207,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Alternative endpoint for field engineer assignment (matching frontend)
+  app.post('/api/tasks/:id/assign-field-engineers', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { fieldEngineerIds } = req.body;
+
+      if (!fieldEngineerIds || !Array.isArray(fieldEngineerIds) || fieldEngineerIds.length === 0) {
+        return res.status(400).json({ message: "At least one field engineer ID is required" });
+      }
+
+      const result = await storage.assignMultipleFieldEngineers(taskId, fieldEngineerIds, userId);
+      
+      // Send notification for each assigned task
+      try {
+        console.log("Sending field assignment notifications...");
+        for (const task of result.tasks) {
+          await sendTaskNotification(task, 'task_update');
+        }
+        console.log("Field assignment notifications sent successfully");
+      } catch (notificationError) {
+        console.error('Error sending field assignment notifications:', notificationError);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error assigning multiple field engineers:", error);
+      res.status(500).json({ message: "Failed to assign multiple field engineers" });
+    }
+  });
+
   app.post('/api/tasks/:id/field-status', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
