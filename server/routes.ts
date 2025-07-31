@@ -23,7 +23,7 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
-import { healthCheck } from "./health";
+import { setupHealthEndpoint } from "./health";
 import { loadDatabaseConfig, isDatabaseInitialized } from "./database/mssql-connection";
 import mobileAuthRoutes from "./routes/mobile-auth";
 
@@ -313,9 +313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Health check endpoint for monitoring
-  app.get('/health', healthCheck);
-  app.get('/api/health', healthCheck);
+  // Setup health endpoints for mobile APK network detection
+  setupHealthEndpoint(app);
 
   // Serve APK generation page
   app.get("/generate-apk", (req, res) => {

@@ -1,8 +1,27 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage import - handle both React Native and web environments
+let AsyncStorage: any;
+try {
+  AsyncStorage = require('@react-native-async-storage/async-storage').default;
+} catch {
+  // Web fallback - use localStorage
+  AsyncStorage = {
+    getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+    setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
+    removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key))
+  };
+}
+import { mobileNetworkConfig } from './mobile-network';
 
-// Base URL for API - dynamically detect the backend URL
-const getApiBaseUrl = () => {
-  // Check if running in production deployment
+// Enhanced API base URL detection for mobile APK
+const getApiBaseUrl = async (): Promise<string> => {
+  // For mobile APK installations, use network detection
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('wv')) {
+    // WebView detected - likely mobile APK
+    console.log('📱 Mobile APK detected, using network detection...');
+    return await mobileNetworkConfig.getApiBaseUrl();
+  }
+  
+  // For web browser or emulator
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
@@ -15,11 +34,12 @@ const getApiBaseUrl = () => {
     return window.location.origin;
   }
   
-  // Fallback for server-side rendering
-  return 'http://localhost:5000';
+  // Fallback - try network detection
+  return await mobileNetworkConfig.getApiBaseUrl();
 };
 
-const API_BASE_URL = getApiBaseUrl();
+// Cache the API base URL
+let API_BASE_URL: string | null = null;
 
 interface ApiResponse {
   [key: string]: any;
@@ -31,12 +51,20 @@ export async function apiRequest(
   data?: any
 ): Promise<ApiResponse> {
   try {
+    // Get the current API base URL (with network detection for mobile)
+    if (!API_BASE_URL) {
+      API_BASE_URL = await getApiBaseUrl();
+      console.log(`🌐 Using API base URL: ${API_BASE_URL}`);
+    }
+    
     const token = await AsyncStorage.getItem('authToken');
     
     const config: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+        'X-Requested-With': 'mobile',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       credentials: 'include', // Important for cookie-based sessions
@@ -46,6 +74,7 @@ export async function apiRequest(
       config.body = JSON.stringify(data);
     }
 
+    console.log(`📡 API Request: ${method} ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
     if (!response.ok) {
@@ -62,6 +91,15 @@ export async function apiRequest(
     return JSON.parse(responseText);
   } catch (error) {
     console.error('API Request Error:', error);
+    
+    // If network error, try to reconnect with network detection
+    const errorMessage = (error as Error).message || '';
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      console.log('🔄 Network error, attempting reconnection...');
+      mobileNetworkConfig.reset();
+      API_BASE_URL = null; // Reset for next request
+    }
+    
     throw error;
   }
 }

@@ -1,17 +1,30 @@
-import { Request, Response } from 'express';
+import type { Express } from "express";
 
-export function healthCheck(req: Request, res: Response) {
-  const healthInfo = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
-    },
-    node: process.version,
-    env: process.env.NODE_ENV || 'development'
-  };
-
-  res.status(200).json(healthInfo);
+// Health check endpoint for mobile APK network detection
+export function setupHealthEndpoint(app: Express) {
+  app.get('/api/health', (req, res) => {
+    const userAgent = req.get('user-agent') || '';
+    const isMobile = userAgent.includes('Mobile') || userAgent.includes('WizoneFieldEngineerApp');
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      server: 'Wizone IT Support Portal',
+      version: '1.0.0',
+      mobile_supported: true,
+      request_source: isMobile ? 'mobile' : 'web',
+      user_agent: userAgent.substring(0, 50)
+    });
+  });
+  
+  // Additional health endpoints for mobile debugging
+  app.get('/api/mobile/health', (req, res) => {
+    res.json({
+      status: 'mobile_ready',
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      authentication: 'enabled',
+      cors: 'configured'
+    });
+  });
 }

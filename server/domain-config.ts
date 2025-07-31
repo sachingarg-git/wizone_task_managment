@@ -161,12 +161,18 @@ export function setupDomainCORS(app: Express) {
     const origin = req.get('origin');
     const hostname = req.get('host') || req.hostname;
     
-    // MOBILE APP SUPPORT: Allow requests with no origin (mobile apps, APK)
-    if (!origin) {
+    const userAgent = req.get('user-agent') || '';
+    
+    // ENHANCED MOBILE APP SUPPORT: Allow requests with no origin (mobile apps, APK)
+    if (!origin || userAgent.includes('WizoneFieldEngineerApp')) {
       res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, User-Agent, X-Mobile-App');
       res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Expose-Headers', 'Set-Cookie, Authorization');
+      res.header('X-Mobile-Supported', 'true');
+      
+      console.log(`📱 Mobile APK request: ${req.method} ${req.path} - UA: ${userAgent.substring(0, 30)}...`);
       
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
