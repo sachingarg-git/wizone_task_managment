@@ -155,17 +155,36 @@ export function domainValidationMiddleware(req: any, res: any, next: any) {
   next();
 }
 
-// Setup CORS for multiple domains
+// Setup CORS for multiple domains + Mobile App Support
 export function setupDomainCORS(app: Express) {
   app.use((req, res, next) => {
     const origin = req.get('origin');
     const hostname = req.get('host') || req.hostname;
+    
+    // MOBILE APP SUPPORT: Allow requests with no origin (mobile apps, APK)
+    if (!origin) {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+      }
+      return next();
+    }
     
     // Allow all domains that are configured
     if (origin && domainManager.isValidDomain(new URL(origin).hostname)) {
       res.header('Access-Control-Allow-Origin', origin);
     } else if (domainManager.isValidDomain(hostname)) {
       res.header('Access-Control-Allow-Origin', `${req.protocol}://${hostname}`);
+    } else {
+      // Fallback: Allow localhost and development environments
+      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.0.2.2')) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
     }
     
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
