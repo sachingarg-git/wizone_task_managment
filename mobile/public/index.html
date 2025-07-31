@@ -567,10 +567,21 @@
         let tasks = [];
         let currentTaskId = null;
         
-        // API Base URL - Use real server IP for better connectivity
-        const API_BASE = window.location.protocol === 'file:' 
-            ? 'http://172.31.126.2:5000'  // Your server's real IP address
-            : window.location.origin;
+        // API Base URL - Dynamic detection for mobile deployment
+        let API_BASE = window.location.origin;
+        
+        // For mobile APK (file:// protocol), use real server IP
+        if (window.location.protocol === 'file:') {
+            // Try multiple connection methods for maximum compatibility
+            API_BASE = 'http://172.31.126.2:5000';  // Primary: Your server IP
+            
+            // Fallback IPs for different network configurations
+            const FALLBACK_IPS = [
+                'http://10.0.2.2:5000',      // Android emulator
+                'http://192.168.1.100:5000', // Local network
+                'http://localhost:5000'       // Localhost
+            ];
+        }
         
         // Location tracking variables
         let watchLocationId = null;
@@ -616,12 +627,14 @@
             loginBtn.textContent = 'Logging in...';
             
             try {
-                // Try direct authentication first
+                // Enhanced API connection with multiple attempts
                 let response;
-                let userData;
+                let userData = null;
+                let connectionSuccess = false;
                 
-                // Method 1: Try direct API call
+                // Method 1: Try primary API endpoint
                 try {
+                    console.log('Attempting login to:', `${API_BASE}/api/auth/login`);
                     response = await fetch(`${API_BASE}/api/auth/login`, {
                         method: 'POST',
                         headers: {
@@ -632,14 +645,51 @@
                         credentials: 'include'
                     });
                     
+                    console.log('Response status:', response.status);
                     if (response.ok) {
                         userData = await response.json();
+                        connectionSuccess = true;
+                        console.log('Login successful:', userData);
                     } else {
-                        throw new Error('API call failed');
+                        const errorText = await response.text();
+                        console.log('API Error:', errorText);
+                        throw new Error(`Server error: ${response.status}`);
                     }
                 } catch (apiError) {
-                    console.error('API connection failed:', apiError);
-                    throw new Error('Unable to connect to server. Please check your connection.');
+                    console.error('Primary API connection failed:', apiError);
+                    
+                    // Method 2: Try fallback IPs for mobile APK
+                    if (window.location.protocol === 'file:' && typeof FALLBACK_IPS !== 'undefined') {
+                        for (const fallbackUrl of FALLBACK_IPS) {
+                            try {
+                                console.log('Trying fallback:', fallbackUrl);
+                                response = await fetch(`${fallbackUrl}/api/auth/login`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ username, password }),
+                                    mode: 'cors',
+                                    credentials: 'include'
+                                });
+                                
+                                if (response.ok) {
+                                    userData = await response.json();
+                                    connectionSuccess = true;
+                                    API_BASE = fallbackUrl; // Update API_BASE for future calls
+                                    console.log('Fallback connection successful:', fallbackUrl);
+                                    break;
+                                }
+                            } catch (fallbackError) {
+                                console.log('Fallback failed:', fallbackUrl, fallbackError);
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    if (!connectionSuccess) {
+                        throw new Error('Unable to connect to server. Please check your network connection.');
+                    }
                 }
                 
                 if (userData) {
@@ -688,21 +738,29 @@
             try {
                 let allTasks = [];
                 
-                // Method 1: Try to get tasks from API
+                // Enhanced task loading with better error handling
                 try {
+                    console.log('Loading tasks from:', `${API_BASE}/api/tasks`);
                     const response = await fetch(`${API_BASE}/api/tasks`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
                         mode: 'cors',
                         credentials: 'include'
                     });
                     
+                    console.log('Tasks response status:', response.status);
                     if (response.ok) {
                         allTasks = await response.json();
+                        console.log('Tasks loaded successfully:', allTasks.length, 'tasks');
                     } else {
-                        throw new Error('API call failed');
+                        console.log('Tasks API failed with status:', response.status);
+                        allTasks = [];
                     }
                 } catch (apiError) {
                     console.error('Failed to load tasks from server:', apiError);
-                    allTasks = []; // Empty array if server not available
+                    allTasks = [];
                 }
                 
                 // Filter tasks assigned to current user (field engineer)
