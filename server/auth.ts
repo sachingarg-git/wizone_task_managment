@@ -84,9 +84,47 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Login endpoint
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  // Login endpoint - Enhanced for mobile compatibility
+  app.post("/api/auth/login", (req, res, next) => {
+    console.log('🔐 Login attempt:', req.body.username);
+    console.log('📱 User Agent:', req.get('User-Agent') || 'Unknown');
+    console.log('🌐 Origin:', req.get('Origin') || 'No Origin');
+    
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        console.error('❌ Auth error:', err);
+        return res.status(500).json({ error: 'Authentication failed', message: err.message });
+      }
+      
+      if (!user) {
+        console.log('❌ Invalid credentials for:', req.body.username);
+        return res.status(401).json({ error: 'Invalid credentials', message: info?.message || 'Login failed' });
+      }
+      
+      // For mobile APK requests (no origin/file protocol), return user data directly
+      const origin = req.get('Origin');
+      const userAgent = req.get('User-Agent') || '';
+      const isMobileAPK = !origin || origin.includes('file://') || userAgent.includes('Mobile');
+      
+      if (isMobileAPK) {
+        console.log('📱 Mobile APK login - returning user data directly');
+        // Remove sensitive password field
+        const { password, ...safeUser } = user;
+        return res.status(200).json(safeUser);
+      }
+      
+      // For web browsers, use session
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('❌ Session login error:', loginErr);
+          return res.status(500).json({ error: 'Session creation failed' });
+        }
+        
+        console.log('✅ Web login successful for:', user.username);
+        const { password, ...safeUser } = user;
+        res.status(200).json(safeUser);
+      });
+    })(req, res, next);
   });
 
   // Logout endpoint

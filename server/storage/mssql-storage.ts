@@ -82,6 +82,26 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
+  // Public method for mobile app authentication
+  async verifyUserPassword(username: string, password: string): Promise<any | null> {
+    try {
+      const user = await this.getUserByUsername(username);
+      if (!user || !user.password) {
+        return null;
+      }
+      
+      const isValid = await this.verifyPassword(password, user.password);
+      if (!isValid) return null;
+      
+      // Don't return password in response
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      console.error('Password verification error:', error);
+      return null;
+    }
+  }
+
   // User operations
   async getUser(id: string): Promise<any | undefined> {
     try {
@@ -808,23 +828,7 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
-  // Verify password for authentication
-  async verifyUserPassword(username: string, password: string): Promise<any | null> {
-    try {
-      const user = await this.getUserByUsername(username);
-      if (!user) return null;
-      
-      const isValid = await this.verifyPassword(password, user.password);
-      if (!isValid) return null;
-      
-      // Don't return password in response
-      const { password: _, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    } catch (error) {
-      console.error('Error verifying user password:', error);
-      return null;
-    }
-  }
+
 
   // Additional methods for compatibility
   async getUserByEmail(email: string): Promise<any | undefined> {
