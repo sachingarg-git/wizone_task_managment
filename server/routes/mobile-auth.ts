@@ -1,84 +1,133 @@
+// Mobile-specific authentication routes for WebView/APK
 import { Router } from 'express';
 import { storage } from '../storage/mssql-storage';
 
 const router = Router();
 
-// Mobile-specific login endpoint (no sessions required)
-router.post('/mobile/login', async (req, res) => {
+// Mobile login endpoint with direct storage verification
+router.post('/api/mobile/auth/login', async (req, res) => {
   try {
-    console.log('📱 MOBILE LOGIN REQUEST');
-    console.log('Username:', req.body.username);
-    console.log('User Agent:', req.get('User-Agent'));
-    console.log('Origin:', req.get('Origin') || 'No Origin');
-    
     const { username, password } = req.body;
+    
+    console.log(`📱 MOBILE LOGIN ATTEMPT: ${username}`);
     
     if (!username || !password) {
       return res.status(400).json({ 
-        error: 'Missing credentials', 
+        error: 'Missing credentials',
         message: 'Username and password are required' 
       });
     }
     
-    // Get user from database
-    const user = await storage.getUserByUsername(username.trim());
+    // Direct storage verification for mobile
+    const isValid = await storage.verifyUserPassword(username, password);
     
-    if (!user) {
-      console.log('❌ User not found:', username);
-      return res.status(401).json({ 
-        error: 'Invalid credentials', 
-        message: 'User not found' 
+    if (isValid) {
+      const user = await storage.getUserByUsername(username);
+      
+      if (user && user.isActive) {
+        // Create mobile session
+        req.session.user = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          department: user.department,
+          isActive: user.isActive,
+          isMobile: true
+        };
+        
+        console.log(`✅ MOBILE LOGIN SUCCESS: ${username} (${user.role})`);
+        
+        res.json({
+          success: true,
+          user: req.session.user,
+          message: 'Login successful'
+        });
+      } else {
+        console.log(`❌ MOBILE LOGIN - User inactive: ${username}`);
+        res.status(401).json({ 
+          error: 'User inactive',
+          message: 'User account is inactive' 
+        });
+      }
+    } else {
+      console.log(`❌ MOBILE LOGIN - Invalid credentials: ${username}`);
+      res.status(401).json({ 
+        error: 'Invalid credentials',
+        message: 'Invalid username or password' 
       });
     }
-    
-    if (!user.isActive) {
-      console.log('❌ User inactive:', username);
-      return res.status(401).json({ 
-        error: 'Account disabled', 
-        message: 'Account is not active' 
-      });
-    }
-    
-    // Verify password using the storage method
-    const isValidPassword = await storage.verifyUserPassword(username, password);
-    
-    if (!isValidPassword) {
-      console.log('❌ Invalid password for:', username);
-      return res.status(401).json({ 
-        error: 'Invalid credentials', 
-        message: 'Incorrect password' 
-      });
-    }
-    
-    console.log('✅ Mobile login successful:', username);
-    
-    // Return user data without password
-    const { password: pwd, ...safeUser } = user;
-    res.status(200).json(safeUser);
-    
   } catch (error) {
-    console.error('❌ Mobile login error:', error);
+    console.error('Mobile login error:', error);
     res.status(500).json({ 
-      error: 'Login failed', 
-      message: 'Internal server error' 
+      error: 'Server error',
+      message: 'Login failed due to server error' 
     });
   }
 });
 
-// Mobile-specific user info endpoint
-router.get('/mobile/user/:userId', async (req, res) => {
+// Mobile user info endpoint
+router.get('/api/mobile/auth/user', async (req, res) => {
   try {
-    const user = await storage.getUser(req.params.userId);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (req.session && req.session.user) {
+      console.log(`📱 MOBILE USER INFO: ${req.session.user.username}`);
+      res.json(req.session.user);
+    } else {
+      console.log(`📱 MOBILE USER INFO: No session found`);
+      res.status(401).json({ 
+        error: 'Not authenticated',
+        message: 'No active session' 
+      });
     }
-    
-    const { password, ...safeUser } = user;
-    res.json(safeUser);
   } catch (error) {
-    console.error('Mobile user fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    console.error('Mobile user info error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to get user info' 
+    });
+  }
+});
+
+// Mobile field engineer tasks
+router.get('/api/mobile/field-engineers/:id/tasks', async (req, res) => {
+  try {
+    const fieldEngineerId = req.params.id;
+    console.log(`📱 MOBILE FIELD TASKS REQUEST: ${fieldEngineerId}`);
+    
+    const tasks = await storage.getFieldTasksByEngineer(fieldEngineerId);
+    console.log(`📱 Found ${tasks.length} tasks for field engineer ${fieldEngineerId}`);
+    
+    res.json(tasks);
+  } catch (error) {
+    console.error('Mobile field tasks error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to fetch tasks' 
+    });
+  }
+});
+
+// Mobile task status update
+router.post('/api/mobile/tasks/:id/status', async (req, res) => {
+  try {
+    const taskId = parseInt(req.params.id);
+    const { status, note } = req.body;
+    const userId = req.session?.user?.id || 'mobile_user';
+    
+    console.log(`📱 MOBILE TASK STATUS UPDATE: Task ${taskId} → ${status}`);
+    
+    const task = await storage.updateFieldTaskStatus(taskId, status, userId, note);
+    
+    console.log(`✅ Mobile task status updated successfully`);
+    res.json(task);
+  } catch (error) {
+    console.error('Mobile task status update error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to update task status' 
+    });
   }
 });
 

@@ -846,6 +846,264 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
+  // Field Engineer Methods - CRITICAL FOR MOBILE APK WORKFLOW
+  async assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy?: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('taskId', taskId);
+      request.input('fieldEngineerId', fieldEngineerId);
+      request.input('assignedBy', assignedBy || null);
+      
+      await request.query(`
+        UPDATE tasks 
+        SET fieldEngineerId = @fieldEngineerId, 
+            status = 'assigned_to_field',
+            updatedAt = GETDATE()
+        WHERE id = @taskId
+      `);
+      
+      console.log(`✅ Task ${taskId} assigned to field engineer ${fieldEngineerId}`);
+      return await this.getTask(taskId);
+    } catch (error) {
+      console.error('Error assigning task to field engineer:', error);
+      throw error;
+    }
+  }
+
+  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any[]> {
+    try {
+      const results = [];
+      const originalTask = await this.getTask(taskId);
+      
+      for (let i = 0; i < fieldEngineerIds.length; i++) {
+        const fieldEngineerId = fieldEngineerIds[i];
+        
+        if (i === 0) {
+          // Update original task
+          const updatedTask = await this.assignTaskToFieldEngineer(taskId, fieldEngineerId, assignedBy);
+          results.push(updatedTask);
+        } else {
+          // Create duplicate tasks for additional field engineers
+          const newTaskData = {
+            ...originalTask,
+            ticketNumber: `${originalTask.ticketNumber}-${i + 1}`,
+            fieldEngineerId: fieldEngineerId,
+            status: 'assigned_to_field',
+            assignedTo: assignedBy,
+            id: undefined // Remove ID so it creates new task
+          };
+          
+          const newTask = await this.createTask(newTaskData);
+          results.push(newTask);
+        }
+      }
+      
+      console.log(`✅ Task assigned to ${fieldEngineerIds.length} field engineers`);
+      return results;
+    } catch (error) {
+      console.error('Error assigning multiple field engineers:', error);
+      throw error;
+    }
+  }
+
+  async getFieldTasksByEngineer(fieldEngineerId: string): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('fieldEngineerId', fieldEngineerId);
+      
+      const result = await request.query(`
+        SELECT t.*, c.name as customerName, c.address as customerAddress
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        WHERE t.fieldEngineerId = @fieldEngineerId
+        ORDER BY t.createdAt DESC
+      `);
+      
+      console.log(`✅ Found ${result.recordset.length} tasks for field engineer ${fieldEngineerId}`);
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting field engineer tasks:', error);
+      return [];
+    }
+  }
+
+  async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      let whereClause = "WHERE role = 'field_engineer' AND isActive = 1";
+      
+      // Add region filter if provided
+      if (region && region !== 'all') {
+        whereClause += " AND (region = @region OR region IS NULL)";
+        request.input('region', region);
+      }
+      
+      // Add skillSet filter if provided
+      if (skillSet && skillSet !== 'all') {
+        whereClause += " AND (skillSet LIKE @skillSet OR skillSet IS NULL)";
+        request.input('skillSet', `%${skillSet}%`);
+      }
+      
+      const result = await request.query(`
+        SELECT id, username, firstName, lastName, email, phone, role, isActive,
+               'Available' as status,
+               COALESCE(region, 'No region') as region,
+               COALESCE(skillSet, 'General') as skillSet
+        FROM users 
+        ${whereClause}
+        ORDER BY firstName, lastName
+      `);
+      
+      console.log(`✅ Found ${result.recordset.length} available field engineers`);
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting available field engineers:', error);
+      return [];
+    }
+  }
+
+  // Field task status update methods
+  async updateFieldTaskStatus(taskId: number, status: string, updatedBy: string, note?: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('taskId', taskId);
+      request.input('status', status);
+      request.input('updatedBy', updatedBy);
+      
+      // Update task status
+      await request.query(`
+        UPDATE tasks 
+        SET status = @status, updatedAt = GETDATE()
+        WHERE id = @taskId
+      `);
+      
+      // Create task update record
+      if (note) {
+        await this.createTaskUpdate({
+          taskId,
+          status,
+          note,
+          updatedBy
+        });
+      }
+      
+      console.log(`✅ Field task ${taskId} status updated to ${status}`);
+      return await this.getTask(taskId);
+    } catch (error) {
+      console.error('Error updating field task status:', error);
+      throw error;
+    }
+  }
+
+  async completeFieldTask(taskId: number, completedBy: string, completionNote: string, files?: any[]): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('taskId', taskId);
+      request.input('completedBy', completedBy);
+      
+      // Update task to completed
+      await request.query(`
+        UPDATE tasks 
+        SET status = 'completed', 
+            resolvedAt = GETDATE(),
+            updatedAt = GETDATE()
+        WHERE id = @taskId
+      `);
+      
+      // Create completion update record
+      await this.createTaskUpdate({
+        taskId,
+        status: 'completed',
+        note: completionNote,
+        updatedBy: completedBy,
+        filePath: files && files.length > 0 ? files[0].path : null,
+        fileName: files && files.length > 0 ? files[0].name : null,
+        fileType: files && files.length > 0 ? files[0].type : null
+      });
+      
+      console.log(`✅ Field task ${taskId} completed successfully`);
+      return await this.getTask(taskId);
+    } catch (error) {
+      console.error('Error completing field task:', error);  
+      throw error;
+    }
+  }
+
+  // Password verification method for mobile authentication
+  async verifyUserPassword(username: string, password: string): Promise<boolean> {
+    try {
+      const user = await this.getUserByUsername(username);
+      
+      if (!user || !user.password) {
+        console.log(`❌ Password verification failed - user not found or no password: ${username}`);
+        return false;
+      }
+      
+      // Import password comparison function
+      const { scrypt, timingSafeEqual } = await import('crypto');
+      const { promisify } = await import('util');
+      const scryptAsync = promisify(scrypt);
+      
+      try {
+        const [hashed, salt] = user.password.split(".");
+        if (!hashed || !salt) {
+          console.log(`❌ Password verification failed - invalid hash format: ${username}`);
+          return false;
+        }
+        
+        const hashedBuf = Buffer.from(hashed, "hex");
+        const suppliedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+        
+        // Ensure buffers are the same length before comparing
+        if (hashedBuf.length !== suppliedBuf.length) {
+          console.log(`❌ Password verification failed - buffer length mismatch: ${username}`);
+          return false;
+        }
+        
+        const isValid = timingSafeEqual(hashedBuf, suppliedBuf);
+        console.log(`${isValid ? '✅' : '❌'} Password verification result for ${username}: ${isValid}`);
+        return isValid;
+      } catch (error) {
+        console.error(`❌ Password verification error for ${username}:`, error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error in verifyUserPassword:', error);
+      return false;
+    }
+  }
+
+  async getTasksByStatus(status: string): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('status', status);
+      
+      const result = await request.query(`
+        SELECT t.*, c.name as customerName, u.firstName, u.lastName
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        LEFT JOIN users u ON t.fieldEngineerId = u.id
+        WHERE t.status = @status
+        ORDER BY t.createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting tasks by status:', error);
+      return [];
+    }
+  }
+
   // Additional methods for compatibility
   async getUserByEmail(email: string): Promise<any | undefined> {
     try {

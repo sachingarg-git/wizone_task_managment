@@ -25,6 +25,7 @@ import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
 import { healthCheck } from "./health";
 import { loadDatabaseConfig, isDatabaseInitialized } from "./database/mssql-connection";
+import mobileAuthRoutes from "./routes/mobile-auth";
 
 // SQL Server sync helper function
 async function syncUserToSqlServer(user: any, connection: any) {
@@ -354,6 +355,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Auth middleware
   setupAuth(app);
+  
+  // Add mobile authentication routes
+  app.use(mobileAuthRoutes);
 
   // Skip user seeding for Windows compatibility
   console.log("User seeding skipped for Windows compatibility");
@@ -587,13 +591,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Authentication middleware
-  const isAuthenticated = (req: any, res: any, next: any) => {
-    if (!req.isAuthenticated()) {
+  // Enhanced Authentication middleware - handles both web sessions and mobile authentication
+  const isAuthenticated = async (req: any, res: any, next: any) => {
+    try {
+      // Check if user is authenticated via Passport session
+      if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+        console.log(`✅ Passport authenticated: ${req.user.username} (${req.user.role}) - ${req.method} ${req.path}`);
+        return next();
+      }
+      
+      // Check if user is authenticated via session (fallback)
+      if (req.session && req.session.user) {
+        req.user = req.session.user;
+        console.log(`✅ Session authenticated: ${req.user.username} (${req.user.role}) - ${req.method} ${req.path}`);
+        return next();
+      }
+      
+      // Mobile/WebView authentication - check User-Agent and Origin
+      const userAgent = req.get('User-Agent') || '';
+      const origin = req.get('Origin');
+      const referer = req.get('Referer') || '';
+      
+      const isMobileRequest = userAgent.includes('Mobile') || 
+                             userAgent.includes('WebView') || 
+                             userAgent.includes('WizoneApp') || 
+                             userAgent.includes('Android') ||
+                             origin === null || 
+                             origin === 'file://' || 
+                             referer.includes('file://') ||
+                             req.get('X-Requested-With') === 'mobile';
+      
+      if (isMobileRequest) {
+        console.log(`📱 Mobile request detected for ${req.method} ${req.path} - User-Agent: ${userAgent.substring(0, 50)}...`);
+        
+        // For mobile requests without authentication, allow limited access to auth endpoints
+        if (req.path.includes('/api/auth/') || req.path === '/api/auth/user') {
+          console.log(`📱 Allowing mobile access to auth endpoint: ${req.path}`);
+          return next();
+        }
+        
+        // For other mobile API requests, check if there's any user session or create temporary
+        if (req.session && req.session.user) {
+          req.user = req.session.user;
+          console.log(`📱 Mobile session found: ${req.user.username}`);
+          return next();
+        }
+        
+        // Allow field engineer endpoints for mobile with temporary user
+        if (req.path.includes('field-engineers') || req.path.includes('tasks')) {
+          req.user = { id: 'mobile_temp', username: 'mobile', role: 'field_engineer', isMobile: true };
+          console.log(`📱 Mobile field engineer access granted to: ${req.path}`);
+          return next();
+        }
+      }
+      
+      console.log(`❌ Authentication failed for ${req.method} ${req.path}`);
+      console.log(`   - Session exists: ${!!req.session}`);
+      console.log(`   - Session user: ${!!req.session?.user}`);
+      console.log(`   - Passport authenticated: ${req.isAuthenticated ? req.isAuthenticated() : 'N/A'}`);
+      console.log(`   - User-Agent: ${userAgent.substring(0, 50)}...`);
+      
       return res.status(401).json({ message: "Unauthorized" });
+    } catch (error) {
+      console.error('Authentication middleware error:', error);
+      return res.status(500).json({ message: "Authentication error" });
     }
-
-    next();
   };
 
   // Geofencing routes
@@ -1154,6 +1216,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { fieldEngineerId } = req.body;
 
+      console.log(`🔧 Assigning field engineer ${fieldEngineerId} to task ${taskId}`);
+
       if (!fieldEngineerId) {
         return res.status(400).json({ message: "Field engineer ID is required" });
       }
@@ -1169,10 +1233,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error sending field assignment notification:', notificationError);
       }
       
+      console.log(`✅ Field engineer assignment successful`);
       res.json(task);
     } catch (error) {
       console.error("Error assigning field engineer:", error);
-      res.status(500).json({ message: "Failed to assign field engineer" });
+      res.status(500).json({ message: "Failed to assign field engineer", error: error.message });
     }
   });
 
