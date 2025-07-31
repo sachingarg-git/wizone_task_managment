@@ -79,10 +79,16 @@
     </div>
 
     <script>
-        // LOCAL DATABASE CONNECTION - आपके localhost server के लिए
-        // आपको अपना Computer का IP address यहाँ update करना होगा
-        const LOCAL_IP = '192.168.1.100'; // ⚠️ CHANGE THIS TO YOUR COMPUTER'S IP
-        const API_URL = `http://${LOCAL_IP}:5000`;
+        // AUTO IP DETECTION - आपके localhost server के लिए  
+        // यह automatically सही IP detect करने की कोशिश करेगा
+        let API_URL = 'http://192.168.1.100:5000'; // Default fallback
+        
+        // Try to detect correct IP from common ranges
+        const commonIPs = [
+            '192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104', '192.168.1.105',
+            '192.168.0.100', '192.168.0.101', '192.168.0.102', '192.168.0.103', '192.168.0.104', '192.168.0.105',
+            '10.0.0.100', '10.0.0.101', '10.0.0.102', '10.0.0.103', '10.0.0.104', '10.0.0.105'
+        ];
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -164,21 +170,49 @@
             if (e.key === 'Enter') login();
         });
         
-        // Test connection on load
+        // Auto-detect working IP and test connection
+        async function findWorkingIP() {
+            setStatus('🔍 Finding your server...');
+            
+            for (const ip of commonIPs) {
+                try {
+                    const testUrl = `http://${ip}:5000/api/health`;
+                    console.log(`🔍 Testing: ${testUrl}`);
+                    
+                    const response = await Promise.race([
+                        fetch(testUrl, { 
+                            method: 'GET',
+                            headers: { 'User-Agent': 'WizoneFieldEngineerApp/1.0' }
+                        }),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('timeout')), 2000)
+                        )
+                    ]);
+                    
+                    if (response && response.ok) {
+                        API_URL = `http://${ip}:5000`;
+                        console.log(`✅ Found server at: ${API_URL}`);
+                        setStatus(`✅ Server found at ${ip} - Ready to login`);
+                        showMessage(`Server connected successfully at ${ip}`, 'success');
+                        return true;
+                    }
+                } catch (err) {
+                    // Continue to next IP
+                    continue;
+                }
+            }
+            
+            setStatus('❌ Cannot find localhost server');
+            showMessage('Cannot find your localhost server. Please check if server is running on port 5000.', 'error');
+            return false;
+        }
+        
+        // Initialize on load
         window.addEventListener('load', async () => {
             console.log('🚀 Wizone Mobile App Starting...');
-            console.log('🎯 Target:', API_URL);
+            console.log('🎯 Searching for localhost server...');
             
-            try {
-                const response = await fetch(`${API_URL}/api/health`);
-                if (response.ok) {
-                    setStatus('✅ Server connected - Ready to login');
-                } else {
-                    setStatus('⚠️ Server issues - Login may be slow');
-                }
-            } catch (err) {
-                setStatus('❌ Connection issues - Check internet');
-            }
+            await findWorkingIP();
         });
     </script>
 </body>
