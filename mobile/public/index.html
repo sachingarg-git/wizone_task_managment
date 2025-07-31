@@ -79,8 +79,10 @@
     </div>
 
     <script>
-        // DIRECT CONNECTION TO WORKING SERVER
-        const API_URL = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+        // LOCAL DATABASE CONNECTION - आपके localhost server के लिए
+        // आपको अपना Computer का IP address यहाँ update करना होगा
+        const LOCAL_IP = '192.168.1.100'; // ⚠️ CHANGE THIS TO YOUR COMPUTER'S IP
+        const API_URL = `http://${LOCAL_IP}:5000`;
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');

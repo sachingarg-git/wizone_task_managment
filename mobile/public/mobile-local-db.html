@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Field Engineer - Local DB</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; color: white; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 30px; width: 100%; max-width: 380px;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { 
+            width: 70px; height: 70px; background: #22d3ee; border-radius: 15px;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;
+            font-size: 30px; font-weight: bold; color: white;
+        }
+        .title { font-size: 18px; color: #22d3ee; margin-bottom: 5px; }
+        .subtitle { font-size: 13px; opacity: 0.8; }
+        
+        .server-config {
+            background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; 
+            margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .config-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #22d3ee; }
+        .ip-input {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; font-size: 14px; margin-bottom: 10px;
+        }
+        .ip-input::placeholder { color: rgba(255,255,255,0.6); }
+        .detect-btn {
+            width: 100%; padding: 8px; border-radius: 8px; border: none;
+            background: rgba(34, 211, 238, 0.3); color: white; font-size: 12px;
+            cursor: pointer; margin-bottom: 10px;
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        .label { display: block; margin-bottom: 6px; font-size: 13px; }
+        .input { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; font-size: 15px;
+        }
+        .input::placeholder { color: rgba(255,255,255,0.7); }
+        
+        .btn {
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            background: #22d3ee; color: white; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .message {
+            text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+            font-size: 13px; display: none;
+        }
+        .success { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); }
+        .error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); }
+        .info { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); }
+        
+        .status { text-align: center; font-size: 11px; opacity: 0.7; margin-top: 15px; }
+        .instructions {
+            background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; 
+            margin-bottom: 20px; font-size: 12px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">W</div>
+            <div class="title">Wizone Field Engineer</div>
+            <div class="subtitle">Local Database Connection</div>
+        </div>
+        
+        <div class="instructions">
+            <strong>📱 Mobile APK को अपने Database से Connect करें:</strong><br>
+            1. अपने Computer का IP address नीचे enter करें<br>
+            2. Mobile और Computer same WiFi पर होना चाहिए<br>
+            3. Localhost server (port 5000) running होना चाहिए
+        </div>
+        
+        <div class="server-config">
+            <div class="config-title">🌐 Server Configuration</div>
+            <input type="text" id="serverIP" class="ip-input" 
+                   placeholder="192.168.1.100" value="192.168.1.100">
+            <button class="detect-btn" onclick="testConnection()">Test Connection</button>
+            <div id="connectionStatus" style="font-size: 11px; text-align: center;"></div>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="form-group">
+            <label class="label">Username</label>
+            <input type="text" id="username" class="input" placeholder="Enter username" value="admin">
+        </div>
+        
+        <div class="form-group">
+            <label class="label">Password</label>
+            <input type="password" id="password" class="input" placeholder="Enter password" value="admin123">
+        </div>
+        
+        <button id="loginBtn" class="btn" onclick="performLogin()">Login to Local Database</button>
+        
+        <div class="status" id="status">Ready for local database connection</div>
+    </div>
+
+    <script>
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+            msg.style.display = 'block';
+        }
+        
+        function setStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+        
+        function setConnectionStatus(text, success = false) {
+            const status = document.getElementById('connectionStatus');
+            status.textContent = text;
+            status.style.color = success ? '#22d3ee' : '#ef4444';
+        }
+        
+        async function testConnection() {
+            const serverIP = document.getElementById('serverIP').value.trim();
+            
+            if (!serverIP) {
+                showMessage('Please enter server IP address', 'error');
+                return;
+            }
+            
+            setConnectionStatus('Testing connection...', false);
+            
+            try {
+                const testUrl = `http://${serverIP}:5000/api/health`;
+                console.log('🔍 Testing:', testUrl);
+                
+                const response = await Promise.race([
+                    fetch(testUrl, {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+                            'Accept': 'application/json'
+                        }
+                    }),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('timeout')), 5000)
+                    )
+                ]);
+                
+                if (response && response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Connection successful:', data);
+                    setConnectionStatus('✅ Connected to localhost server', true);
+                    showMessage('Server connection successful! You can now login.', 'success');
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response ? response.status : 'Unknown'}`);
+                }
+                
+            } catch (error) {
+                console.log('❌ Connection failed:', error.message);
+                setConnectionStatus('❌ Connection failed', false);
+                showMessage(`Cannot connect to ${serverIP}:5000. Check IP and ensure server is running.`, 'error');
+                return false;
+            }
+        }
+        
+        async function performLogin() {
+            const serverIP = document.getElementById('serverIP').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const btn = document.getElementById('loginBtn');
+            
+            if (!serverIP) {
+                showMessage('Please enter server IP address', 'error');
+                return;
+            }
+            
+            if (!username || !password) {
+                showMessage('Please enter username and password', 'error');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Connecting...';
+                setStatus('Authenticating with local database...');
+                
+                const apiUrl = `http://${serverIP}:5000`;
+                console.log('🔐 Login attempt:', username, 'to', apiUrl);
+                
+                const response = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+                        'X-Requested-With': 'mobile'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    console.log('✅ Login successful:', userData);
+                    
+                    showMessage(`Welcome ${userData.username}! Connected to local database.`, 'success');
+                    setStatus('Login successful - Redirecting...');
+                    
+                    // Store user data and server info
+                    localStorage.setItem('wizone_user', JSON.stringify(userData));
+                    localStorage.setItem('wizone_server', apiUrl);
+                    localStorage.setItem('wizone_logged_in', 'true');
+                    
+                    // Redirect to main application
+                    setTimeout(() => {
+                        window.location.href = `${apiUrl}?mobile=true&local_db=true&user=${userData.username}`;
+                    }, 2000);
+                    
+                } else {
+                    const errorText = await response.text();
+                    console.log('❌ Login failed:', response.status, errorText);
+                    showMessage('Invalid credentials or database connection failed.', 'error');
+                    setStatus('Login failed');
+                }
+                
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                showMessage(`Network error: ${error.message}. Check server IP and connection.`, 'error');
+                setStatus('Connection error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Login to Local Database';
+            }
+        }
+        
+        // Enter key support
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performLogin();
+        });
+        
+        // Auto-test connection when IP changes
+        document.getElementById('serverIP').addEventListener('change', function() {
+            if (this.value.trim()) {
+                setTimeout(() => testConnection(), 500);
+            }
+        });
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            console.log('🚀 Wizone Mobile App - Local Database Mode');
+            setStatus('Enter your computer\'s IP address to connect');
+            
+            // Auto-test with default IP
+            setTimeout(() => testConnection(), 1000);
+            
+            // Show IP finding instructions
+            showMessage('Find your computer IP: Windows cmd > ipconfig, Mac/Linux > ifconfig', 'info');
+        });
+    </script>
+</body>
+</html>

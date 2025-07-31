@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Wizone IT Support Portal',
   webDir: 'public',
   server: {
-    url: 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: ['*']
   },
 
   android: {
