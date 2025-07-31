@@ -63,12 +63,43 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log(`🔐 PASSPORT AUTH: ${username}`);
         const user = await storage.getUserByUsername(username);
-        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+        
+        if (!user) {
+          console.log(`❌ User not found: ${username}`);
           return done(null, false, { message: "Invalid username or password" });
         }
+        
+        if (!user.password) {
+          console.log(`❌ No password hash for user: ${username}`);
+          return done(null, false, { message: "Invalid username or password" });
+        }
+        
+        console.log(`🔍 Password hash for ${username}:`, user.password.substring(0, 20) + '...');
+        console.log(`🔍 Testing password: "${password}"`);
+        
+        const passwordMatch = await comparePasswords(password, user.password);
+        console.log(`🔐 Password comparison result for ${username}:`, passwordMatch ? '✅ MATCH' : '❌ NO MATCH');
+        
+        if (!passwordMatch) {
+          // Try alternative verification method
+          console.log(`🔄 Trying storage verification method for ${username}...`);
+          const storageVerify = await storage.verifyUserPassword(username, password);
+          console.log(`🔄 Storage verification result:`, storageVerify ? '✅ SUCCESS' : '❌ FAILED');
+          
+          if (storageVerify) {
+            console.log(`✅ Login successful via storage method for ${username}`);
+            return done(null, user);
+          }
+          
+          return done(null, false, { message: "Invalid username or password" });
+        }
+        
+        console.log(`✅ Login successful for ${username}`);
         return done(null, user);
       } catch (error) {
+        console.error(`❌ Passport auth error for ${username}:`, error.message);
         return done(error);
       }
     }),
@@ -84,12 +115,58 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Login endpoint - Enhanced for mobile compatibility
-  app.post("/api/auth/login", (req, res, next) => {
+  // Login endpoint - Enhanced for mobile compatibility with direct storage verification
+  app.post("/api/auth/login", async (req, res, next) => {
     console.log('🔐 Login attempt:', req.body.username);
     console.log('📱 User Agent:', req.get('User-Agent') || 'Unknown');
     console.log('🌐 Origin:', req.get('Origin') || 'No Origin');
     
+    // Check if this is a mobile request
+    const origin = req.get('Origin');
+    const userAgent = req.get('User-Agent') || '';
+    const isMobileAPK = !origin || origin.includes('file://') || userAgent.includes('Mobile') || userAgent.includes('WebView');
+    
+    if (isMobileAPK) {
+      console.log('📱 MOBILE REQUEST DETECTED - Using direct storage authentication');
+      
+      try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+          return res.status(400).json({ error: 'Missing credentials' });
+        }
+        
+        // Direct storage verification for mobile
+        console.log(`🔍 Direct verification for mobile user: ${username}`);
+        const verifiedUser = await storage.verifyUserPassword(username, password);
+        
+        if (verifiedUser) {
+          console.log(`✅ MOBILE LOGIN SUCCESS for: ${username}`);
+          console.log(`✅ User details: ID=${verifiedUser.id}, Role=${verifiedUser.role}`);
+          return res.status(200).json(verifiedUser);
+        } else {
+          console.log(`❌ MOBILE LOGIN FAILED for: ${username}`);
+          
+          // Check if user exists
+          const user = await storage.getUserByUsername(username);
+          if (user) {
+            console.log(`✅ User exists but password verification failed`);
+            console.log(`- Role: ${user.role}, Active: ${user.isActive}`);
+            console.log(`- Password hash exists: ${user.password ? 'YES' : 'NO'}`);
+          } else {
+            console.log(`❌ User does not exist in database`);
+          }
+          
+          return res.status(401).json({ error: 'Invalid credentials', message: 'Login failed' });
+        }
+      } catch (error) {
+        console.error('❌ Mobile auth error:', error.message);
+        return res.status(500).json({ error: 'Authentication failed' });
+      }
+    }
+    
+    // For web browsers, use passport authentication
+    console.log('💻 WEB REQUEST - Using passport authentication');
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         console.error('❌ Auth error:', err);
@@ -99,18 +176,6 @@ export function setupAuth(app: Express) {
       if (!user) {
         console.log('❌ Invalid credentials for:', req.body.username);
         return res.status(401).json({ error: 'Invalid credentials', message: info?.message || 'Login failed' });
-      }
-      
-      // For mobile APK requests (no origin/file protocol), return user data directly
-      const origin = req.get('Origin');
-      const userAgent = req.get('User-Agent') || '';
-      const isMobileAPK = !origin || origin.includes('file://') || userAgent.includes('Mobile');
-      
-      if (isMobileAPK) {
-        console.log('📱 Mobile APK login - returning user data directly');
-        // Remove sensitive password field
-        const { password, ...safeUser } = user;
-        return res.status(200).json(safeUser);
       }
       
       // For web browsers, use session

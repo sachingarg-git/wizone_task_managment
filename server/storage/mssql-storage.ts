@@ -830,6 +830,22 @@ export class MSSQLStorage implements IStorage {
 
 
 
+  // Delete user method for debugging
+  async deleteUser(userId: string): Promise<boolean> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('userId', userId);
+      
+      await request.query(`DELETE FROM users WHERE id = @userId`);
+      console.log(`✅ Deleted user with ID: ${userId}`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+  }
+
   // Additional methods for compatibility
   async getUserByEmail(email: string): Promise<any | undefined> {
     try {
