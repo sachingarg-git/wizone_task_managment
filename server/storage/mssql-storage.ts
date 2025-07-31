@@ -428,7 +428,10 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      request.input('ticketNumber', taskData.ticketNumber);
+      // Generate ticket number if not provided
+      const ticketNumber = taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
+      
+      request.input('ticketNumber', ticketNumber);
       request.input('title', taskData.title);
       request.input('description', taskData.description || null);
       request.input('customerId', taskData.customerId || null);
@@ -1171,15 +1174,50 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       const result = await request.query(`
-        SELECT id, firstName, lastName, email, department, role
+        SELECT id, firstName, lastName, email, department, role, phone, isActive
         FROM users 
-        WHERE role = 'Field Engineer' OR department = 'Field Operations'
+        WHERE role = 'field_engineer' AND isActive = 1
         ORDER BY firstName, lastName
       `);
       return result.recordset || [];
     } catch (error) {
       console.error('Error getting field engineers:', error);
       return [];
+    }
+  }
+
+  // Performance calculation method - Fixed implementation
+  async calculateUserPerformance(userId: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('userId', userId);
+      
+      const result = await request.query(`
+        SELECT 
+          COUNT(*) as totalTasks,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          AVG(CASE WHEN status = 'completed' AND resolvedAt IS NOT NULL 
+              THEN DATEDIFF(hour, createdAt, resolvedAt) ELSE NULL END) as avgResolutionHours
+        FROM tasks 
+        WHERE assignedTo = @userId OR fieldEngineerId = @userId
+      `);
+      
+      const stats = result.recordset[0] || {};
+      return {
+        totalTasks: stats.totalTasks || 0,
+        completedTasks: stats.completedTasks || 0,
+        completionRate: stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks * 100) : 0,
+        avgResolutionHours: stats.avgResolutionHours || 0
+      };
+    } catch (error) {
+      console.error('Error calculating user performance:', error);
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        completionRate: 0,
+        avgResolutionHours: 0
+      };
     }
   }
 

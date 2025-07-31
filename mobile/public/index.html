@@ -464,12 +464,12 @@
                 <form id="loginForm">
                     <div class="form-group">
                         <label class="form-label">Username</label>
-                        <input type="text" id="username" class="form-input" placeholder="RAVI" value="RAVI" required autocomplete="username">
+                        <input type="text" id="username" class="form-input" placeholder="Enter username" value="" required autocomplete="username">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" id="password" class="form-input" placeholder="admin123" value="admin123" required autocomplete="current-password">
+                        <input type="password" id="password" class="form-input" placeholder="Enter password" value="" required autocomplete="current-password">
                     </div>
                     
                     <button type="submit" id="loginBtn" class="login-btn">
@@ -567,14 +567,19 @@
         let tasks = [];
         let currentTaskId = null;
         
-        // API Base URL - Detect environment
+        // API Base URL - Dynamic detection for APK deployment
         const API_BASE = window.location.protocol === 'file:' 
-            ? 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+            ? 'http://192.168.1.100:5000'  // Replace with your computer's IP address
             : window.location.origin;
+        
+        // Location tracking variables
+        let watchLocationId = null;
+        let currentLocation = null;
         
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
+            initializeLocationTracking();
         });
         
         function initializeApp() {
@@ -633,35 +638,8 @@
                         throw new Error('API call failed');
                     }
                 } catch (apiError) {
-                    console.log('Direct API failed, trying alternative method...');
-                    
-                    // Method 2: Mock authentication for development/testing
-                    // This simulates the server response for known users
-                    if (username === 'RAVI' && password === 'admin123') {
-                        userData = {
-                            id: 'WIZONE0015',
-                            username: 'RAVI',
-                            email: 'RAVI@GMAIL.COM',
-                            firstName: 'RAVI',
-                            lastName: 'SAINI',
-                            role: 'field_engineer',
-                            department: null,
-                            isActive: true
-                        };
-                    } else if (username === 'sachin' && password === 'admin123') {
-                        userData = {
-                            id: 'WIZONE0120',
-                            username: 'sachin',
-                            email: 'sachingarg1568@gmail.com',
-                            firstName: 'ravi',
-                            lastName: 'saini',
-                            role: 'field_engineer',
-                            department: null,
-                            isActive: true
-                        };
-                    } else {
-                        throw new Error('Invalid credentials');
-                    }
+                    console.error('API connection failed:', apiError);
+                    throw new Error('Unable to connect to server. Please check your connection.');
                 }
                 
                 if (userData) {
@@ -723,47 +701,8 @@
                         throw new Error('API call failed');
                     }
                 } catch (apiError) {
-                    console.log('Tasks API failed, using sample data...');
-                    
-                    // Method 2: Sample tasks for field engineer demo
-                    allTasks = [
-                        {
-                            id: 1,
-                            ticketNumber: 'T123001',
-                            title: 'Router Configuration Issue',
-                            description: 'Customer reporting slow internet connectivity',
-                            customerName: 'Rahul Sharma',
-                            status: 'pending',
-                            priority: 'high',
-                            assignedTo: currentUser.username,
-                            fieldEngineerId: currentUser.id,
-                            createdAt: new Date().toISOString()
-                        },
-                        {
-                            id: 2,
-                            ticketNumber: 'T123002',
-                            title: 'Cable Installation',
-                            description: 'New broadband connection setup required',
-                            customerName: 'Priya Singh',
-                            status: 'in_progress',
-                            priority: 'medium',
-                            assignedTo: currentUser.username,
-                            fieldEngineerId: currentUser.id,
-                            createdAt: new Date().toISOString()
-                        },
-                        {
-                            id: 3,
-                            ticketNumber: 'T123003',
-                            title: 'Equipment Replacement',
-                            description: 'Faulty modem needs replacement',
-                            customerName: 'Amit Kumar',
-                            status: 'completed',
-                            priority: 'low',
-                            assignedTo: currentUser.username,
-                            fieldEngineerId: currentUser.id,
-                            createdAt: new Date().toISOString()
-                        }
-                    ];
+                    console.error('Failed to load tasks from server:', apiError);
+                    allTasks = []; // Empty array if server not available
                 }
                 
                 // Filter tasks assigned to current user (field engineer)
@@ -954,6 +893,93 @@ Created: ${new Date(task.createdAt).toLocaleDateString()}`);
             setTimeout(() => {
                 messageDiv.innerHTML = '';
             }, 5000);
+        }
+        
+        // Location tracking functions
+        function initializeLocationTracking() {
+            if (navigator.geolocation) {
+                console.log('🌍 Starting location tracking...');
+                
+                // Get initial location
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
+                        console.log('📍 Initial location:', currentLocation);
+                        updateLocationDisplay();
+                    },
+                    (error) => {
+                        console.error('❌ Location error:', error);
+                    }
+                );
+                
+                // Start watching location
+                watchLocationId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
+                        console.log('🔄 Location updated:', currentLocation);
+                        updateLocationDisplay();
+                        
+                        // Send location to server if user is logged in
+                        if (currentUser) {
+                            sendLocationUpdate();
+                        }
+                    },
+                    (error) => {
+                        console.error('❌ Location tracking error:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 30000,
+                        timeout: 10000
+                    }
+                );
+            } else {
+                console.error('❌ Geolocation is not supported by this browser');
+            }
+        }
+        
+        function updateLocationDisplay() {
+            if (currentLocation) {
+                // Update location info in header
+                document.getElementById('userName').innerHTML = `
+                    ${currentUser ? currentUser.firstName : 'Field Engineer'}<br>
+                    <small style="font-size: 0.7em; color: #4ade80;">
+                        📍 ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}
+                    </small>
+                `;
+            }
+        }
+        
+        async function sendLocationUpdate() {
+            if (!currentLocation || !currentUser) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/location/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        latitude: currentLocation.latitude,
+                        longitude: currentLocation.longitude,
+                        timestamp: currentLocation.timestamp
+                    }),
+                    mode: 'cors',
+                    credentials: 'include'
+                });
+                console.log('📡 Location sent to server');
+            } catch (error) {
+                console.error('❌ Failed to send location update:', error);
+            }
         }
         
         // Close modal when clicking outside
