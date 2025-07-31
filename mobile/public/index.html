@@ -570,17 +570,20 @@
         // API Base URL - Dynamic detection for mobile deployment
         let API_BASE = window.location.origin;
         
+        // Mobile APK Network Configuration
+        const FALLBACK_IPS = [
+            'http://172.31.126.2:5000',   // Primary: Your server IP
+            'http://10.0.2.2:5000',       // Android emulator
+            'http://192.168.1.100:5000',  // Local network  
+            'http://localhost:5000'        // Localhost
+        ];
+        
         // For mobile APK (file:// protocol), use real server IP
         if (window.location.protocol === 'file:') {
-            // Try multiple connection methods for maximum compatibility
-            API_BASE = 'http://172.31.126.2:5000';  // Primary: Your server IP
-            
-            // Fallback IPs for different network configurations
-            const FALLBACK_IPS = [
-                'http://10.0.2.2:5000',      // Android emulator
-                'http://192.168.1.100:5000', // Local network
-                'http://localhost:5000'       // Localhost
-            ];
+            API_BASE = FALLBACK_IPS[0];  // Primary server IP
+            console.log('📱 Mobile APK Detected - Using server IP:', API_BASE);
+        } else {
+            console.log('🌐 Web Browser Detected - Using origin:', API_BASE);
         }
         
         // Location tracking variables
@@ -627,82 +630,77 @@
             loginBtn.textContent = 'Logging in...';
             
             try {
-                // Enhanced API connection with multiple attempts
+                console.log('🔐 MOBILE LOGIN ATTEMPT');
+                console.log('Username:', username);
+                console.log('Password length:', password.length);
+                console.log('Protocol:', window.location.protocol);
+                console.log('Primary API_BASE:', API_BASE);
+                
                 let response;
                 let userData = null;
                 let connectionSuccess = false;
+                let successfulEndpoint = null;
                 
-                // Method 1: Try primary API endpoint
-                try {
-                    console.log('Attempting login to:', `${API_BASE}/api/auth/login`);
-                    response = await fetch(`${API_BASE}/api/auth/login`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ username, password }),
-                        mode: 'cors',
-                        credentials: 'include'
-                    });
-                    
-                    console.log('Response status:', response.status);
-                    if (response.ok) {
-                        userData = await response.json();
-                        connectionSuccess = true;
-                        console.log('Login successful:', userData);
-                    } else {
-                        const errorText = await response.text();
-                        console.log('API Error:', errorText);
-                        throw new Error(`Server error: ${response.status}`);
-                    }
-                } catch (apiError) {
-                    console.error('Primary API connection failed:', apiError);
-                    
-                    // Method 2: Try fallback IPs for mobile APK
-                    if (window.location.protocol === 'file:' && typeof FALLBACK_IPS !== 'undefined') {
-                        for (const fallbackUrl of FALLBACK_IPS) {
-                            try {
-                                console.log('Trying fallback:', fallbackUrl);
-                                response = await fetch(`${fallbackUrl}/api/auth/login`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({ username, password }),
-                                    mode: 'cors',
-                                    credentials: 'include'
-                                });
-                                
-                                if (response.ok) {
-                                    userData = await response.json();
-                                    connectionSuccess = true;
-                                    API_BASE = fallbackUrl; // Update API_BASE for future calls
-                                    console.log('Fallback connection successful:', fallbackUrl);
-                                    break;
-                                }
-                            } catch (fallbackError) {
-                                console.log('Fallback failed:', fallbackUrl, fallbackError);
-                                continue;
-                            }
+                // Try all endpoints for maximum compatibility
+                for (let i = 0; i < FALLBACK_IPS.length; i++) {
+                    const endpoint = FALLBACK_IPS[i];
+                    try {
+                        console.log(`🌐 Attempt ${i+1}/${FALLBACK_IPS.length}: ${endpoint}`);
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                        
+                        response = await fetch(`${endpoint}/api/auth/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                username: username.trim(), 
+                                password: password 
+                            }),
+                            mode: 'cors',
+                            credentials: 'include',
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        console.log(`📡 Response from ${endpoint}:`, response.status);
+                        
+                        if (response.ok) {
+                            const responseText = await response.text();
+                            console.log('✅ Raw response:', responseText.substring(0, 200));
+                            
+                            userData = JSON.parse(responseText);
+                            connectionSuccess = true;
+                            successfulEndpoint = endpoint;
+                            API_BASE = endpoint; // Update for future calls
+                            console.log('✅ LOGIN SUCCESS with:', endpoint);
+                            console.log('✅ User data:', userData);
+                            break;
+                        } else {
+                            const errorText = await response.text();
+                            console.log(`❌ Error ${response.status}:`, errorText.substring(0, 100));
                         }
-                    }
-                    
-                    if (!connectionSuccess) {
-                        throw new Error('Unable to connect to server. Please check your network connection.');
+                    } catch (error) {
+                        console.log(`❌ Network error with ${endpoint}:`, error.message);
+                        continue;
                     }
                 }
                 
-                if (userData) {
+                if (connectionSuccess && userData && userData.id) {
                     currentUser = userData;
                     localStorage.setItem('fieldEngineerUser', JSON.stringify(userData));
                     
-                    showMessage('Login successful!', 'success');
+                    showMessage(`Login successful via ${successfulEndpoint}!`, 'success');
                     setTimeout(() => {
                         showDashboard();
                         loadTasks();
                     }, 1000);
                 } else {
-                    showMessage('Invalid username or password', 'error');
+                    console.log('❌ ALL CONNECTION ATTEMPTS FAILED');
+                    showMessage('Login failed. Check username/password and network connection.', 'error');
                 }
             } catch (error) {
                 console.error('Login error:', error);
