@@ -1,0 +1,63 @@
+C:\Users\sachi\Downloads\radhe krishna\TaskScoreTracker>npm run build
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.19 building for production...
+transforming (1) index.htmlBrowserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 2967 modules transformed.
+../dist/public/index.html                           1.33 kB │ gzip:   0.61 kB
+../dist/public/assets/wizone-logo-BqWPFk3I.jpg      5.50 kB
+../dist/public/assets/index-BuL0FTCB.css           96.96 kB │ gzip:  16.39 kB
+../dist/public/assets/index-DjQs1u6P.js         1,283.31 kB │ gzip: 342.01 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 28.06s
+▲ [WARNING] Duplicate member "verifyUserPassword" in class body [duplicate-class-member]
+
+    server/storage/mssql-storage.ts:1042:8:
+      1042 │   async verifyUserPassword(username: string, password: string): Promise<boolean> {
+           ╵         ~~~~~~~~~~~~~~~~~~
+
+  The original member "verifyUserPassword" is here:
+
+    server/storage/mssql-storage.ts:86:8:
+      86 │   async verifyUserPassword(username: string, password: string): Promise<any | null> {
+         ╵         ~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Duplicate member "getAvailableFieldEngineers" in class body [duplicate-class-member]
+
+    server/storage/mssql-storage.ts:1450:8:
+      1450 │   async getAvailableFieldEngineers(): Promise<any[]> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "getAvailableFieldEngineers" is here:
+
+    server/storage/mssql-storage.ts:933:8:
+      933 │   async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<any[]> {
+          ╵         ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Duplicate member "assignMultipleFieldEngineers" in class body [duplicate-class-member]
+
+    server/storage/mssql-storage.ts:1503:8:
+      1503 │   async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], userId: string): Promise<any> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "assignMultipleFieldEngineers" is here:
+
+    server/storage/mssql-storage.ts:875:8:
+      875 │   async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any[]> {
+          ╵         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+3 warnings
+
+  dist\index.js  249.0kb
+
+Done in 85ms
+
+C:\Users\sachi\Downloads\radhe krishna\TaskScoreTracker>

@@ -2920,6 +2920,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug user endpoint
+  app.post('/api/debug-user', async (req, res) => {
+    try {
+      const { username } = req.body;
+      console.log(`🧪 Debug: Getting user data for: ${username}`);
+      
+      const user = await storage.getUserByUsername(username);
+      console.log(`🧪 Debug: Raw user data:`, user);
+      
+      if (user) {
+        const { password, ...safeUser } = user;
+        res.json({
+          success: true,
+          user: safeUser,
+          hasPassword: !!password,
+          message: 'User data retrieved'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+    } catch (error) {
+      console.error('🧪 Debug user error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

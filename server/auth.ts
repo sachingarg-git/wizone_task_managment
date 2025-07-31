@@ -143,6 +143,20 @@ export function setupAuth(app: Express) {
         if (verifiedUser) {
           console.log(`✅ MOBILE LOGIN SUCCESS for: ${username}`);
           console.log(`✅ User details: ID=${verifiedUser.id}, Role=${verifiedUser.role}`);
+          
+          // Create session for authenticated user
+          req.session.user = verifiedUser;
+          
+          // Force session save
+          req.session.save((err: any) => {
+            if (err) {
+              console.error('❌ Session save error:', err);
+            } else {
+              console.log(`💾 Session saved for user: ${verifiedUser.username}`);
+            }
+          });
+          
+          console.log(`💾 Session created for user: ${verifiedUser.username}`);
           return res.status(200).json(verifiedUser);
         } else {
           console.log(`❌ MOBILE LOGIN FAILED for: ${username}`);
