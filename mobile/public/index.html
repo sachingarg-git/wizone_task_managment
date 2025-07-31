@@ -567,9 +567,9 @@
         let tasks = [];
         let currentTaskId = null;
         
-        // API Base URL - Dynamic detection for APK deployment
+        // API Base URL - Use real server IP for better connectivity
         const API_BASE = window.location.protocol === 'file:' 
-            ? 'http://10.0.2.2:5000'  // Android emulator special IP for localhost
+            ? 'http://172.31.126.2:5000'  // Your server's real IP address
             : window.location.origin;
         
         // Location tracking variables
