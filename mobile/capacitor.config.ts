@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.wizone.fieldEngineer',
   appName: 'Wizone Field Engineer',
   webDir: 'public',
-  startUrl: 'production-login.html',
+  startUrl: 'final-mobile-login.html',
   server: {
     androidScheme: 'http',
     cleartext: true,
