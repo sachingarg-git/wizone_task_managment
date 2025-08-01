@@ -55,10 +55,13 @@ Preferred communication style: Simple, everyday language.
 - Customer portal task retrieval working properly (200 status)
 - Customer portal logout and security working correctly
 - **Customer task creation issue RESOLVED**: Tasks created from customer portal now properly display customer name instead of "Unknown Customer"
+- **Task update functionality COMPLETELY FIXED**: Both customer portal and admin portal task updates now working properly
+- **Database constraint issue RESOLVED**: Added proper status validation to prevent constraint violations
+- **Missing storage functions ADDED**: getCustomerByUsername, getTasksByCustomer, getTaskComments, createTaskComment
 - Mobile APK build functionality preserved throughout all fixes
-- Added missing storage functions: getCustomerByUsername, getTasksByCustomer
 - Fixed all TypeScript compilation errors preventing proper server operation
 - Customer portal task creation endpoint enhanced with proper customer name association
+- Status validation now properly maps invalid statuses to valid database values
 
 ## External Dependencies
 - **Database**: MS SQL Server (primary storage), Neon PostgreSQL (previously).

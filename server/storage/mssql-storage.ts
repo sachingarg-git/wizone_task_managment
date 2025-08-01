@@ -32,6 +32,10 @@ export interface IStorage {
   createTaskUpdate(update: any): Promise<any>;
   getTaskUpdates(taskId: number): Promise<any[]>;
   
+  // Task comments operations  
+  getTaskComments(taskId: number): Promise<any[]>;
+  createTaskComment(comment: any): Promise<any>;
+  
   // Performance metrics
   createPerformanceMetric(metric: any): Promise<any>;
   getPerformanceMetrics(userId: string): Promise<any[]>;
@@ -552,11 +556,33 @@ export class MSSQLStorage implements IStorage {
         request.input('description', updates.description);
       }
       if (updates.status !== undefined) {
+        // Validate and normalize status values (based on actual database constraint)
+        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+        let normalizedStatus = updates.status.toLowerCase().replace(/\s+/g, '_');
+        
+        // Handle common status mappings
+        if (normalizedStatus === 'inprogress' || normalizedStatus === 'in-progress') {
+          normalizedStatus = 'in_progress';
+        }
+        // Map assigned statuses to in_progress (since assigned is not valid in DB)
+        if (normalizedStatus === 'assign' || normalizedStatus === 'assigned' || normalizedStatus === 'assigned_to' || normalizedStatus === 'assignedto') {
+          normalizedStatus = 'in_progress';
+        }
+        if (normalizedStatus === 'field' || normalizedStatus === 'field_assigned' || normalizedStatus === 'assigned_to_field') {
+          normalizedStatus = 'in_progress';
+        }
+        
+        if (!validStatuses.includes(normalizedStatus)) {
+          console.error(`Invalid status: ${updates.status}. Valid statuses: ${validStatuses.join(', ')}`);
+          normalizedStatus = 'pending'; // Default fallback
+        }
+        
+        console.log(`Status normalized: ${updates.status} -> ${normalizedStatus}`);
         updateFields.push('status = @status');
-        request.input('status', updates.status);
+        request.input('status', normalizedStatus);
         
         // Set resolvedAt if status is completed
-        if (updates.status === 'completed') {
+        if (normalizedStatus === 'completed') {
           updateFields.push('resolvedAt = GETDATE()');
         }
       }
@@ -678,6 +704,67 @@ export class MSSQLStorage implements IStorage {
     } catch (error) {
       console.error('Error getting task updates:', error);
       return [];
+    }
+  }
+
+  // Task comments operations
+  async getTaskComments(taskId: number): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('taskId', taskId);
+      
+      const result = await request.query(`
+        SELECT * FROM task_comments 
+        WHERE taskId = @taskId 
+        ORDER BY createdAt ASC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting task comments:', error);
+      return [];
+    }
+  }
+
+  async createTaskComment(commentData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('taskId', commentData.taskId);
+      request.input('userId', commentData.userId);
+      request.input('comment', commentData.comment);
+      request.input('commentType', commentData.commentType || 'general');
+      
+      const result = await request.query(`
+        INSERT INTO task_comments (taskId, userId, comment, commentType, createdAt)
+        OUTPUT INSERTED.id
+        VALUES (@taskId, @userId, @comment, @commentType, GETDATE())
+      `);
+      
+      const newId = result.recordset[0].id;
+      return await this.getTaskComment(newId);
+    } catch (error) {
+      console.error('Error creating task comment:', error);
+      throw error;
+    }
+  }
+
+  async getTaskComment(id: number): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('id', id);
+      
+      const result = await request.query(`
+        SELECT * FROM task_comments WHERE id = @id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting task comment:', error);
+      return undefined;
     }
   }
 
