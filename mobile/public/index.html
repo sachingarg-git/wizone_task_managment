@@ -79,7 +79,7 @@
         
         <button id="loginBtn" class="btn" onclick="login()">Login to Portal</button>
         
-        <div class="status" id="status">Connecting to server...</div>
+        <div class="status" id="status">Ready to login</div>
     </div>
 
     <script>
@@ -117,7 +117,7 @@
             try {
                 btn.disabled = true;
                 btn.textContent = 'Logging in...';
-                setStatus('Authenticating...');
+                setStatus('Connecting to database...');
                 
                 console.log('🔐 Login attempt:', username);
                 console.log('🌐 Server:', API_URL);
@@ -128,7 +128,6 @@
                         'Content-Type': 'application/json',
                         'User-Agent': 'WizoneMobileApp/1.0'
                     },
-                    credentials: 'include',
                     body: JSON.stringify({ username, password })
                 });
                 
@@ -172,69 +171,28 @@
             if (e.key === 'Enter') login();
         });
         
-        // Test connection on page load
+        // Simple connection test during login only
         async function testConnection() {
-            setStatus('Finding server...');
-            
-            for (let i = 0; i < POSSIBLE_URLS.length; i++) {
-                const testUrl = POSSIBLE_URLS[i];
-                try {
-                    console.log(`🔍 Testing URL ${i+1}: ${testUrl}`);
-                    setStatus(`Testing connection ${i+1}/${POSSIBLE_URLS.length}...`);
-                    
-                    const response = await fetch(`${testUrl}/api/health`, {
-                        method: 'GET',
-                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
-                    });
-                    
-                    if (response.ok) {
-                        const health = await response.json();
-                        console.log('✅ Server found:', health);
-                        API_URL = testUrl;
-                        setStatus('✅ Server connected!');
-                        showMessage('Connection established successfully', 'success');
-                        return true;
-                    }
-                } catch (err) {
-                    console.log(`❌ URL ${i+1} failed:`, err.message);
+            console.log('🔍 Testing connection to:', API_URL);
+            try {
+                const response = await fetch(`${API_URL}/api/health`, {
+                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
+                });
+                if (response.ok) {
+                    console.log('✅ Server connected');
+                    return true;
                 }
+            } catch (err) {
+                console.log('❌ Connection failed:', err.message);
             }
-            
-            setStatus('❌ No working server found');
-            showMessage('Unable to connect to server', 'error');
             return false;
         }
         
-        // Auto-test connection on load
-        window.addEventListener('load', testConnection);
-                    
-                    if (response && response.ok) {
-                        const data = await response.json();
-                        console.log(`✅ Server found: ${testUrl}`, data);
-                        API_URL = testUrl; // Update global API_URL
-                        setStatus('✅ Database connected - Ready to login');
-                        showMessage('Database connected successfully', 'success');
-                        return true;
-                    }
-                    
-                } catch (error) {
-                    console.log(`❌ URL ${i+1} failed:`, error.message);
-                }
-            }
-            
-            // All URLs failed
-            console.error('❌ All connection attempts failed');
-            setStatus('❌ Cannot connect to server');
-            showMessage('Cannot connect to database. Check internet connection.', 'error');
-            return false;
-        }
-        
-        // Initialize
+        // Simple initialization 
         window.addEventListener('load', () => {
-            console.log('🚀 Wizone Mobile App');
+            console.log('🚀 Wizone Mobile App Ready');
             console.log('🎯 Server:', API_URL);
-            setStatus('Initializing...');
-            testConnection();
+            setStatus('Ready to login');
         });
     </script>
 </body>
