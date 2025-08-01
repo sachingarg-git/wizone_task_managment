@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard - Wizone</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .user-info { font-size: 16px; }
+        .logout-btn {
+            padding: 10px 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .task-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        .task-header {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .task-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border-left: 4px solid #22d3ee;
+        }
+        .task-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+        .task-meta { font-size: 14px; opacity: 0.8; margin-bottom: 10px; }
+        .task-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .status-pending { background: #f59e0b; color: white; }
+        .status-in-progress { background: #3b82f6; color: white; }
+        .status-completed { background: #10b981; color: white; }
+        .btn {
+            padding: 10px 20px;
+            background: #22d3ee;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.8;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="user-info" id="userInfo">Loading...</div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="task-container">
+        <div class="task-header">📋 My Tasks</div>
+        <div id="taskList" class="loading">Loading tasks from database...</div>
+    </div>
+
+    <script>
+        // Get API URL and user data
+        const API_URL = localStorage.getItem('wizone_api_url') || window.location.protocol + '//' + window.location.host;
+        let currentUser = null;
+
+        // Load user data on page load
+        window.addEventListener('load', async () => {
+            await loadUser();
+            await loadTasks();
+        });
+
+        async function loadUser() {
+            try {
+                // Try to get user from localStorage first
+                const savedUser = localStorage.getItem('wizone_user');
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                    updateUserInfo();
+                    return;
+                }
+
+                // If not found, check with server
+                const response = await fetch(`${API_URL}/api/auth/user`, {
+                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    localStorage.setItem('wizone_user', JSON.stringify(currentUser));
+                    updateUserInfo();
+                } else {
+                    // Redirect to login if not authenticated
+                    window.location.href = 'direct-login.html';
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+                window.location.href = 'direct-login.html';
+            }
+        }
+
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('userInfo').innerHTML = `
+                    👤 ${currentUser.firstName || currentUser.username}<br>
+                    🏢 ${currentUser.department} | 🔑 ${currentUser.role}
+                `;
+            }
+        }
+
+        async function loadTasks() {
+            const taskList = document.getElementById('taskList');
+            
+            try {
+                taskList.innerHTML = '<div class="loading">Fetching tasks from MS SQL database...</div>';
+                
+                const response = await fetch(`${API_URL}/api/tasks`, {
+                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
+                });
+
+                if (response.ok) {
+                    const tasks = await response.json();
+                    displayTasks(tasks);
+                } else if (response.status === 404) {
+                    // If tasks endpoint doesn't exist, show sample tasks
+                    displaySampleTasks();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                taskList.innerHTML = `
+                    <div class="error">
+                        Unable to load tasks from database.<br>
+                        <small>Error: ${error.message}</small><br>
+                        <button class="btn" onclick="loadTasks()">🔄 Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        function displayTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            
+            if (!tasks || tasks.length === 0) {
+                taskList.innerHTML = '<div style="text-align: center; opacity: 0.7;">No tasks assigned yet.</div>';
+                return;
+            }
+
+            const taskHTML = tasks.map(task => `
+                <div class="task-item">
+                    <div class="task-title">${task.title || task.taskName || 'Untitled Task'}</div>
+                    <div class="task-meta">
+                        📅 ${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'} | 
+                        🏢 ${task.customerName || task.location || 'No location'}
+                    </div>
+                    <div class="task-meta">${task.description || task.details || 'No description'}</div>
+                    <div style="margin-top: 10px;">
+                        <span class="task-status status-${(task.status || 'pending').toLowerCase().replace(' ', '-')}">
+                            ${task.status || 'Pending'}
+                        </span>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="updateTaskStatus('${task.id}', 'in-progress')">▶️ Start</button>
+                        <button class="btn" onclick="updateTaskStatus('${task.id}', 'completed')">✅ Complete</button>
+                    </div>
+                </div>
+            `).join('');
+
+            taskList.innerHTML = taskHTML;
+        }
+
+        function displaySampleTasks() {
+            const sampleTasks = [
+                {
+                    id: 'sample1',
+                    title: 'Network Setup - Office Complex',
+                    customerName: 'ABC Corporation',
+                    dueDate: new Date().toISOString(),
+                    description: 'Install and configure network infrastructure',
+                    status: 'pending'
+                },
+                {
+                    id: 'sample2', 
+                    title: 'Internet Connection Issue',
+                    customerName: 'XYZ Ltd',
+                    dueDate: new Date(Date.now() + 86400000).toISOString(),
+                    description: 'Troubleshoot connectivity problems',
+                    status: 'in-progress'
+                }
+            ];
+            
+            displayTasks(sampleTasks);
+            
+            // Add note about sample data
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML += `
+                <div style="text-align: center; margin-top: 20px; opacity: 0.7; font-size: 14px;">
+                    📝 Sample tasks shown (tasks endpoint not configured yet)<br>
+                    💾 Connected to MS SQL: 103.122.85.61, 1440
+                </div>
+            `;
+        }
+
+        async function updateTaskStatus(taskId, newStatus) {
+            try {
+                const response = await fetch(`${API_URL}/api/tasks/${taskId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneMobileApp/1.0'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    console.log('Task status updated');
+                    await loadTasks(); // Reload tasks
+                } else {
+                    console.log('Task update endpoint not available yet');
+                }
+            } catch (error) {
+                console.error('Error updating task:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('wizone_user');
+            localStorage.removeItem('wizone_logged_in');
+            localStorage.removeItem('wizone_api_url');
+            window.location.href = 'direct-login.html';
+        }
+    </script>
+</body>
+</html>

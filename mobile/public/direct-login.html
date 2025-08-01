@@ -208,6 +208,11 @@
                         
                         btn.disabled = false;
                         btn.textContent = 'Login Successful ✅';
+                        
+                        // Redirect to task dashboard
+                        setTimeout(() => {
+                            window.location.href = 'task-dashboard.html';
+                        }, 1500);
                         return;
                     }
                     
