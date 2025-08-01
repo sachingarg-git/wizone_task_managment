@@ -65,7 +65,7 @@
         
         <div class="form-group">
             <label class="label">Username</label>
-            <input type="text" id="username" class="input" placeholder="Enter username" value="wizone124">
+            <input type="text" id="username" class="input" placeholder="Enter username" value="wizone task">
         </div>
         
         <div class="form-group">
@@ -79,16 +79,9 @@
     </div>
 
     <script>
-        // AUTO IP DETECTION - आपके localhost server के लिए  
-        // यह automatically सही IP detect करने की कोशिश करेगा
-        let API_URL = 'http://192.168.1.100:5000'; // Default fallback
-        
-        // Try to detect correct IP from common ranges
-        const commonIPs = [
-            '192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104', '192.168.1.105',
-            '192.168.0.100', '192.168.0.101', '192.168.0.102', '192.168.0.103', '192.168.0.104', '192.168.0.105',
-            '10.0.0.100', '10.0.0.101', '10.0.0.102', '10.0.0.103', '10.0.0.104', '10.0.0.105'
-        ];
+        // DIRECT CONNECTION TO PUBLISHED DATABASE
+        // आपका database publish है, तो direct connect करते हैं
+        const API_URL = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -143,9 +136,9 @@
                     localStorage.setItem('wizone_user', JSON.stringify(user));
                     localStorage.setItem('wizone_logged_in', 'true');
                     
-                    // Redirect to main application
+                    // Redirect to main application with mobile flag
                     setTimeout(() => {
-                        window.location.href = `${API_URL}?mobile=1&user=${user.username}`;
+                        window.location.href = `${API_URL}?mobile=true&published_db=true&user=${user.username}`;
                     }, 2000);
                     
                 } else {
@@ -170,49 +163,45 @@
             if (e.key === 'Enter') login();
         });
         
-        // Auto-detect working IP and test connection
-        async function findWorkingIP() {
-            setStatus('🔍 Finding your server...');
+        // Test published database connection
+        async function testPublishedConnection() {
+            setStatus('🔍 Connecting to published database...');
             
-            for (const ip of commonIPs) {
-                try {
-                    const testUrl = `http://${ip}:5000/api/health`;
-                    console.log(`🔍 Testing: ${testUrl}`);
-                    
-                    const response = await Promise.race([
-                        fetch(testUrl, { 
-                            method: 'GET',
-                            headers: { 'User-Agent': 'WizoneFieldEngineerApp/1.0' }
-                        }),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('timeout')), 2000)
-                        )
-                    ]);
-                    
-                    if (response && response.ok) {
-                        API_URL = `http://${ip}:5000`;
-                        console.log(`✅ Found server at: ${API_URL}`);
-                        setStatus(`✅ Server found at ${ip} - Ready to login`);
-                        showMessage(`Server connected successfully at ${ip}`, 'success');
-                        return true;
+            try {
+                console.log(`🔍 Testing published server: ${API_URL}`);
+                
+                const response = await fetch(`${API_URL}/api/health`, {
+                    method: 'GET',
+                    headers: { 
+                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+                        'Accept': 'application/json'
                     }
-                } catch (err) {
-                    // Continue to next IP
-                    continue;
+                });
+                
+                if (response && response.ok) {
+                    const data = await response.json();
+                    console.log(`✅ Published database connected:`, data);
+                    setStatus('✅ Published database connected - Ready to login');
+                    showMessage('Connected to published database successfully', 'success');
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response ? response.status : 'Unknown'}`);
                 }
+                
+            } catch (error) {
+                console.error('❌ Connection failed:', error);
+                setStatus('❌ Cannot connect to published database');
+                showMessage('Cannot connect to published database. Check internet connection.', 'error');
+                return false;
             }
-            
-            setStatus('❌ Cannot find localhost server');
-            showMessage('Cannot find your localhost server. Please check if server is running on port 5000.', 'error');
-            return false;
         }
         
         // Initialize on load
         window.addEventListener('load', async () => {
-            console.log('🚀 Wizone Mobile App Starting...');
-            console.log('🎯 Searching for localhost server...');
+            console.log('🚀 Wizone Mobile App - Published Database Mode');
+            console.log('🎯 Connecting to:', API_URL);
             
-            await findWorkingIP();
+            await testPublishedConnection();
         });
     </script>
 </body>
