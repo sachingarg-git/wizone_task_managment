@@ -272,7 +272,8 @@ export default function Customers() {
         portalAccess
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('✅ Portal update success:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       // Clear modal state properly
       setPortalCustomer(null);
@@ -285,6 +286,7 @@ export default function Customers() {
       });
     },
     onError: (error: Error) => {
+      console.error('❌ Portal update error:', error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -298,7 +300,7 @@ export default function Customers() {
       }
       toast({
         title: "Error",
-        description: "Failed to update portal access",
+        description: "Failed to update portal access. Please try again.",
         variant: "destructive",
       });
     },
@@ -619,14 +621,16 @@ export default function Customers() {
             <Button 
               onClick={() => {
                 if (!portalCustomer) return;
-                portalAccessMutation.mutate({
+                const updateData = {
                   customerId: portalCustomer.id,
-                  username: portalUsername,
-                  password: portalPassword,
-                  portalAccess: portalCustomer.portalAccess  // Send the current toggle state
-                });
+                  username: portalUsername.trim(),
+                  password: portalPassword.trim(),
+                  portalAccess: portalCustomer.portalAccess
+                };
+                console.log('🔄 Portal update request:', updateData);
+                portalAccessMutation.mutate(updateData);
               }}
-              disabled={portalAccessMutation.isPending}
+              disabled={portalAccessMutation.isPending || !portalUsername.trim() || !portalPassword.trim()}
             >
               {portalAccessMutation.isPending ? "Saving..." : "Save"}
             </Button>

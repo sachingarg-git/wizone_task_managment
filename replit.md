@@ -49,6 +49,7 @@ Preferred communication style: Simple, everyday language.
 - Fixed auto-disable issue where portal access would revert after enabling
 - Database persistence now working correctly (portalAccess column properly updated)
 - Frontend toggle state now sends correct values to backend
+- Resolved "Saving..." button stuck issue with improved state management
 - All customer portal functionality fully operational
 
 ## External Dependencies
