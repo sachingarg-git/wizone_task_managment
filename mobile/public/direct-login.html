@@ -88,13 +88,8 @@
             margin-bottom: 20px;
             transition: background 0.3s;
         }
-        .btn:hover {
-            background: #0891b2;
-        }
-        .btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
+        .btn:hover { background: #0891b2; }
+        .btn:disabled { background: #666; cursor: not-allowed; }
         .message {
             padding: 12px;
             border-radius: 8px;
@@ -146,9 +141,16 @@
     </div>
 
     <script>
-        // SIMPLE DIRECT LOGIN - NO DELAYS
-        const API_URL = window.location.protocol + '//' + window.location.host;
-        console.log('🚀 Wizone Mobile - API URL:', API_URL);
+        // DIRECT CONNECTION - NO AUTO-DETECTION
+        let API_URL = 'http://localhost:5000';
+        
+        // Try different possible URLs for mobile
+        const POSSIBLE_URLS = [
+            'http://localhost:5000',
+            window.location.protocol + '//' + window.location.host,
+            'https://' + window.location.hostname + ':5000',
+            'http://' + window.location.hostname + ':5000'
+        ];
 
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -171,55 +173,55 @@
                 return;
             }
             
-            try {
-                btn.disabled = true;
-                btn.textContent = 'Logging in...';
-                setStatus('Connecting to MS SQL database...');
-                
-                console.log('🔐 Login attempt:', username);
-                
-                const response = await fetch(`${API_URL}/api/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'WizoneMobileApp/1.0'
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                console.log('📡 Response status:', response.status);
-                
-                if (response.ok) {
-                    const user = await response.json();
-                    console.log('✅ Login success:', user);
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+            setStatus('Connecting to MS SQL database...');
+            
+            for (let i = 0; i < POSSIBLE_URLS.length; i++) {
+                const testUrl = POSSIBLE_URLS[i];
+                try {
+                    console.log(`🔍 Trying URL ${i+1}: ${testUrl}`);
                     
-                    showMessage(`Welcome ${user.firstName || user.username}!`, 'success');
-                    setStatus(`Login successful! Role: ${user.role} | Dept: ${user.department}`);
+                    const response = await fetch(`${testUrl}/api/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'WizoneMobileApp/1.0'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
                     
-                    // Save user data
-                    localStorage.setItem('wizone_user', JSON.stringify(user));
-                    localStorage.setItem('wizone_logged_in', 'true');
+                    console.log(`📡 Response status from ${testUrl}:`, response.status);
                     
-                    // Show success message
-                    setTimeout(() => {
-                        setStatus('✅ MS SQL Server: 103.122.85.61, 1440 - WIZONE_TASK_MANAGER');
-                    }, 2000);
+                    if (response.ok) {
+                        const user = await response.json();
+                        console.log('✅ Login success:', user);
+                        
+                        API_URL = testUrl; // Save working URL
+                        showMessage(`Welcome ${user.firstName || user.username}!`, 'success');
+                        setStatus(`✅ MS SQL Server: 103.122.85.61, 1440 - ${user.role}`);
+                        
+                        // Save user data
+                        localStorage.setItem('wizone_user', JSON.stringify(user));
+                        localStorage.setItem('wizone_logged_in', 'true');
+                        localStorage.setItem('wizone_api_url', API_URL);
+                        
+                        btn.disabled = false;
+                        btn.textContent = 'Login Successful ✅';
+                        return;
+                    }
                     
-                } else {
-                    const errorData = await response.text();
-                    console.error('❌ Login failed:', errorData);
-                    showMessage('Invalid username or password', 'error');
-                    setStatus('Login failed');
+                } catch (error) {
+                    console.log(`❌ URL ${i+1} failed:`, error.message);
                 }
-                
-            } catch (error) {
-                console.error('❌ Connection error:', error);
-                showMessage('Connection failed. Check network.', 'error');
-                setStatus('Connection failed');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Login to Portal';
             }
+            
+            // All URLs failed
+            console.error('❌ All connection attempts failed');
+            showMessage('Cannot connect to database. Check network.', 'error');
+            setStatus('Connection failed');
+            btn.disabled = false;
+            btn.textContent = 'Login to Portal';
         }
         
         // Enter key support
@@ -229,7 +231,7 @@
         
         // Ready immediately
         window.addEventListener('load', () => {
-            console.log('🚀 Wizone Mobile App Ready');
+            console.log('🚀 Wizone Direct Login Ready');
             setStatus('Ready to login');
         });
     </script>

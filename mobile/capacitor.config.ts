@@ -4,13 +4,14 @@ const config: CapacitorConfig = {
   appId: 'com.wizone.fieldEngineer',
   appName: 'Wizone Field Engineer',
   webDir: 'public',
-  startUrl: 'simple-login.html',
+  startUrl: 'direct-login.html',
   server: {
     androidScheme: 'https',
     cleartext: true,
     allowNavigation: [
       '*'
-    ]
+    ],
+    url: 'http://localhost:5000'
   },
   android: {
     allowMixedContent: true,
