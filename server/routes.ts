@@ -526,12 +526,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer task update endpoint
+  // Customer task update endpoint (POST)
   app.post('/api/customer-portal/tasks/:taskId/update', isCustomerAuthenticated, async (req, res) => {
     try {
       const taskId = parseInt(req.params.taskId);
       const customerId = (req.session as any).customer.id;
       const { comment, status, priority } = req.body;
+      
+      console.log('🔄 Customer task update (POST):', { taskId, customerId, comment, status, priority });
       
       // Verify task belongs to customer
       const task = await storage.getTask(taskId);
@@ -550,18 +552,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Add the update record using valid system user for customer updates
+      const adminUsers = await storage.getAllUsers();
+      const systemAdmin = adminUsers.find(user => user.role === 'admin') || adminUsers[0];
+      
       await storage.createTaskUpdate({
         taskId,
-        updatedBy: 'admin001', // Use system admin for customer updates
+        updatedBy: systemAdmin?.id || 'admin_1753865311290', // Use system admin for customer updates
         updateType: 'note_added',
         note: `[Customer Update] ${comment || `Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`}`
       });
       
-      console.log("Customer task update:", { customerId, taskId, comment, priority, status });
+      console.log("✅ Customer task update successful:", { customerId, taskId, comment, priority, status });
       res.json({ message: "Task updated successfully" });
     } catch (error) {
-      console.error("Error updating customer task:", error);
+      console.error("❌ Customer task update (POST) error:", error);
       res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  // Customer task update endpoint (PUT) - for direct task updates
+  app.put('/api/customer-portal/tasks/:taskId', isCustomerAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const customerId = (req.session as any).customer.id;
+      const { comment, status, priority, notes } = req.body;
+      
+      console.log('🔄 Customer task update (PUT):', { taskId, customerId, comment, status, priority, notes });
+      
+      // Verify task belongs to customer
+      const task = await storage.getTask(taskId);
+      if (!task || task.customerId !== customerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Update task if priority or status changed
+      const updateData: any = {};
+      
+      if (priority && priority !== task.priority) {
+        updateData.priority = priority;
+      }
+      
+      // Customer can only set status to certain values
+      if (status && ['pending', 'cancelled'].includes(status) && status !== task.status) {
+        updateData.status = status;
+      }
+      
+      // Update task if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await storage.updateTask(taskId, updateData);
+      }
+      
+      // Add the update record with comment/notes
+      const adminUsers = await storage.getAllUsers();
+      const systemAdmin = adminUsers.find(user => user.role === 'admin') || adminUsers[0];
+      const updateNote = notes || comment || `Priority: ${priority || 'unchanged'}, Status: ${status || 'unchanged'}`;
+      
+      await storage.createTaskUpdate({
+        taskId,
+        updatedBy: systemAdmin?.id || 'admin_1753865311290', // Use system admin for customer updates
+        updateType: 'note_added',
+        note: `[Customer Update] ${updateNote}`
+      });
+      
+      // Get updated task to return
+      const updatedTask = await storage.getTask(taskId);
+      
+      console.log("✅ Customer task update (PUT) successful:", { customerId, taskId, updateData });
+      res.json(updatedTask);
+    } catch (error) {
+      console.error('❌ Customer task update (PUT) error:', error);
+      res.status(500).json({ message: 'Failed to update task' });
     }
   });
 

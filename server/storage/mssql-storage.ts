@@ -454,7 +454,15 @@ export class MSSQLStorage implements IStorage {
       request.input('id', id);
       
       const result = await request.query(`
-        SELECT * FROM tasks WHERE id = @id
+        SELECT 
+          t.*, 
+          c.name as customerName,
+          c.address as customerAddress,
+          c.phone as customerPhone,
+          c.email as customerEmail
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        WHERE t.id = @id
       `);
       
       return result.recordset[0];
@@ -470,7 +478,15 @@ export class MSSQLStorage implements IStorage {
       const request = pool.request();
       
       const result = await request.query(`
-        SELECT * FROM tasks ORDER BY createdAt DESC
+        SELECT 
+          t.*, 
+          c.name as customerName,
+          c.address as customerAddress,
+          c.phone as customerPhone,
+          c.email as customerEmail
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        ORDER BY t.createdAt DESC
       `);
       
       return result.recordset;
@@ -487,7 +503,16 @@ export class MSSQLStorage implements IStorage {
       request.input('customerId', customerId);
       
       const result = await request.query(`
-        SELECT * FROM tasks WHERE customerId = @customerId ORDER BY createdAt DESC
+        SELECT 
+          t.*, 
+          c.name as customerName,
+          c.address as customerAddress,
+          c.phone as customerPhone,
+          c.email as customerEmail
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        WHERE t.customerId = @customerId 
+        ORDER BY t.createdAt DESC
       `);
       
       return result.recordset;

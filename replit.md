@@ -62,6 +62,9 @@ Preferred communication style: Simple, everyday language.
 - Fixed all TypeScript compilation errors preventing proper server operation
 - Customer portal task creation endpoint enhanced with proper customer name association
 - Status validation now properly maps invalid statuses to valid database values
+- **Customer name display issue COMPLETELY RESOLVED**: All tasks now show proper customer names instead of "Unknown Customer" by implementing JOIN queries with customers table
+- **Customer portal update functionality FULLY OPERATIONAL**: Both POST and PUT methods working perfectly for task updates from customer portal
+- Foreign key constraint error resolved by using valid admin user IDs for customer update records
 
 ## External Dependencies
 - **Database**: MS SQL Server (primary storage), Neon PostgreSQL (previously).
