@@ -83,15 +83,11 @@
     </div>
 
     <script>
-        // MOBILE APK - PUBLISHED SERVER CONNECTION
-        // Try multiple URL patterns to find working server
-        const POSSIBLE_URLS = [
-            'https://workspace.sachin160.repl.co',
-            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
-            window.location.protocol + '//' + window.location.host
-        ];
+        // MOBILE APK - DIRECT SERVER CONNECTION
+        // Get current server URL dynamically
+        const API_URL = window.location.protocol + '//' + window.location.host;
         
-        let API_URL = POSSIBLE_URLS[0]; // Default to first option
+        console.log('🚀 Mobile App - API URL:', API_URL);
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -126,8 +122,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
-                        'X-Requested-With': 'mobile'
+                        'User-Agent': 'WizoneMobileApp/1.0'
                     },
                     credentials: 'include',
                     body: JSON.stringify({ username, password })
