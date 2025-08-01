@@ -274,6 +274,10 @@ export default function Customers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      // Clear modal state properly
+      setPortalCustomer(null);
+      setPortalUsername("");
+      setPortalPassword("");
       setShowPortalModal(false);
       toast({
         title: "Success",
@@ -568,6 +572,11 @@ export default function Customers() {
                 checked={portalCustomer?.portalAccess || false}
                 onCheckedChange={(checked) => {
                   setPortalCustomer(prev => ({ ...prev, portalAccess: checked }));
+                  // Clear fields when disabling
+                  if (!checked) {
+                    setPortalUsername("");
+                    setPortalPassword("");
+                  }
                 }}
               />
               <Label>Enable Portal Access</Label>
