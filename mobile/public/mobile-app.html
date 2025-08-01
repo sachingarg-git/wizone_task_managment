@@ -514,6 +514,96 @@
         }
       };
     });
+
+    // Mobile APK UI Refresh Handler for Task Status Updates
+    window.mobileTaskRefresh = {
+      // Force refresh task list after status update
+      refreshTaskList: function() {
+        console.log('🔄 Refreshing mobile task list...');
+        
+        const iframe = document.getElementById('webviewFrame');
+        if (iframe && iframe.contentWindow) {
+          try {
+            // Send refresh message to iframe
+            iframe.contentWindow.postMessage({
+              type: 'REFRESH_TASKS',
+              timestamp: Date.now()
+            }, '*');
+            
+            // Force iframe reload to show updated data
+            setTimeout(() => {
+              const currentSrc = iframe.src;
+              iframe.src = '';
+              setTimeout(() => {
+                iframe.src = currentSrc;
+              }, 100);
+            }, 500);
+            
+          } catch (error) {
+            console.log('Cross-origin refresh - reloading iframe');
+            iframe.src = iframe.src;
+          }
+        }
+      },
+      
+      // Show success message after task update
+      showUpdateSuccess: function(taskId, newStatus) {
+        console.log(`✅ Task ${taskId} updated to ${newStatus}`);
+        
+        // Create success notification
+        const notification = document.createElement('div');
+        notification.innerHTML = `
+          <div style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+          ">
+            ✅ Task status updated to ${newStatus}
+          </div>
+          <style>
+            @keyframes slideIn {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          </style>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+          notification.remove();
+        }, 3000);
+        
+        // Refresh task list to show changes
+        this.refreshTaskList();
+      }
+    };
+    
+    // Auto-refresh every 30 seconds to keep UI in sync
+    setInterval(() => {
+      console.log('🔄 Auto-refreshing mobile UI...');
+      window.mobileTaskRefresh.refreshTaskList();
+    }, 30000);
+    
+    // Listen for messages from iframe about task updates
+    window.addEventListener('message', function(event) {
+      if (event.data.type === 'TASK_UPDATE') {
+        console.log('📱 Received task update message:', event.data);
+        window.mobileTaskRefresh.showUpdateSuccess(event.data.taskId, event.data.status);
+      }
+    });
+    
+    console.log('✅ Mobile UI refresh handler initialized');
   </script>
 </body>
 </html>

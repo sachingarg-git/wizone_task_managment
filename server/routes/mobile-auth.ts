@@ -110,13 +110,22 @@ router.get('/api/mobile/field-engineers/:id/tasks', async (req, res) => {
 });
 
 // Mobile task status update
-router.post('/api/mobile/tasks/:id/status', async (req, res) => {
+router.post('/api/mobile/tasks/:id/status', async (req: any, res) => {
   try {
     const taskId = parseInt(req.params.id);
     const { status, note } = req.body;
-    const userId = req.session?.user?.id || 'mobile_user';
     
-    console.log(`📱 MOBILE TASK STATUS UPDATE: Task ${taskId} → ${status}`);
+    // Use authenticated user ID, fallback to admin if session missing
+    const userId = req.session?.user?.id || 'admin';
+    
+    console.log(`📱 MOBILE TASK STATUS UPDATE: Task ${taskId} → ${status} by ${userId}`);
+    
+    if (!taskId || !status) {
+      return res.status(400).json({ 
+        error: 'Missing data',
+        message: 'Task ID and status are required' 
+      });
+    }
     
     const task = await storage.updateFieldTaskStatus(taskId, status, userId, note);
     
