@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Field Engineer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: #22d3ee;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0 auto 20px;
+            color: white;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .input {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .input:focus {
+            outline: none;
+            border-color: #22d3ee;
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #22d3ee;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #0891b2; }
+        .btn:disabled { background: #666; cursor: not-allowed; }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #22c55e;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+        }
+        .status {
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+        .server-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">W</div>
+            <div class="title">Field Engineer Portal</div>
+            <div class="subtitle">Real-time Task Management</div>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="server-info" id="serverInfo">
+            🔍 Detecting server connection...
+        </div>
+        
+        <div class="form-group">
+            <label class="label">Username</label>
+            <input type="text" id="username" class="input" placeholder="Enter username" value="admin">
+        </div>
+        
+        <div class="form-group">
+            <label class="label">Password</label>
+            <input type="password" id="password" class="input" placeholder="Enter password" value="admin123">
+        </div>
+        
+        <button id="loginBtn" class="btn" onclick="login()">Login to Portal</button>
+        
+        <div class="status" id="status">Ready to login</div>
+    </div>
+
+    <script>
+        // PRODUCTION MOBILE APK - SMART SERVER DETECTION
+        let API_URL = null;
+        
+        // Production server URLs for mobile APK
+        // Production server URLs for mobile APK  
+        const PRODUCTION_URLS = [
+            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-5000.preview.replit.dev',
+            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804.replit.app',
+            window.location.protocol + '//' + window.location.host
+        ];
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+            msg.style.display = 'block';
+        }
+
+        function setStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function updateServerInfo(url, status) {
+            const info = document.getElementById('serverInfo');
+            info.innerHTML = `
+                🌐 Server: ${url || 'Detecting...'}<br>
+                📊 Status: ${status}<br>
+                💾 Database: MS SQL Server 103.122.85.61, 1440
+            `;
+        }
+
+        async function detectServer() {
+            setStatus('Detecting production server...');
+            
+            for (let i = 0; i < PRODUCTION_URLS.length; i++) {
+                const testUrl = PRODUCTION_URLS[i];
+                try {
+                    console.log(`🔍 Testing server ${i+1}: ${testUrl}`);
+                    updateServerInfo(testUrl, 'Testing...');
+                    
+                    const response = await fetch(`${testUrl}/api/health`, {
+                        method: 'GET',
+                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' },
+                        timeout: 5000
+                    });
+                    
+                    if (response.ok) {
+                        const health = await response.json();
+                        console.log('✅ Server found:', health);
+                        API_URL = testUrl;
+                        updateServerInfo(testUrl, '✅ Connected');
+                        setStatus('✅ Production server connected');
+                        showMessage('Server connection established', 'success');
+                        return true;
+                    }
+                } catch (err) {
+                    console.log(`❌ Server ${i+1} failed:`, err.message);
+                    updateServerInfo(testUrl, '❌ Failed');
+                }
+            }
+            
+            // No production server found
+            API_URL = null;
+            updateServerInfo('None found', '❌ All servers offline');
+            setStatus('❌ No production server available');
+            showMessage('Cannot connect to any production server', 'error');
+            return false;
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const btn = document.getElementById('loginBtn');
+            
+            if (!username || !password) {
+                showMessage('Please enter username and password', 'error');
+                return;
+            }
+
+            if (!API_URL) {
+                showMessage('No server connection available', 'error');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Logging in...';
+                setStatus('Authenticating with MS SQL database...');
+                
+                console.log('🔐 Login attempt:', username);
+                console.log('🌐 Server:', API_URL);
+                
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneMobileApp/1.0'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    console.log('✅ Login success:', user);
+                    
+                    showMessage(`Welcome ${user.firstName || user.username}!`, 'success');
+                    setStatus(`✅ MS SQL Server: 103.122.85.61, 1440 - ${user.role}`);
+                    
+                    // Save user data
+                    localStorage.setItem('wizone_user', JSON.stringify(user));
+                    localStorage.setItem('wizone_logged_in', 'true');
+                    localStorage.setItem('wizone_api_url', API_URL);
+                    
+                    btn.textContent = 'Login Successful ✅';
+                    
+                    // Redirect to task dashboard
+                    setTimeout(() => {
+                        window.location.href = 'task-dashboard.html';
+                    }, 1500);
+                    
+                } else {
+                    const errorData = await response.text();
+                    console.error('❌ Login failed:', errorData);
+                    showMessage('Invalid username or password', 'error');
+                    setStatus('Login failed');
+                }
+                
+            } catch (error) {
+                console.error('❌ Connection error:', error);
+                showMessage('Connection failed. Check network.', 'error');
+                setStatus('Connection failed');
+            } finally {
+                if (btn.textContent !== 'Login Successful ✅') {
+                    btn.disabled = false;
+                    btn.textContent = 'Login to Portal';
+                }
+            }
+        }
+        
+        // Enter key support
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+        
+        // Auto-detect server on load
+        window.addEventListener('load', async () => {
+            console.log('🚀 Wizone Production Mobile App');
+            updateServerInfo(null, 'Initializing...');
+            await detectServer();
+        });
+    </script>
+</body>
+</html>

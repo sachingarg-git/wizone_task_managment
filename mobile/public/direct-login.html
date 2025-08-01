@@ -141,15 +141,15 @@
     </div>
 
     <script>
-        // DIRECT CONNECTION - NO AUTO-DETECTION
-        let API_URL = 'http://localhost:5000';
+        // MOBILE APK - PRODUCTION SERVER CONNECTION
+        let API_URL = 'https://1123456789898765432-5000.preview.replit.dev';
         
-        // Try different possible URLs for mobile
+        // Production server URLs for mobile APK
         const POSSIBLE_URLS = [
-            'http://localhost:5000',
+            'https://1123456789898765432-5000.preview.replit.dev',
+            'https://1123456789898765432.replit.app',
             window.location.protocol + '//' + window.location.host,
-            'https://' + window.location.hostname + ':5000',
-            'http://' + window.location.hostname + ':5000'
+            'http://localhost:5000'
         ];
 
         function showMessage(text, type) {
