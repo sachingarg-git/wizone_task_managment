@@ -44,6 +44,13 @@ Preferred communication style: Simple, everyday language.
 - **Deployment**: Designed for portability, supporting GoDaddy hosting, PM2 cluster, Nginx, and Docker containerization. Automated setup wizard for local SQL Server installation.
 - **User Interface**: Focus on modern aesthetics with a light theme, colored icons, and smooth animations.
 
+## Recent Success (August 1, 2025)
+**Customer Portal Access Issue - COMPLETELY RESOLVED:**
+- Fixed auto-disable issue where portal access would revert after enabling
+- Database persistence now working correctly (portalAccess column properly updated)
+- Frontend toggle state now sends correct values to backend
+- All customer portal functionality fully operational
+
 ## External Dependencies
 - **Database**: MS SQL Server (primary storage), Neon PostgreSQL (previously).
 - **Authentication**: Replit Auth (previously).

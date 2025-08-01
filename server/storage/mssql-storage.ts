@@ -906,11 +906,12 @@ export class MSSQLStorage implements IStorage {
       request.input('password', portalData.password || null);
       request.input('portalAccess', portalData.portalAccess ? 1 : 0);
       
-      // Update customer with portal access details (simplified)
+      // Update customer with portal access details INCLUDING portalAccess column
       const result = await request.query(`
         UPDATE customers 
         SET username = @username,
-            password = @password
+            password = @password,
+            portalAccess = @portalAccess
         WHERE id = @customerId
       `);
       

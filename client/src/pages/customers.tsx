@@ -614,7 +614,7 @@ export default function Customers() {
                   customerId: portalCustomer.id,
                   username: portalUsername,
                   password: portalPassword,
-                  portalAccess: portalCustomer.portalAccess || false
+                  portalAccess: portalCustomer.portalAccess  // Send the current toggle state
                 });
               }}
               disabled={portalAccessMutation.isPending}
