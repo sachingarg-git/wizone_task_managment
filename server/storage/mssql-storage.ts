@@ -14,6 +14,7 @@ export interface IStorage {
   
   // Customer operations
   getCustomer(id: number): Promise<any | undefined>;
+  getCustomerByUsername(username: string): Promise<any | undefined>;
   getAllCustomers(): Promise<any[]>;
   createCustomer(customer: any): Promise<any>;
   updateCustomer(id: number, updates: any): Promise<any>;
@@ -22,6 +23,7 @@ export interface IStorage {
   // Task operations
   getTask(id: number): Promise<any | undefined>;
   getAllTasks(): Promise<any[]>;
+  getTasksByCustomer(customerId: number): Promise<any[]>;
   createTask(task: any): Promise<any>;
   updateTask(id: number, updates: any): Promise<any>;
   deleteTask(id: number): Promise<boolean>;
@@ -298,6 +300,23 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
+  async getCustomerByUsername(username: string): Promise<any | undefined> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('username', username);
+      
+      const result = await request.query(`
+        SELECT * FROM customers WHERE username = @username AND portalAccess = 1
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Error getting customer by username:', error);
+      return undefined;
+    }
+  }
+
   async getAllCustomers(): Promise<any[]> {
     try {
       const pool = await getConnection();
@@ -453,6 +472,23 @@ export class MSSQLStorage implements IStorage {
       return result.recordset;
     } catch (error) {
       console.error('Error getting all tasks:', error);
+      return [];
+    }
+  }
+
+  async getTasksByCustomer(customerId: number): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      request.input('customerId', customerId);
+      
+      const result = await request.query(`
+        SELECT * FROM tasks WHERE customerId = @customerId ORDER BY createdAt DESC
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting tasks by customer:', error);
       return [];
     }
   }
@@ -894,7 +930,7 @@ export class MSSQLStorage implements IStorage {
         `);
         console.log('✅ All customer portal columns ensured');
       } catch (columnError) {
-        console.log('⚠️ Column setup error:', columnError.message);
+        console.log('⚠️ Column setup error:', (columnError as Error).message);
       }
       
       // Short delay to ensure columns are added
@@ -1002,7 +1038,7 @@ export class MSSQLStorage implements IStorage {
       }
       
     } catch (error) {
-      console.error('❌ Assignment error:', error.message);
+      console.error('❌ Assignment error:', (error as Error).message);
       throw error;
     }
   }
@@ -1056,13 +1092,13 @@ export class MSSQLStorage implements IStorage {
         console.log(`✅ Task ${taskId} successfully assigned to engineer ${firstEngineerId}`);
         
       } catch (assignError) {
-        console.error(`❌ Assignment recording failed:`, assignError.message);
-        throw new Error(`Assignment failed: ${assignError.message}`);
+        console.error(`❌ Assignment recording failed:`, (assignError as Error).message);
+        throw new Error(`Assignment failed: ${(assignError as Error).message}`);
       }
       
     } catch (error) {
-      console.error('❌ COMPLETE ERROR in assignMultipleFieldEngineers:', error.message);
-      console.error('❌ ERROR STACK:', error.stack);
+      console.error('❌ COMPLETE ERROR in assignMultipleFieldEngineers:', (error as Error).message);
+      console.error('❌ ERROR STACK:', (error as Error).stack);
       throw error;
     }
   }
