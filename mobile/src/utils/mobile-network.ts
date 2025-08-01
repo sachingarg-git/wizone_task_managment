@@ -24,24 +24,27 @@ export class MobileNetworkConfig {
       }
     }
     
-    // Multiple network configurations for mobile APK - FIXED FOR REAL DEVICES
+    // Multiple network configurations for mobile APK
     this.baseUrls = [
-      // ✅ WORKING DEPLOYMENT URL - HIGHEST PRIORITY
-      'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
-      
-      // Current deployment URL detection (if on Replit)
+      // Current deployment URL (if on Replit)
       ...(currentDeploymentUrl ? [currentDeploymentUrl] : []),
       
-      // Local network IPs for development (update with your actual IP)
+      // Production servers that user needs to configure
+      'http://YOUR_ACTUAL_SERVER_IP:5000',
+      
+      // Common local network IP ranges (user should update these)
       'http://192.168.1.100:5000',
       'http://192.168.0.100:5000',
       'http://10.0.0.100:5000',
       'http://172.16.0.100:5000',
       
-      // Android emulator specific (works in emulator only)
+      // Replit deployment URLs (auto-detected above)
+      'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
+      
+      // Android emulator specific
       'http://10.0.2.2:5000',
       
-      // Localhost fallback (emulator only - will fail on real device)
+      // Localhost fallback (only works in emulator)
       'http://127.0.0.1:5000',
       'http://localhost:5000'
     ];

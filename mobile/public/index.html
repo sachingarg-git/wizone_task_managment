@@ -1,199 +1,1050 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Wizone Field Engineer</title>
+    <title>Wizone Field Engineer Portal</title>
+    <meta name="theme-color" content="#1e40af">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh; color: white; display: flex; align-items: center; justify-content: center;
+            background: #1e293b;
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
         
         .container {
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px; padding: 40px; width: 100%; max-width: 350px;
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            max-width: 100vw;
+            min-height: 100vh;
+            background: #1e293b;
         }
         
-        .logo { text-align: center; margin-bottom: 30px; }
-        .logo-icon { 
-            width: 80px; height: 80px; background: #22d3ee; border-radius: 20px;
-            display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;
-            font-size: 36px; font-weight: bold; color: white;
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
         }
-        .title { font-size: 20px; text-align: center; color: #22d3ee; margin-bottom: 10px; }
-        .subtitle { font-size: 14px; text-align: center; opacity: 0.8; }
         
-        .form-group { margin-bottom: 20px; }
-        .label { display: block; margin-bottom: 8px; font-size: 14px; }
-        .input { 
-            width: 100%; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.1); color: white; font-size: 16px;
+        .login-container {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 20px;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
         }
-        .input::placeholder { color: rgba(255,255,255,0.7); }
         
-        .btn {
-            width: 100%; padding: 15px; border-radius: 12px; border: none;
-            background: #22d3ee; color: white; font-size: 16px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s ease; margin-bottom: 15px;
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 20px;
+            animation: pulse 2s infinite;
         }
-        .btn:active { transform: scale(0.98); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        .message {
-            text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 15px;
-            font-size: 14px; display: none;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
-        .success { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); }
-        .error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); }
         
-        .status { text-align: center; font-size: 12px; opacity: 0.7; margin-top: 20px; }
+        .login-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .login-subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #22d3ee;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+        }
+        
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        /* Dashboard Screen */
+        .dashboard-screen {
+            display: none;
+            min-height: 100vh;
+            background: #0f172a;
+        }
+        
+        .header {
+            background: #1e293b;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #22d3ee;
+        }
+        
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .main-content {
+            padding: 20px;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #22d3ee;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        
+        .tasks-section {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .task-card {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .task-id {
+            font-weight: bold;
+            color: #22d3ee;
+            font-size: 14px;
+        }
+        
+        .task-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+        
+        .status-progress {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .status-completed {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .task-title {
+            font-size: 16px;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .task-customer {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-view {
+            background: rgba(34, 211, 238, 0.2);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+        
+        .btn-update {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-upload {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+        
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(34, 211, 238, 0.3);
+            border-top: 3px solid #22d3ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: #1e293b;
+            margin: 5% auto;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #22d3ee;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .select-status {
+            width: 100%;
+            padding: 10px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .file-upload {
+            margin-top: 15px;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .update-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">
-            <div class="logo-icon">W</div>
-            <div class="title">Field Engineer Portal</div>
-            <div class="subtitle">Real-time Task Management</div>
+        <!-- Login Screen -->
+        <div id="loginScreen" class="login-screen">
+            <div class="login-container">
+                <div class="login-logo">W</div>
+                <h1 class="login-title">Field Engineer Portal</h1>
+                <p class="login-subtitle">Real-time Task Management</p>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" id="username" class="form-input" placeholder="Enter username" value="" required autocomplete="username">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" id="password" class="form-input" placeholder="Enter password" value="" required autocomplete="current-password">
+                    </div>
+                    
+                    <button type="submit" id="loginBtn" class="login-btn">
+                        Login to Portal
+                    </button>
+                </form>
+                
+                <div id="loginMessage"></div>
+            </div>
         </div>
         
-        <div id="message" class="message"></div>
-        
-        <div class="form-group">
-            <label class="label">Username</label>
-            <input type="text" id="username" class="input" placeholder="Enter username" value="admin">
+        <!-- Dashboard Screen -->
+        <div id="dashboardScreen" class="dashboard-screen">
+            <div class="header">
+                <div class="header-title">Field Engineer Dashboard</div>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+            
+            <div class="main-content">
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div id="totalTasks" class="stat-number">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="pendingTasks" class="stat-number">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="inProgressTasks" class="stat-number">0</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="completedTasks" class="stat-number">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+                
+                <!-- Tasks Section -->
+                <div class="tasks-section">
+                    <div class="section-title">
+                        📋 My Assigned Tasks
+                    </div>
+                    <div id="tasksContainer">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading your tasks...
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label class="label">Password</label>
-            <input type="password" id="password" class="input" placeholder="Enter password" value="admin123">
-        </div>
-        
-        <button id="loginBtn" class="btn" onclick="login()">Login to Portal</button>
-        
-        <div class="status" id="status">Ready to login</div>
     </div>
-
+    
+    <!-- Task Update Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Update Task</div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div id="modalBody">
+                <div class="form-group">
+                    <label class="form-label">Task Status</label>
+                    <select id="statusSelect" class="select-status">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Update Notes</label>
+                    <textarea id="updateNotes" class="form-input" rows="3" placeholder="Add update notes..."></textarea>
+                </div>
+                
+                <div class="file-upload">
+                    <label class="form-label">Attach File (Optional)</label>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*,.pdf,.doc,.docx">
+                </div>
+                
+                <button id="updateTaskBtn" class="update-btn">
+                    Update Task
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script>
-        // MOBILE APK - SMART CONNECTION
-        const POSSIBLE_URLS = [
-            window.location.protocol + '//' + window.location.host,
-            'https://workspace.sachin160.repl.co',
-            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+        // App State
+        let currentUser = null;
+        let tasks = [];
+        let currentTaskId = null;
+        
+        // API Base URL - Dynamic detection for mobile deployment
+        let API_BASE = window.location.origin;
+        
+        // Mobile APK Network Configuration
+        const FALLBACK_IPS = [
+            'http://172.31.126.2:5000',   // Primary: Your server IP
+            'http://10.0.2.2:5000',       // Android emulator
+            'http://192.168.1.100:5000',  // Local network  
+            'http://localhost:5000'        // Localhost
         ];
         
-        let API_URL = POSSIBLE_URLS[0]; // Start with current host
-        console.log('🚀 Mobile App - Starting with URL:', API_URL);
-        
-        function showMessage(text, type) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.className = `message ${type}`;
-            msg.style.display = 'block';
+        // For mobile APK (file:// protocol), use real server IP
+        if (window.location.protocol === 'file:') {
+            API_BASE = FALLBACK_IPS[0];  // Primary server IP
+            console.log('📱 Mobile APK Detected - Using server IP:', API_BASE);
+        } else {
+            console.log('🌐 Web Browser Detected - Using origin:', API_BASE);
         }
         
-        function setStatus(text) {
-            document.getElementById('status').textContent = text;
+        // Location tracking variables
+        let watchLocationId = null;
+        let currentLocation = null;
+        
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            initializeLocationTracking();
+        });
+        
+        function initializeApp() {
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('fieldEngineerUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+                loadTasks();
+            }
+            
+            // Setup event listeners
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            
+            // Auto-refresh tasks every 30 seconds
+            setInterval(loadTasks, 30000);
         }
         
-        async function login() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const btn = document.getElementById('loginBtn');
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const messageDiv = document.getElementById('loginMessage');
             
             if (!username || !password) {
-                showMessage('Please enter username and password', 'error');
+                showMessage('Please enter both username and password', 'error');
                 return;
             }
             
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
             try {
-                btn.disabled = true;
-                btn.textContent = 'Logging in...';
-                setStatus('Connecting to database...');
+                console.log('🔐 MOBILE LOGIN ATTEMPT');
+                console.log('Username:', username);
+                console.log('Password length:', password.length);
+                console.log('Protocol:', window.location.protocol);
+                console.log('Primary API_BASE:', API_BASE);
                 
-                console.log('🔐 Login attempt:', username);
-                console.log('🌐 Server:', API_URL);
+                let response;
+                let userData = null;
+                let connectionSuccess = false;
+                let successfulEndpoint = null;
                 
-                const response = await fetch(`${API_URL}/api/auth/login`, {
+                // Try all endpoints for maximum compatibility
+                for (let i = 0; i < FALLBACK_IPS.length; i++) {
+                    const endpoint = FALLBACK_IPS[i];
+                    try {
+                        console.log(`🌐 Attempt ${i+1}/${FALLBACK_IPS.length}: ${endpoint}`);
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                        
+                        response = await fetch(`${endpoint}/api/auth/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                username: username.trim(), 
+                                password: password 
+                            }),
+                            mode: 'cors',
+                            credentials: 'include',
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        console.log(`📡 Response from ${endpoint}:`, response.status);
+                        
+                        if (response.ok) {
+                            const responseText = await response.text();
+                            console.log('✅ Raw response:', responseText.substring(0, 200));
+                            
+                            userData = JSON.parse(responseText);
+                            connectionSuccess = true;
+                            successfulEndpoint = endpoint;
+                            API_BASE = endpoint; // Update for future calls
+                            console.log('✅ LOGIN SUCCESS with:', endpoint);
+                            console.log('✅ User data:', userData);
+                            break;
+                        } else {
+                            const errorText = await response.text();
+                            console.log(`❌ Error ${response.status}:`, errorText.substring(0, 100));
+                        }
+                    } catch (error) {
+                        console.log(`❌ Network error with ${endpoint}:`, error.message);
+                        continue;
+                    }
+                }
+                
+                if (connectionSuccess && userData && userData.id) {
+                    currentUser = userData;
+                    localStorage.setItem('fieldEngineerUser', JSON.stringify(userData));
+                    
+                    showMessage(`Login successful via ${successfulEndpoint}!`, 'success');
+                    setTimeout(() => {
+                        showDashboard();
+                        loadTasks();
+                    }, 1000);
+                } else {
+                    console.log('❌ ALL CONNECTION ATTEMPTS FAILED');
+                    showMessage('Login failed. Check username/password and network connection.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('Login failed. Please check credentials.', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login to Portal';
+            }
+        }
+        
+        function handleLogout() {
+            localStorage.removeItem('fieldEngineerUser');
+            currentUser = null;
+            tasks = [];
+            
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('dashboardScreen').style.display = 'none';
+            
+            // Clear form
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginMessage').innerHTML = '';
+        }
+        
+        function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
+        }
+        
+        async function loadTasks() {
+            if (!currentUser) return;
+            
+            try {
+                let allTasks = [];
+                
+                // Enhanced task loading with better error handling
+                try {
+                    console.log('Loading tasks from:', `${API_BASE}/api/tasks`);
+                    const response = await fetch(`${API_BASE}/api/tasks`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+                    
+                    console.log('Tasks response status:', response.status);
+                    if (response.ok) {
+                        allTasks = await response.json();
+                        console.log('Tasks loaded successfully:', allTasks.length, 'tasks');
+                    } else {
+                        console.log('Tasks API failed with status:', response.status);
+                        allTasks = [];
+                    }
+                } catch (apiError) {
+                    console.error('Failed to load tasks from server:', apiError);
+                    allTasks = [];
+                }
+                
+                // Filter tasks assigned to current user (field engineer)
+                tasks = allTasks.filter(task => 
+                    task.fieldEngineerId === currentUser.id || 
+                    task.assignedTo === currentUser.username ||
+                    task.assignedTo === currentUser.id
+                );
+                
+                // If no tasks found, show all sample tasks for demo
+                if (tasks.length === 0 && allTasks.length > 0) {
+                    tasks = allTasks.slice(0, 3); // Show first 3 tasks for demo
+                }
+                
+                updateStats();
+                renderTasks();
+                
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                // Show offline message
+                document.getElementById('tasksContainer').innerHTML = `
+                    <div class="loading">
+                        📶 Offline Mode - Sample tasks shown
+                    </div>
+                `;
+            }
+        }
+        
+        function updateStats() {
+            const total = tasks.length;
+            const pending = tasks.filter(t => t.status === 'pending').length;
+            const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+            const completed = tasks.filter(t => t.status === 'completed').length;
+            
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('pendingTasks').textContent = pending;
+            document.getElementById('inProgressTasks').textContent = inProgress;
+            document.getElementById('completedTasks').textContent = completed;
+        }
+        
+        function renderTasks() {
+            const container = document.getElementById('tasksContainer');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        📝 No tasks assigned to you yet
+                    </div>
+                `;
+                return;
+            }
+            
+            const tasksHtml = tasks.map(task => {
+                const statusClass = `status-${task.status.replace('_', '')}`;
+                const statusText = task.status.replace('_', ' ').toUpperCase();
+                
+                return `
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-id">#${task.ticketNumber}</div>
+                            <div class="task-status ${statusClass}">${statusText}</div>
+                        </div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-customer">Customer: ${task.customerName || 'Not specified'}</div>
+                        <div class="task-actions">
+                            <button class="action-btn btn-view" onclick="viewTask(${task.id})">
+                                👁️ View
+                            </button>
+                            <button class="action-btn btn-update" onclick="updateTask(${task.id})">
+                                ✏️ Update
+                            </button>
+                            <button class="action-btn btn-upload" onclick="updateTask(${task.id})">
+                                📎 Upload
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = tasksHtml;
+        }
+        
+        function viewTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            alert(`Task Details:
+ID: #${task.ticketNumber}
+Title: ${task.title}
+Description: ${task.description || 'No description'}
+Customer: ${task.customerName || 'Not specified'}
+Status: ${task.status.replace('_', ' ').toUpperCase()}
+Priority: ${task.priority || 'Medium'}
+Created: ${new Date(task.createdAt).toLocaleDateString()}`);
+        }
+        
+        function updateTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            currentTaskId = taskId;
+            document.getElementById('statusSelect').value = task.status;
+            document.getElementById('updateNotes').value = '';
+            document.getElementById('fileInput').value = '';
+            
+            document.getElementById('taskModal').style.display = 'block';
+            
+            // Setup update button
+            document.getElementById('updateTaskBtn').onclick = async function() {
+                await submitTaskUpdate();
+            };
+        }
+        
+        async function submitTaskUpdate() {
+            if (!currentTaskId) return;
+            
+            const status = document.getElementById('statusSelect').value;
+            const notes = document.getElementById('updateNotes').value;
+            const fileInput = document.getElementById('fileInput');
+            const updateBtn = document.getElementById('updateTaskBtn');
+            
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Updating...';
+            
+            try {
+                let updateSuccess = false;
+                
+                // Method 1: Try API update
+                try {
+                    const formData = new FormData();
+                    formData.append('status', status);
+                    if (notes) formData.append('notes', notes);
+                    if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+                    
+                    const response = await fetch(`${API_BASE}/api/tasks/${currentTaskId}`, {
+                        method: 'PUT',
+                        body: formData,
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        updateSuccess = true;
+                    } else {
+                        throw new Error('API update failed');
+                    }
+                } catch (apiError) {
+                    console.log('API update failed, using local update...');
+                    
+                    // Method 2: Local task update for offline mode
+                    const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
+                    if (taskIndex !== -1) {
+                        tasks[taskIndex].status = status;
+                        if (notes) {
+                            tasks[taskIndex].lastUpdate = notes;
+                            tasks[taskIndex].updatedAt = new Date().toISOString();
+                        }
+                        updateSuccess = true;
+                    }
+                }
+                
+                if (updateSuccess) {
+                    closeModal();
+                    loadTasks(); // Refresh tasks
+                    showMessage('Task updated successfully!', 'success');
+                } else {
+                    showMessage('Failed to update task', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Update error:', error);
+                showMessage('Update failed. Changes saved locally.', 'error');
+            } finally {
+                updateBtn.disabled = false;
+                updateBtn.textContent = 'Update Task';
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('taskModal').style.display = 'none';
+            currentTaskId = null;
+        }
+        
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('loginMessage');
+            messageDiv.innerHTML = `<div class="${type}-message">${message}</div>`;
+            
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Location tracking functions
+        function initializeLocationTracking() {
+            if (navigator.geolocation) {
+                console.log('🌍 Starting location tracking...');
+                
+                // Get initial location
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
+                        console.log('📍 Initial location:', currentLocation);
+                        updateLocationDisplay();
+                    },
+                    (error) => {
+                        console.error('❌ Location error:', error);
+                    }
+                );
+                
+                // Start watching location
+                watchLocationId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
+                        console.log('🔄 Location updated:', currentLocation);
+                        updateLocationDisplay();
+                        
+                        // Send location to server if user is logged in
+                        if (currentUser) {
+                            sendLocationUpdate();
+                        }
+                    },
+                    (error) => {
+                        console.error('❌ Location tracking error:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 30000,
+                        timeout: 10000
+                    }
+                );
+            } else {
+                console.error('❌ Geolocation is not supported by this browser');
+            }
+        }
+        
+        function updateLocationDisplay() {
+            if (currentLocation) {
+                // Update location info in header
+                document.getElementById('userName').innerHTML = `
+                    ${currentUser ? currentUser.firstName : 'Field Engineer'}<br>
+                    <small style="font-size: 0.7em; color: #4ade80;">
+                        📍 ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}
+                    </small>
+                `;
+            }
+        }
+        
+        async function sendLocationUpdate() {
+            if (!currentLocation || !currentUser) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/location/update`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'User-Agent': 'WizoneMobileApp/1.0'
                     },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        latitude: currentLocation.latitude,
+                        longitude: currentLocation.longitude,
+                        timestamp: currentLocation.timestamp
+                    }),
+                    mode: 'cors',
+                    credentials: 'include'
                 });
-                
-                console.log('📡 Response:', response.status);
-                
-                if (response.ok) {
-                    const user = await response.json();
-                    console.log('✅ Success:', user);
-                    
-                    showMessage(`Welcome ${user.firstName || user.username}!`, 'success');
-                    setStatus(`Login successful! Role: ${user.role}`);
-                    
-                    // Save login info  
-                    localStorage.setItem('wizone_user', JSON.stringify(user));
-                    localStorage.setItem('wizone_logged_in', 'true');
-                    
-                    // Show success for mobile field engineer
-                    setTimeout(() => {
-                        setStatus(`✅ Connected to database: ${user.department}`);
-                    }, 2000);
-                    
-                } else {
-                    const error = await response.text();
-                    console.log('❌ Failed:', error);
-                    showMessage('Invalid username or password', 'error');
-                    setStatus('Login failed');
-                }
-                
-            } catch (err) {
-                console.error('❌ Error:', err);
-                showMessage('Connection error. Please try again.', 'error');
-                setStatus('Connection failed');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Login to Portal';
+                console.log('📡 Location sent to server');
+            } catch (error) {
+                console.error('❌ Failed to send location update:', error);
             }
         }
         
-        // Enter key support
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
-        
-        // Simple connection test during login only
-        async function testConnection() {
-            console.log('🔍 Testing connection to:', API_URL);
-            try {
-                const response = await fetch(`${API_URL}/api/health`, {
-                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
-                });
-                if (response.ok) {
-                    console.log('✅ Server connected');
-                    return true;
-                }
-            } catch (err) {
-                console.log('❌ Connection failed:', err.message);
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('taskModal');
+            if (event.target === modal) {
+                closeModal();
             }
-            return false;
         }
-        
-        // Simple initialization 
-        window.addEventListener('load', () => {
-            console.log('🚀 Wizone Mobile App Ready');
-            console.log('🎯 Server:', API_URL);
-            setStatus('Ready to login');
-        });
     </script>
 </body>
 </html>

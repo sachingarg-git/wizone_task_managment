@@ -623,21 +623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isMobileRequest) {
         console.log(`📱 Mobile request detected for ${req.method} ${req.path} - User-Agent: ${userAgent.substring(0, 50)}...`);
         
-        // Enhanced CORS for mobile APK
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, User-Agent, Cookie');
-        res.header('Access-Control-Allow-Credentials', 'true');
-        res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-        
-        // Handle preflight OPTIONS requests
-        if (req.method === 'OPTIONS') {
-          return res.status(200).end();
-        }
-        
         // For mobile requests without authentication, allow limited access to auth endpoints
-        if (req.path.includes('/api/auth/') || req.path === '/api/auth/user' || req.path === '/api/health') {
-          console.log(`📱 Allowing mobile access to endpoint: ${req.path}`);
+        if (req.path.includes('/api/auth/') || req.path === '/api/auth/user') {
+          console.log(`📱 Allowing mobile access to auth endpoint: ${req.path}`);
           return next();
         }
         

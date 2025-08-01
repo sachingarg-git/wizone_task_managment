@@ -1,31 +1,19 @@
-// DIRECT MS SQL SERVER CONNECTION
-import { getSqlServerConnection, SQL_SERVER_CONFIG } from "./sql-server-db.js";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "../shared/schema.js";
 
-console.log("🚀 Connecting to MS SQL Server:", {
-  server: SQL_SERVER_CONFIG.server,
-  port: SQL_SERVER_CONFIG.port,
-  database: SQL_SERVER_CONFIG.database
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required");
+}
+
+// Create the PostgreSQL connection with SSL
+const sql = postgres(process.env.DATABASE_URL, {
+  ssl: 'require',
+  max: 1,
 });
 
-// Get MS SQL Server connection (already configured)
-export const sqlConnection = getSqlServerConnection();
-
-// Simple database interface for compatibility
-export const db = {
-  // This will be used by storage layer
-  connection: sqlConnection,
-  query: async (query: string, params?: any[]) => {
-    const pool = await sqlConnection;
-    const request = pool.request();
-    if (params) {
-      params.forEach((param, index) => {
-        request.input(`param${index}`, param);
-      });
-    }
-    return request.query(query);
-  }
-};
+// Create the database instance with schema
+export const db = drizzle(sql, { schema });
 
 // Export schema elements for convenience
 export const {

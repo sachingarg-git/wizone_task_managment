@@ -218,46 +218,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      console.log('🔍 MS SQL: Fetching user by username:', username);
-      const pool = await db.connection;
-      const request = pool.request();
-      request.input('username', username);
-      
-      const result = await request.query(`
-        SELECT id, username, password, first_name, last_name, email, role, 
-               department, phone, is_active, created_at, updated_at, profile_image_url
-        FROM users 
-        WHERE username = @username
-      `);
-      
-      if (result.recordset.length === 0) {
-        console.log('❌ MS SQL: User not found:', username);
-        return undefined;
-      }
-      
-      const user = result.recordset[0];
-      console.log('✅ MS SQL: User found:', user.username, 'Role:', user.role);
-      return {
-        id: user.id,
-        username: user.username,
-        password: user.password,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        phone: user.phone,
-        is_active: user.is_active,
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-        profile_image_url: user.profile_image_url
-      } as User;
-      
-    } catch (error) {
-      console.error('❌ MS SQL getUserByUsername error:', error);
-      return undefined;
-    }
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUserWithPassword(userData: UpsertUser & { username: string; password: string }): Promise<User> {
