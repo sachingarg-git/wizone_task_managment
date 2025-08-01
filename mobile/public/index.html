@@ -2,7 +2,11 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Wizone Field Engineer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -163,26 +167,22 @@
             if (e.key === 'Enter') login();
         });
         
-        // Test published database connection
-        async function testPublishedConnection() {
-            setStatus('🔍 Connecting to published database...');
+        // Simple connection test
+        async function testConnection() {
+            setStatus('Testing connection...');
             
             try {
-                console.log(`🔍 Testing published server: ${API_URL}`);
+                console.log('🔍 Testing:', API_URL);
                 
                 const response = await fetch(`${API_URL}/api/health`, {
                     method: 'GET',
-                    headers: { 
-                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
                 });
                 
                 if (response && response.ok) {
-                    const data = await response.json();
-                    console.log(`✅ Published database connected:`, data);
-                    setStatus('✅ Published database connected - Ready to login');
-                    showMessage('Connected to published database successfully', 'success');
+                    console.log('✅ Database connected');
+                    setStatus('✅ Database connected - Ready to login');
+                    showMessage('Database connected successfully', 'success');
                     return true;
                 } else {
                     throw new Error(`HTTP ${response ? response.status : 'Unknown'}`);
@@ -190,18 +190,18 @@
                 
             } catch (error) {
                 console.error('❌ Connection failed:', error);
-                setStatus('❌ Cannot connect to published database');
-                showMessage('Cannot connect to published database. Check internet connection.', 'error');
+                setStatus('❌ Connection failed');
+                showMessage('Cannot connect to database. Check internet.', 'error');
                 return false;
             }
         }
         
-        // Initialize on load
-        window.addEventListener('load', async () => {
-            console.log('🚀 Wizone Mobile App - Published Database Mode');
-            console.log('🎯 Connecting to:', API_URL);
-            
-            await testPublishedConnection();
+        // Initialize
+        window.addEventListener('load', () => {
+            console.log('🚀 Wizone Mobile App');
+            console.log('🎯 Server:', API_URL);
+            setStatus('Initializing...');
+            testConnection();
         });
     </script>
 </body>
