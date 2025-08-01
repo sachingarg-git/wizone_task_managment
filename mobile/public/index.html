@@ -83,11 +83,15 @@
     </div>
 
     <script>
-        // MOBILE APK - DIRECT SERVER CONNECTION
-        // Get current server URL dynamically
-        const API_URL = window.location.protocol + '//' + window.location.host;
+        // MOBILE APK - SMART CONNECTION
+        const POSSIBLE_URLS = [
+            window.location.protocol + '//' + window.location.host,
+            'https://workspace.sachin160.repl.co',
+            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+        ];
         
-        console.log('🚀 Mobile App - API URL:', API_URL);
+        let API_URL = POSSIBLE_URLS[0]; // Start with current host
+        console.log('🚀 Mobile App - Starting with URL:', API_URL);
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -134,16 +138,16 @@
                     const user = await response.json();
                     console.log('✅ Success:', user);
                     
-                    showMessage(`Welcome ${user.username}!`, 'success');
-                    setStatus('Redirecting to main portal...');
+                    showMessage(`Welcome ${user.firstName || user.username}!`, 'success');
+                    setStatus(`Login successful! Role: ${user.role}`);
                     
-                    // Save login info
+                    // Save login info  
                     localStorage.setItem('wizone_user', JSON.stringify(user));
                     localStorage.setItem('wizone_logged_in', 'true');
                     
-                    // Redirect to main application with mobile flag
+                    // Show success for mobile field engineer
                     setTimeout(() => {
-                        window.location.href = `${API_URL}?mobile=true&published_db=true&user=${user.username}`;
+                        setStatus(`✅ Connected to database: ${user.department}`);
                     }, 2000);
                     
                 } else {
@@ -168,7 +172,7 @@
             if (e.key === 'Enter') login();
         });
         
-        // Smart connection test - tries multiple URLs
+        // Test connection on page load
         async function testConnection() {
             setStatus('Finding server...');
             
@@ -180,9 +184,29 @@
                     
                     const response = await fetch(`${testUrl}/api/health`, {
                         method: 'GET',
-                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' },
-                        timeout: 5000
+                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
                     });
+                    
+                    if (response.ok) {
+                        const health = await response.json();
+                        console.log('✅ Server found:', health);
+                        API_URL = testUrl;
+                        setStatus('✅ Server connected!');
+                        showMessage('Connection established successfully', 'success');
+                        return true;
+                    }
+                } catch (err) {
+                    console.log(`❌ URL ${i+1} failed:`, err.message);
+                }
+            }
+            
+            setStatus('❌ No working server found');
+            showMessage('Unable to connect to server', 'error');
+            return false;
+        }
+        
+        // Auto-test connection on load
+        window.addEventListener('load', testConnection);
                     
                     if (response && response.ok) {
                         const data = await response.json();
