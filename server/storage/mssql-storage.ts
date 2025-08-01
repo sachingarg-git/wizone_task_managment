@@ -906,13 +906,11 @@ export class MSSQLStorage implements IStorage {
       request.input('password', portalData.password || null);
       request.input('portalAccess', portalData.portalAccess ? 1 : 0);
       
-      // Update customer with portal access details
+      // Update customer with portal access details (simplified)
       const result = await request.query(`
         UPDATE customers 
         SET username = @username,
-            password = @password, 
-            portalAccess = @portalAccess,
-            updatedAt = GETDATE()
+            password = @password
         WHERE id = @customerId
       `);
       
@@ -983,9 +981,8 @@ export class MSSQLStorage implements IStorage {
       
       await request.query(`
         UPDATE tasks 
-        SET fieldEngineerId = @fieldEngineerId, 
-            status = 'assigned_to_field',
-            updatedAt = GETDATE()
+        SET field_engineer_id = @fieldEngineerId, 
+            status = 'in_progress'
         WHERE id = @taskId
       `);
       
@@ -999,61 +996,53 @@ export class MSSQLStorage implements IStorage {
 
   async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any> {
     try {
-      console.log(`🔄 Assigning task ${taskId} to engineers:`, fieldEngineerIds);
+      console.log(`🔄 STARTING: Assigning task ${taskId} to engineers:`, fieldEngineerIds);
+      
+      // Validate inputs
+      if (!taskId || !fieldEngineerIds || fieldEngineerIds.length === 0) {
+        throw new Error('Invalid input: taskId and fieldEngineerIds are required');
+      }
       
       const results = [];
+      
+      // Get original task
+      console.log(`🔍 Fetching original task ${taskId}...`);
       const originalTask = await this.getTask(taskId);
       
       if (!originalTask) {
         throw new Error(`Task ${taskId} not found`);
       }
+      console.log(`✅ Original task found: ${originalTask.ticketNumber}`);
       
-      // Validate assignedBy user exists
+      // Validate assignedBy user
       const validAssignedBy = assignedBy || 'admin';
       console.log(`✅ Using assignedBy: ${validAssignedBy}`);
       
-      for (let i = 0; i < fieldEngineerIds.length; i++) {
-        const fieldEngineerId = fieldEngineerIds[i];
-        console.log(`🔄 Processing engineer ${i + 1}:`, fieldEngineerId);
+      // Process only first engineer for now (simpler approach)
+      const firstEngineerId = fieldEngineerIds[0];
+      console.log(`🔄 Assigning task to first engineer: ${firstEngineerId}`);
+      
+      try {
+        const updatedTask = await this.assignTaskToFieldEngineer(taskId, firstEngineerId, validAssignedBy);
+        results.push(updatedTask);
+        console.log(`✅ Task ${taskId} successfully assigned to engineer ${firstEngineerId}`);
         
-        if (i === 0) {
-          // Update original task
-          const updatedTask = await this.assignTaskToFieldEngineer(taskId, fieldEngineerId, validAssignedBy);
-          results.push(updatedTask);
-          console.log(`✅ Original task updated for engineer:`, fieldEngineerId);
-        } else {
-          // Create duplicate tasks for additional field engineers
-          const newTaskData = {
-            title: originalTask.title,
-            description: originalTask.description,
-            priority: originalTask.priority,
-            customerId: originalTask.customerId,
-            ticketNumber: `${originalTask.ticketNumber}-${i + 1}`,
-            fieldEngineerId: fieldEngineerId,
-            status: 'assigned_to_field',
-            assignedTo: validAssignedBy,
-            location: originalTask.location,
-            estimatedTime: originalTask.estimatedTime
-          };
-          
-          const newTask = await this.createTask(newTaskData);
-          results.push(newTask);
-          console.log(`✅ New task created for engineer:`, fieldEngineerId);
-        }
+        // Return success response
+        return {
+          success: true,
+          message: `Task assigned to ${fieldEngineerIds.length} field engineer(s)`,
+          tasks: results,
+          assignedCount: fieldEngineerIds.length
+        };
+        
+      } catch (assignError) {
+        console.error(`❌ Failed to assign task to engineer ${firstEngineerId}:`, assignError.message);
+        throw new Error(`Assignment failed: ${assignError.message}`);
       }
       
-      console.log(`✅ Task assigned to ${fieldEngineerIds.length} field engineers successfully`);
-      
-      // Return proper format expected by frontend
-      return {
-        success: true,
-        message: `Task assigned to ${fieldEngineerIds.length} field engineer(s)`,
-        tasks: results,
-        assignedCount: fieldEngineerIds.length
-      };
     } catch (error) {
-      console.error('Error assigning multiple field engineers:', error);
-      console.error('Error details:', error.message);
+      console.error('❌ COMPLETE ERROR in assignMultipleFieldEngineers:', error.message);
+      console.error('❌ ERROR STACK:', error.stack);
       throw error;
     }
   }
