@@ -4,7 +4,7 @@ import mssql from 'mssql';
 export const SQL_SERVER_CONFIG = {
   server: "103.122.85.61",
   port: 1440,
-  database: "WIZONE_TASK_MANAGER",
+  database: "WIZONE_TASK_MANAGER", 
   user: "sa",
   password: "ss123456",
   options: {
