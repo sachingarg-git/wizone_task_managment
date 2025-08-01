@@ -83,11 +83,15 @@
     </div>
 
     <script>
-        // DIRECT CONNECTION TO PUBLISHED DATABASE
-        // Use current domain or localhost fallback
-        const API_URL = window.location.hostname === 'localhost' ? 
-                       'http://localhost:5000' : 
-                       `${window.location.protocol}//${window.location.host}`;
+        // MOBILE APK - PUBLISHED SERVER CONNECTION
+        // Try multiple URL patterns to find working server
+        const POSSIBLE_URLS = [
+            'https://workspace.sachin160.repl.co',
+            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
+            window.location.protocol + '//' + window.location.host
+        ];
+        
+        let API_URL = POSSIBLE_URLS[0]; // Default to first option
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -169,33 +173,41 @@
             if (e.key === 'Enter') login();
         });
         
-        // Simple connection test
+        // Smart connection test - tries multiple URLs
         async function testConnection() {
-            setStatus('Testing connection...');
+            setStatus('Finding server...');
             
-            try {
-                console.log('🔍 Testing:', API_URL);
-                
-                const response = await fetch(`${API_URL}/api/health`, {
-                    method: 'GET',
-                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
-                });
-                
-                if (response && response.ok) {
-                    console.log('✅ Database connected');
-                    setStatus('✅ Database connected - Ready to login');
-                    showMessage('Database connected successfully', 'success');
-                    return true;
-                } else {
-                    throw new Error(`HTTP ${response ? response.status : 'Unknown'}`);
+            for (let i = 0; i < POSSIBLE_URLS.length; i++) {
+                const testUrl = POSSIBLE_URLS[i];
+                try {
+                    console.log(`🔍 Testing URL ${i+1}: ${testUrl}`);
+                    setStatus(`Testing connection ${i+1}/${POSSIBLE_URLS.length}...`);
+                    
+                    const response = await fetch(`${testUrl}/api/health`, {
+                        method: 'GET',
+                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' },
+                        timeout: 5000
+                    });
+                    
+                    if (response && response.ok) {
+                        const data = await response.json();
+                        console.log(`✅ Server found: ${testUrl}`, data);
+                        API_URL = testUrl; // Update global API_URL
+                        setStatus('✅ Database connected - Ready to login');
+                        showMessage('Database connected successfully', 'success');
+                        return true;
+                    }
+                    
+                } catch (error) {
+                    console.log(`❌ URL ${i+1} failed:`, error.message);
                 }
-                
-            } catch (error) {
-                console.error('❌ Connection failed:', error);
-                setStatus('❌ Connection failed');
-                showMessage('Cannot connect to database. Check internet.', 'error');
-                return false;
             }
+            
+            // All URLs failed
+            console.error('❌ All connection attempts failed');
+            setStatus('❌ Cannot connect to server');
+            showMessage('Cannot connect to database. Check internet connection.', 'error');
+            return false;
         }
         
         // Initialize

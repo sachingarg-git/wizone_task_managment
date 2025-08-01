@@ -83,10 +83,12 @@
     <script>
         console.log('🚀 Wizone Mobile App Starting...');
         
-        // Dynamic API URL based on current location
-        const API_URL = window.location.hostname === 'localhost' ? 
-                       'http://localhost:5000' : 
-                       `${window.location.protocol}//${window.location.host}`;
+        // PUBLISHED SERVER CONNECTION - Try multiple URLs
+        const POSSIBLE_URLS = [
+            'https://workspace.sachin160.repl.co',
+            'https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+        ];
+        let API_URL = POSSIBLE_URLS[0];
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
@@ -105,25 +107,34 @@
         }
         
         async function testConnection() {
-            try {
-                setStatus('Testing connection...');
-                const response = await fetch(`${API_URL}/api/health`, {
-                    method: 'GET',
-                    headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
-                });
-                
-                if (response.ok) {
-                    setStatus('✅ Connected to database');
-                    showMessage('Database connected successfully', 'success');
-                    return true;
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
+            setStatus('Finding server...');
+            
+            for (let i = 0; i < POSSIBLE_URLS.length; i++) {
+                const testUrl = POSSIBLE_URLS[i];
+                try {
+                    console.log(`Testing: ${testUrl}`);
+                    setStatus(`Testing ${i+1}/${POSSIBLE_URLS.length}...`);
+                    
+                    const response = await fetch(`${testUrl}/api/health`, {
+                        method: 'GET',
+                        headers: { 'User-Agent': 'WizoneMobileApp/1.0' }
+                    });
+                    
+                    if (response.ok) {
+                        console.log(`✅ Connected: ${testUrl}`);
+                        API_URL = testUrl;
+                        setStatus('✅ Connected to database');
+                        showMessage('Database connected successfully', 'success');
+                        return true;
+                    }
+                } catch (error) {
+                    console.log(`Failed: ${testUrl}`, error);
                 }
-            } catch (error) {
-                setStatus('❌ Connection failed');
-                showMessage('Cannot connect to database', 'error');
-                return false;
             }
+            
+            setStatus('❌ Connection failed');
+            showMessage('Cannot connect to database', 'error');
+            return false;
         }
         
         async function login() {
