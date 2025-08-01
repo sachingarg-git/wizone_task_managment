@@ -454,7 +454,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new task (customer portal)
   app.post('/api/customer-portal/tasks', isCustomerAuthenticated, async (req, res) => {
     try {
-      const customerId = (req.session as any).customer.id;
+      const customer = (req.session as any).customer;
+      const customerId = customer.id;
+      const customerName = customer.name || customer.customerId || 'Unknown Customer';
       const { title, description, priority, issueType } = req.body;
       
       if (!title || !description) {
@@ -467,12 +469,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priority: priority || "medium",
         issueType: issueType || "technical",
         customerId,
+        customerName, // Add customer name for proper display
         status: "pending",
         assignedTo: null, // Will be assigned by admin later
         createdBy: "admin001" // Use admin user ID for customer-created tasks
       };
       
-      console.log("Customer creating task:", { customerId, title, priority, issueType });
+      console.log("Customer creating task:", { customerId, customerName, title, priority, issueType });
       const task = await storage.createTask(taskData);
       console.log("Customer task created successfully:", task.id);
       
