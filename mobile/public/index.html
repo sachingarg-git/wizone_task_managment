@@ -84,8 +84,10 @@
 
     <script>
         // DIRECT CONNECTION TO PUBLISHED DATABASE
-        // आपका database publish है, तो direct connect करते हैं
-        const API_URL = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev';
+        // Use current domain or localhost fallback
+        const API_URL = window.location.hostname === 'localhost' ? 
+                       'http://localhost:5000' : 
+                       `${window.location.protocol}//${window.location.host}`;
         
         function showMessage(text, type) {
             const msg = document.getElementById('message');
