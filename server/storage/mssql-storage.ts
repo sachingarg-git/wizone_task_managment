@@ -581,10 +581,29 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
+      // Ensure valid updatedBy user ID exists in database
+      let validUpdatedBy = updateData.updatedBy;
+      
+      // Check if user exists, if not use admin
+      if (validUpdatedBy) {
+        const userCheckRequest = pool.request();
+        userCheckRequest.input('userId', validUpdatedBy);
+        const userExists = await userCheckRequest.query(`
+          SELECT id FROM users WHERE id = @userId
+        `);
+        
+        if (userExists.recordset.length === 0) {
+          console.log(`⚠️ User ${validUpdatedBy} not found, using admin as updatedBy`);
+          validUpdatedBy = 'admin';
+        }
+      } else {
+        validUpdatedBy = 'admin';
+      }
+      
       request.input('taskId', updateData.taskId);
       request.input('status', updateData.status || null);
       request.input('note', updateData.note || null);
-      request.input('updatedBy', updateData.updatedBy || null);
+      request.input('updatedBy', validUpdatedBy);
       request.input('filePath', updateData.filePath || null);
       request.input('fileName', updateData.fileName || null);
       request.input('fileType', updateData.fileType || null);
@@ -599,6 +618,7 @@ export class MSSQLStorage implements IStorage {
         )
       `);
       
+      console.log(`✅ Task update record created for task ${updateData.taskId}`);
       return result.recordset[0];
     } catch (error) {
       console.error('Error creating task update:', error);
@@ -842,6 +862,97 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
+  // Customer Portal Access Management
+  async updateCustomerPortalAccess(customerId: number, portalData: any): Promise<any> {
+    try {
+      const pool = await getConnection();
+      
+      // First, ensure all required columns exist
+      try {
+        const addColumnsRequest = pool.request();
+        await addColumnsRequest.query(`
+          -- Add username column if it doesn't exist
+          IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'customers' AND COLUMN_NAME = 'username')
+          BEGIN
+            ALTER TABLE customers ADD username NVARCHAR(100) NULL
+            PRINT 'Added username column'
+          END
+          
+          -- Add password column if it doesn't exist  
+          IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'customers' AND COLUMN_NAME = 'password')
+          BEGIN
+            ALTER TABLE customers ADD password NVARCHAR(255) NULL
+            PRINT 'Added password column'
+          END
+          
+          -- Add portalAccess column if it doesn't exist
+          IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'customers' AND COLUMN_NAME = 'portalAccess')
+          BEGIN
+            ALTER TABLE customers ADD portalAccess BIT DEFAULT 0
+            PRINT 'Added portalAccess column'
+          END
+        `);
+        console.log('✅ All customer portal columns ensured');
+      } catch (columnError) {
+        console.log('⚠️ Column setup error:', columnError.message);
+      }
+      
+      // Short delay to ensure columns are added
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const request = pool.request();
+      request.input('customerId', customerId);
+      request.input('username', portalData.username || null);
+      request.input('password', portalData.password || null);
+      request.input('portalAccess', portalData.portalAccess ? 1 : 0);
+      
+      // Update customer with portal access details
+      const result = await request.query(`
+        UPDATE customers 
+        SET username = @username,
+            password = @password, 
+            portalAccess = @portalAccess,
+            updatedAt = GETDATE()
+        WHERE id = @customerId
+      `);
+      
+      console.log(`✅ Customer ${customerId} portal access updated successfully`);
+      
+      // Return updated customer data
+      const updatedCustomer = await this.getCustomer(customerId);
+      return updatedCustomer;
+    } catch (error) {
+      console.error('Error updating customer portal access:', error);
+      throw error;
+    }
+  }
+
+  async getCustomerByPortalCredentials(username: string, password: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('username', username);
+      request.input('password', password);
+      
+      const result = await request.query(`
+        SELECT * FROM customers 
+        WHERE username = @username AND password = @password AND portalAccess = 1
+      `);
+      
+      if (result.recordset.length > 0) {
+        console.log(`✅ Customer portal login successful: ${username}`);
+        return result.recordset[0];
+      } else {
+        console.log(`❌ Customer portal login failed: ${username}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting customer by portal credentials:', error);
+      return null;
+    }
+  }
+
 
 
   // Delete user method for debugging
@@ -886,38 +997,63 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
-  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any[]> {
+  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any> {
     try {
+      console.log(`🔄 Assigning task ${taskId} to engineers:`, fieldEngineerIds);
+      
       const results = [];
       const originalTask = await this.getTask(taskId);
       
+      if (!originalTask) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      
+      // Validate assignedBy user exists
+      const validAssignedBy = assignedBy || 'admin';
+      console.log(`✅ Using assignedBy: ${validAssignedBy}`);
+      
       for (let i = 0; i < fieldEngineerIds.length; i++) {
         const fieldEngineerId = fieldEngineerIds[i];
+        console.log(`🔄 Processing engineer ${i + 1}:`, fieldEngineerId);
         
         if (i === 0) {
           // Update original task
-          const updatedTask = await this.assignTaskToFieldEngineer(taskId, fieldEngineerId, assignedBy);
+          const updatedTask = await this.assignTaskToFieldEngineer(taskId, fieldEngineerId, validAssignedBy);
           results.push(updatedTask);
+          console.log(`✅ Original task updated for engineer:`, fieldEngineerId);
         } else {
           // Create duplicate tasks for additional field engineers
           const newTaskData = {
-            ...originalTask,
+            title: originalTask.title,
+            description: originalTask.description,
+            priority: originalTask.priority,
+            customerId: originalTask.customerId,
             ticketNumber: `${originalTask.ticketNumber}-${i + 1}`,
             fieldEngineerId: fieldEngineerId,
             status: 'assigned_to_field',
-            assignedTo: assignedBy,
-            id: undefined // Remove ID so it creates new task
+            assignedTo: validAssignedBy,
+            location: originalTask.location,
+            estimatedTime: originalTask.estimatedTime
           };
           
           const newTask = await this.createTask(newTaskData);
           results.push(newTask);
+          console.log(`✅ New task created for engineer:`, fieldEngineerId);
         }
       }
       
-      console.log(`✅ Task assigned to ${fieldEngineerIds.length} field engineers`);
-      return results;
+      console.log(`✅ Task assigned to ${fieldEngineerIds.length} field engineers successfully`);
+      
+      // Return proper format expected by frontend
+      return {
+        success: true,
+        message: `Task assigned to ${fieldEngineerIds.length} field engineer(s)`,
+        tasks: results,
+        assignedCount: fieldEngineerIds.length
+      };
     } catch (error) {
       console.error('Error assigning multiple field engineers:', error);
+      console.error('Error details:', error.message);
       throw error;
     }
   }
