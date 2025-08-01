@@ -1,10 +1,10 @@
 import mssql from 'mssql';
 
-// Permanent SQL Server Configuration
+// WIZONE FIELD ENGINEER - PUBLISHED MS SQL SERVER
 export const SQL_SERVER_CONFIG = {
-  server: "14.102.70.90",
-  port: 1433,
-  database: "TASK_SCORE_WIZONE",
+  server: "103.122.85.61",
+  port: 1440,
+  database: "WIZONE_TASK_MANAGER",
   user: "sa",
   password: "ss123456",
   options: {
