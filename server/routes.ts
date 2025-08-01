@@ -316,6 +316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup health endpoints for mobile APK network detection
   setupHealthEndpoint(app);
 
+  // Register mobile auth routes for field engineer APK
+  app.use(mobileAuthRoutes);
+
   // Serve APK generation page
   app.get("/generate-apk", (req, res) => {
     res.sendFile(path.join(process.cwd(), "generate-instant-apk.html"));
