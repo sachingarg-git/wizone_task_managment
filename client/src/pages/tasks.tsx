@@ -722,7 +722,7 @@ export default function Tasks() {
                       const matchesSearch = searchQuery === "" || 
                         task.ticketNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        task.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (Array.isArray(task.customerName) ? task.customerName[0] : task.customerName)?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         task.issueType?.toLowerCase().includes(searchQuery.toLowerCase());
                       
                       // Apply priority filter
@@ -744,7 +744,12 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{task.customer?.name || 'Unknown Customer'}</div>
+                            <div className="font-medium">
+                              {Array.isArray(task.customerName) 
+                                ? task.customerName[0] || 'Unknown Customer'
+                                : task.customerName || 'Unknown Customer'
+                              }
+                            </div>
                             <div className="text-sm text-gray-500">{task.customer?.city}</div>
                           </div>
                         </TableCell>
@@ -886,7 +891,12 @@ export default function Tasks() {
                     <div className="grid grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg">
                       <div>
                         <label className="text-sm font-medium text-gray-600">Customer</label>
-                        <p className="text-sm font-medium">{task.customer?.name || 'Unknown'}</p>
+                        <p className="text-sm font-medium">
+                          {Array.isArray(task.customerName) 
+                            ? task.customerName[0] || 'Unknown'
+                            : task.customerName || 'Unknown'
+                          }
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-600">Priority</label>
