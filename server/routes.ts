@@ -660,6 +660,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Authentication middleware - handles both web sessions and mobile authentication
   const isAuthenticated = async (req: any, res: any, next: any) => {
     try {
+      // Log all authentication attempts for debugging
+      const userAgent = req.get('user-agent') || '';
+      const isMobile = userAgent.includes('Mobile') || userAgent.includes('WizoneFieldEngineerApp') || userAgent.includes('WebView');
+      
+      if (isMobile) {
+        console.log(`📱 MOBILE AUTH CHECK: ${req.method} ${req.path}`);
+        console.log(`📱 User-Agent: ${userAgent.substring(0, 100)}`);
+        console.log(`📱 Has Session: ${!!req.session}`);
+        console.log(`📱 Session User: ${req.session?.user ? 'YES' : 'NO'}`);
+        console.log(`📱 Passport User: ${req.user ? 'YES' : 'NO'}`);
+      }
+      
       // Check if user is authenticated via Passport session
       if (req.isAuthenticated && req.isAuthenticated() && req.user) {
         console.log(`✅ Passport authenticated: ${req.user.username} (${req.user.role}) - ${req.method} ${req.path}`);
@@ -674,7 +686,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Mobile/WebView authentication - check User-Agent and Origin
-      const userAgent = req.get('User-Agent') || '';
       const origin = req.get('Origin');
       const referer = req.get('Referer') || '';
       
@@ -2554,7 +2565,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin/Staff Authentication Routes - for web and mobile access
   app.post('/api/auth/login', (req, res, next) => {
-    console.log(`🔐 Admin login attempt: ${req.body.username}`);
+    const userAgent = req.get('user-agent') || '';
+    const isMobile = userAgent.includes('Mobile') || userAgent.includes('WebView') || userAgent.includes('WizoneFieldEngineerApp');
+    
+    console.log(`🔐 ${isMobile ? 'MOBILE' : 'WEB'} login attempt: ${req.body.username}`);
+    console.log(`📱 User-Agent: ${userAgent.substring(0, 100)}`);
+    console.log(`🌐 Origin: ${req.get('origin') || 'No Origin'}`);
+    console.log(`📊 Request Body:`, { username: req.body.username, passwordLength: req.body.password?.length });
     
     passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) {
@@ -2861,6 +2878,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching tracking history:", error);
       res.status(500).json({ message: "Failed to fetch tracking history" });
     }
+  });
+
+  // Mobile-specific activity logs endpoint
+  app.get("/api/mobile/activity-logs", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { limit = 50 } = req.query;
+      
+      console.log(`📱 Mobile activity logs request for user: ${userId}`);
+      
+      // Get recent task updates for the user
+      const recentTasks = await storage.getTasksByUser(userId, 20);
+      const taskUpdates = [];
+      
+      for (const task of recentTasks) {
+        const updates = await storage.getTaskUpdates(task.id);
+        taskUpdates.push(...updates.map(update => ({
+          ...update,
+          type: 'task_update',
+          taskTitle: task.title,
+          taskTicketNumber: task.ticketNumber
+        })));
+      }
+      
+      // Get tracking history
+      const trackingHistory = await storage.getEngineerTrackingHistory(userId, 20);
+      const trackingLogs = trackingHistory.map(track => ({
+        id: track.id,
+        type: 'location_update',
+        timestamp: track.timestamp,
+        createdAt: track.createdAt,
+        note: `${track.movementType} - ${track.distanceFromOffice}km from office`,
+        taskTitle: track.taskTitle,
+        taskTicketNumber: track.ticketNumber
+      }));
+      
+      // Get notifications
+      const notifications = await storage.getNotificationsByUser(userId);
+      const notificationLogs = notifications.map(notif => ({
+        id: notif.id,
+        type: 'notification',
+        timestamp: notif.createdAt,
+        createdAt: notif.createdAt,
+        note: notif.message,
+        eventType: notif.eventType
+      }));
+      
+      // Combine all activity logs
+      const allLogs = [...taskUpdates, ...trackingLogs, ...notificationLogs]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, parseInt(limit as string));
+      
+      console.log(`📱 Returning ${allLogs.length} activity logs for mobile`);
+      res.json(allLogs);
+    } catch (error) {
+      console.error("Error fetching mobile activity logs:", error);
+      res.status(500).json({ message: "Failed to fetch activity logs" });
+    }
+  });
+
+  // Mobile connectivity test endpoint
+  app.post('/api/mobile/connectivity-test', (req, res) => {
+    const userAgent = req.get('user-agent') || '';
+    const body = req.body;
+    
+    console.log(`📱 MOBILE CONNECTIVITY TEST:`);
+    console.log(`📱 User-Agent: ${userAgent}`);
+    console.log(`📱 Headers:`, req.headers);
+    console.log(`📱 Body:`, body);
+    console.log(`📱 Session:`, req.session ? 'EXISTS' : 'NO SESSION');
+    console.log(`📱 Cookies:`, req.cookies);
+    
+    res.json({
+      status: 'connectivity_ok',
+      timestamp: new Date().toISOString(),
+      received_data: body,
+      session_exists: !!req.session,
+      user_agent: userAgent,
+      message: 'Mobile connectivity test successful'
+    });
   });
 
   app.post("/api/tracking/location", isAuthenticated, async (req, res) => {

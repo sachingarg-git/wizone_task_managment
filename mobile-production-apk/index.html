@@ -164,9 +164,26 @@
       id="mobileWebview" 
       class="mobile-webview" 
       src="about:blank"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-top-navigation"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-top-navigation allow-downloads"
       allowfullscreen
-      credentials="include">
+      allow="clipboard-read; clipboard-write">
+      
+      <!-- Debug Console for Mobile -->
+      <script>
+        // Enhanced mobile debugging
+        window.addEventListener('message', function(event) {
+          console.log('📱 Mobile Debug Message:', event.data);
+        });
+        
+        // Override console methods for mobile debugging
+        const originalLog = console.log;
+        console.log = function(...args) {
+          originalLog.apply(console, args);
+          try {
+            parent.postMessage({ type: 'mobile-log', args: args }, '*');
+          } catch (e) {}
+        };
+      </script>
     </iframe>
   </div>
 
@@ -191,14 +208,16 @@
           setTimeout(() => reject(new Error('Connection timeout')), CONNECTION_TIMEOUT)
         );
         
-        // Test server health endpoint
+        // Test server health endpoint with enhanced debugging
         const fetchPromise = fetch(`${PRODUCTION_SERVER}/api/health`, {
           method: 'GET',
           mode: 'cors',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
-            'X-Requested-With': 'mobile'
+            'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile WebView)',
+            'X-Requested-With': 'mobile',
+            'X-Mobile-Debug': 'true'
           }
         });
         
