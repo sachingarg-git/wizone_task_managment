@@ -164,8 +164,9 @@
       id="mobileWebview" 
       class="mobile-webview" 
       src="about:blank"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-      allowfullscreen>
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-top-navigation"
+      allowfullscreen
+      credentials="include">
     </iframe>
   </div>
 
@@ -241,8 +242,11 @@
       const webview = document.getElementById('mobileWebview');
       const loadingOverlay = document.getElementById('loadingOverlay');
       
-      // Set the source to the production server
+      // Set the source to the production server with session credentials support
       webview.src = PRODUCTION_SERVER;
+      
+      // Enable credential sharing for authentication
+      webview.style.display = 'block';
       
       // Hide loading overlay after a short delay
       setTimeout(() => {

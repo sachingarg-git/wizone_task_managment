@@ -2,7 +2,8 @@
 
 ## Production Server Configuration
 **Server URL**: http://194.238.19.19:5000/
-**Status**: Ready for mobile APK deployment
+**Status**: ✅ AUTHENTICATION FIXED - Ready for mobile APK deployment
+**Login**: Use your admin credentials (admin/admin123) or any valid user account
 
 ## APK Generation Options
 

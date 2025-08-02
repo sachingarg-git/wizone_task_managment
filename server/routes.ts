@@ -6,6 +6,7 @@ import fs from "fs";
 import { storage } from "./storage/mssql-storage";
 import { setupAuth } from "./auth";
 import { seedDatabase } from "./seed";
+import passport from "passport";
 import { setupRoutes } from "./setup-routes";
 import { 
   insertTaskSchema, 
@@ -2549,6 +2550,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching participants:", error);
       res.status(500).json({ message: "Failed to fetch participants" });
     }
+  });
+
+  // Admin/Staff Authentication Routes - for web and mobile access
+  app.post('/api/auth/login', (req, res, next) => {
+    console.log(`🔐 Admin login attempt: ${req.body.username}`);
+    
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        console.error('❌ Authentication error:', err);
+        return res.status(500).json({ message: 'Authentication failed' });
+      }
+      
+      if (!user) {
+        console.log(`❌ Login failed for: ${req.body.username} - ${info?.message || 'Invalid credentials'}`);
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+      
+      req.logIn(user, (err: any) => {
+        if (err) {
+          console.error('❌ Session creation error:', err);
+          return res.status(500).json({ message: 'Session creation failed' });
+        }
+        
+        console.log(`✅ Login successful: ${user.username} (${user.role})`);
+        res.json({
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          department: user.department
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Admin/Staff logout
+  app.post('/api/auth/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
+
+  // Get current user (for both web and mobile)
+  app.get('/api/auth/user', isAuthenticated, (req, res) => {
+    const user = req.user;
+    res.json({
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      department: user.department
+    });
   });
 
   // Customer Portal Authentication Routes
