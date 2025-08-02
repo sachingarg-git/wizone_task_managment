@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Wizone IT Support Portal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192x192.png">
+  <meta name="theme-color" content="#1e293b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e293b;
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+    
+    .mobile-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    .mobile-webview {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #1e293b;
+    }
+    
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .wizone-logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    
+    .loading-text {
+      color: #64748b;
+      font-size: 16px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .connection-status {
+      color: #10b981;
+      font-size: 14px;
+      text-align: center;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .error-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1e293b;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    }
+    
+    .error-content {
+      text-align: center;
+      max-width: 300px;
+    }
+    
+    .error-title {
+      color: #ef4444;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .error-message {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    
+    .retry-button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .retry-button:hover {
+      background: #0284c7;
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-container">
+    <!-- Loading Screen -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="wizone-logo">W</div>
+      <div class="loading-text">Wizone IT Support Portal</div>
+      <div class="connection-status" id="connectionStatus">Connecting to server...</div>
+    </div>
+    
+    <!-- Error Screen -->
+    <div class="error-overlay" id="errorOverlay">
+      <div class="error-content">
+        <div class="error-title">Connection Failed</div>
+        <div class="error-message" id="errorMessage">
+          Unable to connect to the server. Please check your internet connection and try again.
+        </div>
+        <button class="retry-button" onclick="retryConnection()">Retry Connection</button>
+      </div>
+    </div>
+    
+    <!-- Main WebView -->
+    <iframe 
+      id="mobileWebview" 
+      class="mobile-webview" 
+      src="about:blank"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+      allowfullscreen>
+    </iframe>
+  </div>
+
+  <script>
+    // Production server configuration
+    const PRODUCTION_SERVER = 'http://194.238.19.19:5000';
+    const CONNECTION_TIMEOUT = 10000; // 10 seconds
+    
+    let connectionAttempts = 0;
+    const maxRetries = 3;
+    
+    async function testServerConnection() {
+      try {
+        connectionAttempts++;
+        document.getElementById('connectionStatus').textContent = 
+          `Connecting to server... (Attempt ${connectionAttempts}/${maxRetries})`;
+        
+        console.log(`🔍 Testing connection to: ${PRODUCTION_SERVER}`);
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout')), CONNECTION_TIMEOUT)
+        );
+        
+        // Test server health endpoint
+        const fetchPromise = fetch(`${PRODUCTION_SERVER}/api/health`, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+            'X-Requested-With': 'mobile'
+          }
+        });
+        
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Server connection successful:', data);
+          
+          document.getElementById('connectionStatus').textContent = 'Connected successfully!';
+          
+          // Load the main application
+          setTimeout(() => {
+            loadApplication();
+          }, 1000);
+          
+          return true;
+        } else {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+      } catch (error) {
+        console.error('❌ Connection failed:', error);
+        
+        if (connectionAttempts < maxRetries) {
+          document.getElementById('connectionStatus').textContent = 
+            `Connection failed. Retrying in 3 seconds...`;
+          
+          setTimeout(() => {
+            testServerConnection();
+          }, 3000);
+        } else {
+          showError('Maximum connection attempts reached. Please check your internet connection and server availability.');
+        }
+        
+        return false;
+      }
+    }
+    
+    function loadApplication() {
+      const webview = document.getElementById('mobileWebview');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      
+      // Set the source to the production server
+      webview.src = PRODUCTION_SERVER;
+      
+      // Hide loading overlay after a short delay
+      setTimeout(() => {
+        loadingOverlay.classList.add('hidden');
+      }, 500);
+      
+      // Handle iframe load events
+      webview.onload = function() {
+        console.log('✅ Application loaded successfully');
+        loadingOverlay.classList.add('hidden');
+      };
+      
+      webview.onerror = function() {
+        console.error('❌ Failed to load application');
+        showError('Failed to load the application. Please try again.');
+      };
+    }
+    
+    function showError(message) {
+      const errorOverlay = document.getElementById('errorOverlay');
+      const errorMessage = document.getElementById('errorMessage');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      
+      errorMessage.textContent = message;
+      loadingOverlay.style.display = 'none';
+      errorOverlay.style.display = 'flex';
+    }
+    
+    function retryConnection() {
+      const errorOverlay = document.getElementById('errorOverlay');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      
+      // Reset connection attempts
+      connectionAttempts = 0;
+      
+      // Show loading overlay and hide error
+      errorOverlay.style.display = 'none';
+      loadingOverlay.style.display = 'flex';
+      loadingOverlay.classList.remove('hidden');
+      
+      // Reset iframe
+      const webview = document.getElementById('mobileWebview');
+      webview.src = 'about:blank';
+      
+      // Retry connection
+      setTimeout(() => {
+        testServerConnection();
+      }, 500);
+    }
+    
+    // Start the application
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Wizone Mobile App Starting...');
+      console.log('🌐 Production Server:', PRODUCTION_SERVER);
+      
+      // Start connection test
+      setTimeout(() => {
+        testServerConnection();
+      }, 1000);
+    });
+    
+    // Handle mobile-specific events
+    window.addEventListener('beforeunload', function() {
+      console.log('📱 App closing...');
+    });
+    
+    // Handle network status changes
+    window.addEventListener('online', function() {
+      console.log('📶 Network connection restored');
+      if (connectionAttempts >= maxRetries) {
+        retryConnection();
+      }
+    });
+    
+    window.addEventListener('offline', function() {
+      console.log('📵 Network connection lost');
+      showError('No internet connection. Please check your network settings.');
+    });
+  </script>
+</body>
+</html>

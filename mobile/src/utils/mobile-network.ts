@@ -26,13 +26,16 @@ export class MobileNetworkConfig {
     
     // Multiple network configurations for mobile APK
     this.baseUrls = [
+      // Production server (PRIMARY)
+      'http://194.238.19.19:5000',
+      
       // Current deployment URL (if on Replit)
       ...(currentDeploymentUrl ? [currentDeploymentUrl] : []),
       
-      // Production servers that user needs to configure
+      // Backup production servers
       'http://YOUR_ACTUAL_SERVER_IP:5000',
       
-      // Common local network IP ranges (user should update these)
+      // Common local network IP ranges (fallback)
       'http://192.168.1.100:5000',
       'http://192.168.0.100:5000',
       'http://10.0.0.100:5000',

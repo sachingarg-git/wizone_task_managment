@@ -2,10 +2,13 @@
 export const SERVER_CONFIG = {
   // Replace these with your actual server details
   PRODUCTION_SERVERS: [
-    // Your actual server IP address
+    // Production server (PRIMARY)
+    'http://194.238.19.19:5000',
+    
+    // Your actual server IP address (backup)
     'http://YOUR_ACTUAL_SERVER_IP:5000',
     
-    // Replit deployment URL (replace with actual)
+    // Replit deployment URL (fallback)
     'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev',
     
     // Local network IPs (common ranges)
