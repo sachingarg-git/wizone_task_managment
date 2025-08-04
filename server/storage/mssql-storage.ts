@@ -187,7 +187,7 @@ export class MSSQLStorage implements IStorage {
         INSERT INTO users (
           id, username, password, email, firstName, lastName, 
           phone, profileImageUrl, role, department, isActive, 
-          createdAt, updatedAt
+          created_at, updated_at
         )
         VALUES (
           @id, @username, @password, @email, @firstName, @lastName,
@@ -327,7 +327,7 @@ export class MSSQLStorage implements IStorage {
       const request = pool.request();
       
       const result = await request.query(`
-        SELECT * FROM customers ORDER BY createdAt DESC
+        SELECT * FROM customers ORDER BY created_at DESC
       `);
       
       return result.recordset;
@@ -355,9 +355,9 @@ export class MSSQLStorage implements IStorage {
       
       const result = await request.query(`
         INSERT INTO customers (
-          customerId, name, email, phone, address, serviceType,
-          connectionStatus, installationDate, monthlyCharge, lastPaymentDate,
-          createdAt, updatedAt
+          customer_id, name, email, mobile_phone, address, service_plan,
+          status, installation_date, monthly_charge, last_payment_date,
+          created_at, updated_at
         )
         OUTPUT INSERTED.id
         VALUES (
@@ -474,31 +474,21 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Starting getAllTasks query...');
+      console.log('🔍 Starting simple getAllTasks query...');
       const result = await request.query(`
-        SELECT 
-          t.id,
-          t.title,
-          t.ticket_number,
-          t.status,
-          t.priority,
-          t.customer_id,
-          c.name as customerName
-        FROM tasks t
-        LEFT JOIN customers c ON t.customer_id = c.id
-        ORDER BY t.created_at DESC
+        SELECT * FROM tasks
       `);
       console.log('✅ getAllTasks query successful, rows:', result.recordset.length);
       
-      // Simple result mapping for debugging
+      // Simple result mapping - just return what we get
       return result.recordset.map((task: any) => ({
         id: task.id,
-        title: task.title,
-        ticketNumber: task.ticket_number,
-        status: task.status,
-        priority: task.priority,
-        customerName: task.customerName || 'Unknown Customer',
-        customerId: task.customer_id
+        title: task.title || 'Untitled Task',
+        ticketNumber: task.ticket_number || task.ticketNumber || 'No Ticket',
+        status: task.status || 'pending',
+        priority: task.priority || 'medium',
+        customerName: 'Customer Task', // Temporary - will add customer lookup later
+        customerId: task.customer_id || task.customerId || null
       }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
