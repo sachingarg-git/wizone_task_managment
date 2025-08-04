@@ -348,15 +348,22 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Creating customer with basic fields...');
+      console.log('🔍 Creating customer with required customerId...');
+      
+      // Generate customerId if not provided
+      const customerId = customerData.customerId || `CUST${Date.now().toString().slice(-6)}`;
+      
+      request.input('customerId', customerId);
       request.input('name', customerData.name || 'New Customer');
       request.input('email', customerData.email || '');
+      request.input('phone', customerData.phone || customerData.mobilePhone || '');
       request.input('address', customerData.address || '');
+      request.input('serviceType', customerData.serviceType || customerData.servicePlan || '');
       
       const result = await request.query(`
-        INSERT INTO customers (name, email, address)
-        OUTPUT INSERTED.id, INSERTED.name, INSERTED.email
-        VALUES (@name, @email, @address)
+        INSERT INTO customers (customerId, name, email, phone, address, serviceType)
+        OUTPUT INSERTED.id, INSERTED.customerId, INSERTED.name, INSERTED.email
+        VALUES (@customerId, @name, @email, @phone, @address, @serviceType)
       `);
       
       console.log('✅ Customer created successfully:', result.recordset[0]);
