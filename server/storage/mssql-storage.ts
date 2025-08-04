@@ -483,13 +483,40 @@ export class MSSQLStorage implements IStorage {
           c.name as customerName,
           c.address as customerAddress,
           c.phone as customerPhone,
-          c.email as customerEmail
+          c.email as customerEmail,
+          c.customerId as customerCustomerId,
+          u1.firstName as assignedUserFirstName,
+          u1.lastName as assignedUserLastName,
+          u2.firstName as createdByUserFirstName,
+          u2.lastName as createdByUserLastName
         FROM tasks t
         LEFT JOIN customers c ON t.customerId = c.id
+        LEFT JOIN users u1 ON t.assignedTo = u1.id
+        LEFT JOIN users u2 ON t.createdBy = u2.id
         ORDER BY t.createdAt DESC
       `);
       
-      return result.recordset;
+      // Enhanced result mapping to ensure customer names are properly formatted
+      return result.recordset.map((task: any) => ({
+        ...task,
+        customerName: task.customerName || 'Unknown Customer',
+        customer: task.customerName ? {
+          id: task.customerId,
+          name: task.customerName,
+          address: task.customerAddress,
+          phone: task.customerPhone,
+          email: task.customerEmail,
+          customerId: task.customerCustomerId
+        } : null,
+        assignedUser: task.assignedUserFirstName ? {
+          firstName: task.assignedUserFirstName,
+          lastName: task.assignedUserLastName
+        } : null,
+        createdByUser: task.createdByUserFirstName ? {
+          firstName: task.createdByUserFirstName,
+          lastName: task.createdByUserLastName
+        } : null
+      }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
       return [];

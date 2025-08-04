@@ -8,20 +8,27 @@ export function setupHealthEndpoint(app: Express) {
     
     if (isMobile) {
       console.log(`📱 Mobile APK request: ${req.method} ${req.path} - UA: ${userAgent.substring(0, 50)}...`);
-      console.log(`📱 Mobile Headers:`, req.headers);
+      console.log(`📱 Mobile Headers:`, {
+        'X-Requested-With': req.get('X-Requested-With'),
+        'X-Mobile-Debug': req.get('X-Mobile-Debug'),
+        'X-APK-Version': req.get('X-APK-Version'),
+        'X-Mobile-APK': req.get('X-Mobile-APK')
+      });
       console.log(`📱 Mobile Session:`, req.session ? 'EXISTS' : 'NO SESSION');
+      console.log(`📱 Mobile Authentication:`, req.isAuthenticated ? req.isAuthenticated() : 'NO AUTH METHOD');
     }
     
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       server: 'Wizone IT Support Portal',
-      version: '1.0.0',
+      version: '2.0.0',
       mobile_supported: true,
       request_source: isMobile ? 'mobile' : 'web',
       user_agent: userAgent.substring(0, 100),
       session_active: !!req.session,
-      mobile_debug: isMobile
+      mobile_debug: isMobile,
+      authentication_status: req.isAuthenticated ? (req.isAuthenticated() ? 'authenticated' : 'not_authenticated') : 'no_auth_method'
     });
   });
   

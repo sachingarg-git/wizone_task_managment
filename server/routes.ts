@@ -317,6 +317,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup health endpoints for mobile APK network detection
   setupHealthEndpoint(app);
 
+  // Mobile-specific authentication and debugging endpoints
+  app.get('/api/mobile/connectivity-test', (req, res) => {
+    const userAgent = req.get('user-agent') || '';
+    const isMobile = userAgent.includes('WizoneFieldEngineerApp') || req.get('X-Mobile-APK') === 'true';
+    
+    console.log('📱 Mobile connectivity test:', {
+      userAgent: userAgent.substring(0, 100),
+      headers: {
+        'X-Requested-With': req.get('X-Requested-With'),
+        'X-Mobile-Debug': req.get('X-Mobile-Debug'),
+        'X-APK-Version': req.get('X-APK-Version'),
+        'X-Mobile-APK': req.get('X-Mobile-APK')
+      },
+      session: req.session ? 'exists' : 'missing',
+      auth: req.isAuthenticated ? req.isAuthenticated() : false
+    });
+    
+    res.json({
+      status: 'connected',
+      message: 'Mobile connectivity test successful',
+      timestamp: new Date().toISOString(),
+      mobile_detected: isMobile,
+      session_status: req.session ? 'exists' : 'missing',
+      auth_status: req.isAuthenticated ? (req.isAuthenticated() ? 'authenticated' : 'not_authenticated') : 'no_auth'
+    });
+  });
+  
+  app.post('/api/mobile/connectivity-test', (req, res) => {
+    const userAgent = req.get('user-agent') || '';
+    console.log('📱 POST Mobile connectivity test:', {
+      userAgent: userAgent.substring(0, 100),
+      body: req.body,
+      session: req.session ? 'exists' : 'missing'
+    });
+    
+    res.json({
+      status: 'connected',
+      message: 'Mobile POST connectivity test successful',
+      timestamp: new Date().toISOString(),
+      received_data: req.body
+    });
+  });
+
   // Register mobile auth routes for field engineer APK
   app.use(mobileAuthRoutes);
 

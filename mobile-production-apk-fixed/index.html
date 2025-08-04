@@ -229,7 +229,8 @@
             'User-Agent': 'WizoneFieldEngineerApp/2.0 (Mobile WebView Fixed)',
             'X-Requested-With': 'mobile',
             'X-Mobile-Debug': 'true',
-            'X-APK-Version': '2.0-fixed'
+            'X-APK-Version': '2.0-fixed',
+            'Cache-Control': 'no-cache'
           }
         });
         
@@ -288,17 +289,60 @@
       updateDebugInfo('Loading app...');
       console.log(`📱 Loading application from: ${PRODUCTION_SERVER}`);
       
-      // Set the source to the production server with enhanced session credentials
-      webview.src = PRODUCTION_SERVER;
-      
-      // Enable credential sharing for authentication
+      // Enhanced WebView configuration for mobile authentication
       webview.style.display = 'block';
       
-      // Hide loading overlay
-      setTimeout(() => {
-        loadingOverlay.style.display = 'none';
-        updateDebugInfo('App loaded');
-      }, 2000);
+      // Configure WebView for session-based authentication
+      webview.onload = function() {
+        console.log('✅ Application loaded successfully');
+        
+        // Inject mobile-specific authentication helper
+        try {
+          const authScript = `
+            // Mobile authentication enhancement
+            window.mobileAPK = true;
+            window.serverURL = '${PRODUCTION_SERVER}';
+            
+            // Override fetch to include credentials for mobile
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+              if (typeof url === 'string' && url.startsWith('/api/')) {
+                url = window.serverURL + url;
+              }
+              
+              return originalFetch(url, {
+                ...options,
+                credentials: 'include',
+                mode: 'cors',
+                headers: {
+                  ...options.headers,
+                  'X-Requested-With': 'mobile',
+                  'X-Mobile-APK': 'true'
+                }
+              });
+            };
+            
+            console.log('📱 Mobile authentication helper loaded');
+          `;
+          
+          webview.contentWindow.eval(authScript);
+        } catch (e) {
+          console.warn('Could not inject mobile auth helper:', e);
+        }
+        
+        setTimeout(() => {
+          loadingOverlay.style.display = 'none';
+          updateDebugInfo('App loaded');
+        }, 1000);
+      };
+      
+      webview.onerror = function() {
+        console.error('❌ Failed to load application');
+        showError('Failed to load the application. Please try again.');
+      };
+      
+      // Set the source to the production server with enhanced session credentials
+      webview.src = PRODUCTION_SERVER;
     }
     
     function showError(message) {
