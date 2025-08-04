@@ -456,12 +456,9 @@ export class MSSQLStorage implements IStorage {
       const result = await request.query(`
         SELECT 
           t.*, 
-          c.name as customerName,
-          c.address as customerAddress,
-          c.phone as customerPhone,
-          c.email as customerEmail
+          c.name as customerName
         FROM tasks t
-        LEFT JOIN customers c ON t.customerId = c.id
+        LEFT JOIN customers c ON t.customer_id = c.id
         WHERE t.id = @id
       `);
       
@@ -518,14 +515,11 @@ export class MSSQLStorage implements IStorage {
       const result = await request.query(`
         SELECT 
           t.*, 
-          c.name as customerName,
-          c.address as customerAddress,
-          c.phone as customerPhone,
-          c.email as customerEmail
+          c.name as customerName
         FROM tasks t
-        LEFT JOIN customers c ON t.customerId = c.id
-        WHERE t.customerId = @customerId 
-        ORDER BY t.createdAt DESC
+        LEFT JOIN customers c ON t.customer_id = c.id
+        WHERE t.customer_id = @customerId 
+        ORDER BY t.created_at DESC
       `);
       
       return result.recordset;
@@ -557,15 +551,15 @@ export class MSSQLStorage implements IStorage {
       
       const result = await request.query(`
         INSERT INTO tasks (
-          ticketNumber, title, description, customerId, customerName,
-          status, priority, issueType, assignedTo, fieldEngineerId,
-          backendEngineerId, createdAt, updatedAt
+          ticket_number, title, description, customer_id,
+          status, priority, issue_type, assigned_to, field_engineer_id,
+          created_at, updated_at
         )
         OUTPUT INSERTED.id
         VALUES (
-          @ticketNumber, @title, @description, @customerId, @customerName,
+          @ticketNumber, @title, @description, @customerId,
           @status, @priority, @issueType, @assignedTo, @fieldEngineerId,
-          @backendEngineerId, GETDATE(), GETDATE()
+          GETDATE(), GETDATE()
         )
       `);
       
