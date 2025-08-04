@@ -18,13 +18,13 @@ export interface DatabaseConfig {
 
 const CONFIG_PATH = path.join(process.cwd(), 'config', 'database.json');
 
-// Default configuration
+// Default configuration - PRODUCTION SQL SERVER
 const DEFAULT_CONFIG: DatabaseConfig = {
-  host: 'localhost',
-  port: 1433,
+  host: '103.122.85.61',
+  port: 1440,
   database: 'WIZONE_TASK_MANAGER',
   username: 'sa',
-  password: '',
+  password: 'ss123456',
   ssl: false,
   trustCertificate: true,
   connectionTimeout: 30000,
