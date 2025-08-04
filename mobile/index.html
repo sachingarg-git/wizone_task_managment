@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wizone Task Manager</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="./manifest.json">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+        
+        .loading-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f8fafc; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; z-index: 9999;
+        }
+        
+        .wizone-logo { 
+            width: 80px; height: 80px; background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 20px; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 32px; font-weight: bold; margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .loading-spinner { 
+            width: 40px; height: 40px; border: 4px solid #e5e7eb;
+            border-top: 4px solid #3b82f6; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        
+        .status-text { color: #6b7280; font-size: 14px; text-align: center; margin-bottom: 10px; }
+        .server-url { color: #3b82f6; font-size: 12px; font-family: monospace; }
+        
+        .error-screen { display: none; }
+        .error-screen.show { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 9999;
+        }
+        
+        .error-content { text-align: center; max-width: 300px; padding: 20px; }
+        .error-title { color: #ef4444; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .error-message { color: #6b7280; font-size: 14px; margin-bottom: 20px; line-height: 1.4; }
+        
+        .retry-button { 
+            background: #3b82f6; color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.2s;
+        }
+        .retry-button:hover { background: #2563eb; }
+        
+        #webview { width: 100%; height: 100vh; border: none; display: none; }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-screen">
+        <div class="wizone-logo">W</div>
+        <div class="loading-spinner"></div>
+        <div id="status" class="status-text">Connecting to Wizone Server...</div>
+        <div id="server-url" class="server-url">http://194.238.19.19:5000</div>
+    </div>
+    
+    <div id="error" class="error-screen">
+        <div class="error-content">
+            <div class="error-title">Connection Failed</div>
+            <div id="error-message" class="error-message">Unable to connect to server. Please check your internet connection.</div>
+            <button class="retry-button" onclick="retryConnection()">Retry Connection</button>
+        </div>
+    </div>
+    
+    <iframe id="webview" src="about:blank"></iframe>
+
+    <script>
+        // PRODUCTION SERVER CONFIGURATION
+        const PRODUCTION_SERVER = 'http://194.238.19.19:5000';
+        const FALLBACK_SERVERS = [
+            'http://194.238.19.19:5000',
+            'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+        ];
+
+        let currentServer = null;
+        let connectionAttempts = 0;
+        const maxAttempts = 3;
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log('📱 APK Status:', message);
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').classList.add('show');
+        }
+
+        function retryConnection() {
+            document.getElementById('error').classList.remove('show');
+            document.getElementById('loading').style.display = 'flex';
+            connectionAttempts = 0;
+            connectToServer();
+        }
+
+        async function testConnection(serverUrl) {
+            try {
+                updateStatus(`Testing connection to ${serverUrl}...`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                const response = await fetch(`${serverUrl}/api/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneAPK/2.0-Final',
+                        'X-Mobile-APK': 'true'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    console.log(`✅ Successfully connected to ${serverUrl}`);
+                    return true;
+                }
+            } catch (error) {
+                console.log(`❌ Failed to connect to ${serverUrl}:`, error.message);
+            }
+            return false;
+        }
+
+        async function connectToServer() {
+            connectionAttempts++;
+            updateStatus(`Connection attempt ${connectionAttempts}/${maxAttempts}...`);
+
+            for (const server of FALLBACK_SERVERS) {
+                if (await testConnection(server)) {
+                    currentServer = server;
+                    loadApplication();
+                    return;
+                }
+            }
+
+            if (connectionAttempts < maxAttempts) {
+                setTimeout(connectToServer, 3000);
+            } else {
+                showError('Failed to connect to Wizone servers after multiple attempts. Please check your internet connection and try again.');
+            }
+        }
+
+        function loadApplication() {
+            updateStatus('Loading Wizone Task Manager...');
+            
+            const webview = document.getElementById('webview');
+            const loading = document.getElementById('loading');
+
+            webview.onload = function() {
+                console.log('✅ Application loaded successfully');
+                
+                // Inject mobile authentication helper
+                try {
+                    webview.contentWindow.postMessage({
+                        type: 'MOBILE_APK_INIT',
+                        server: currentServer,
+                        version: '2.0-Final'
+                    }, '*');
+                } catch (error) {
+                    console.log('WebView communication:', error.message);
+                }
+
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                    webview.style.display = 'block';
+                }, 1500);
+            };
+
+            webview.onerror = function() {
+                showError('Failed to load the application. Please try again.');
+            };
+
+            console.log(`🌐 Loading application from: ${currentServer}`);
+            webview.src = currentServer;
+        }
+
+        // Enhanced mobile detection and setup
+        function setupMobileEnvironment() {
+            // Prevent zoom
+            document.addEventListener('touchstart', function(event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                }
+            });
+
+            // Handle network changes
+            window.addEventListener('online', function() {
+                console.log('📶 Network connection restored');
+                if (!currentServer) connectToServer();
+            });
+
+            window.addEventListener('offline', function() {
+                console.log('📶 Network connection lost');
+                updateStatus('No internet connection');
+            });
+
+            // Listen for messages from webview
+            window.addEventListener('message', function(event) {
+                if (event.data && event.data.type === 'AUTH_SUCCESS') {
+                    console.log('✅ User authentication successful');
+                }
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Wizone Mobile APK v2.0-Final Starting...');
+            console.log(`🎯 Target Server: ${PRODUCTION_SERVER}`);
+            
+            setupMobileEnvironment();
+            
+            // Start connection after brief delay
+            setTimeout(connectToServer, 1000);
+        });
+
+    </script>
+</body>
+</html>
