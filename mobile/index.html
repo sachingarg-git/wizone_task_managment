@@ -165,13 +165,72 @@
                 
                 // Inject mobile authentication helper
                 try {
+                    // Enhanced mobile authentication injection
+                    const authScript = `
+                        // Mark as mobile APK environment
+                        window.mobileAPK = true;
+                        window.serverURL = '${currentServer}';
+                        window.APK_VERSION = '2.0-Final';
+
+                        // Override fetch to ensure proper credentials and headers
+                        const originalFetch = window.fetch;
+                        window.fetch = function(url, options = {}) {
+                            // Convert relative API URLs to absolute
+                            if (typeof url === 'string' && url.startsWith('/api/')) {
+                                url = window.serverURL + url;
+                            }
+                            
+                            // Ensure proper credentials and headers for API requests
+                            const enhancedOptions = {
+                                ...options,
+                                credentials: 'include',
+                                mode: 'cors',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    ...options.headers,
+                                    'X-Requested-With': 'mobile-apk',
+                                    'X-Mobile-APK': 'true',
+                                    'User-Agent': 'WizoneAPK/2.0-Final'
+                                }
+                            };
+                            
+                            console.log('📱 Mobile APK fetch:', url, enhancedOptions);
+                            return originalFetch(url, enhancedOptions);
+                        };
+
+                        // Mobile-specific login helper
+                        window.mobileLogin = function(username, password) {
+                            return fetch('/api/auth/login', {
+                                method: 'POST',
+                                body: JSON.stringify({ username, password })
+                            }).then(response => {
+                                if (response.ok) {
+                                    console.log('✅ Mobile login successful');
+                                    return response.json();
+                                } else {
+                                    console.error('❌ Mobile login failed');
+                                    throw new Error('Login failed');
+                                }
+                            });
+                        };
+
+                        console.log('📱 Mobile APK authentication helper loaded');
+                    `;
+                    
+                    // Inject the script into webview
+                    const script = webview.contentDocument.createElement('script');
+                    script.textContent = authScript;
+                    webview.contentDocument.head.appendChild(script);
+                    
+                    // Also send message for compatibility
                     webview.contentWindow.postMessage({
                         type: 'MOBILE_APK_INIT',
                         server: currentServer,
                         version: '2.0-Final'
                     }, '*');
                 } catch (error) {
-                    console.log('WebView communication:', error.message);
+                    console.log('WebView communication setup:', error.message);
                 }
 
                 setTimeout(() => {

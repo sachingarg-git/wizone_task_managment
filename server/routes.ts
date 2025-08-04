@@ -317,6 +317,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup health endpoints for mobile APK network detection
   setupHealthEndpoint(app);
 
+  // Authentication setup
+  setupAuth(app);
+
+  // === AUTHENTICATION ROUTES ===
+  
+  // Login route for both web and mobile
+  app.post('/api/login', (req, res, next) => {
+    console.log('🔐 LOGIN REQUEST:', req.body.username);
+    
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        console.error('❌ Login error:', err);
+        return res.status(500).json({ message: 'Authentication error' });
+      }
+      
+      if (!user) {
+        console.log('❌ Login failed for:', req.body.username);
+        return res.status(401).json({ message: info?.message || 'Invalid credentials' });
+      }
+      
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error('❌ Session error:', err);
+          return res.status(500).json({ message: 'Session error' });
+        }
+        
+        console.log('✅ Login successful:', user?.username);
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            department: user.department
+          }
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Logout route
+  app.post('/api/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ message: 'Logout error' });
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+          return res.status(500).json({ message: 'Session error' });
+        }
+        res.json({ success: true, message: 'Logged out successfully' });
+      });
+    });
+  });
+
+  // Get current user route
+  app.get('/api/auth/user', (req, res) => {
+    if (req.isAuthenticated() && req.user) {
+      res.json({
+        id: req.user.id,
+        username: req.user.username,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        email: req.user.email,
+        role: req.user.role,
+        department: req.user.department
+      });
+    } else {
+      res.status(401).json({ message: 'Not authenticated' });
+    }
+  });
+
   // Mobile-specific authentication and debugging endpoints
   app.get('/api/mobile/connectivity-test', (req, res) => {
     const userAgent = req.get('user-agent') || '';
