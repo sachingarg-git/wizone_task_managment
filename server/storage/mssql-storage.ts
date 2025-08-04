@@ -348,14 +348,15 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Creating customer with minimal fields...');
+      console.log('🔍 Creating customer with basic fields...');
       request.input('name', customerData.name || 'New Customer');
-      request.input('email', customerData.email || null);
+      request.input('email', customerData.email || '');
+      request.input('address', customerData.address || '');
       
       const result = await request.query(`
-        INSERT INTO customers (name, email)
-        OUTPUT INSERTED.id, INSERTED.name
-        VALUES (@name, @email)
+        INSERT INTO customers (name, email, address)
+        OUTPUT INSERTED.id, INSERTED.name, INSERTED.email
+        VALUES (@name, @email, @address)
       `);
       
       console.log('✅ Customer created successfully:', result.recordset[0]);
@@ -523,18 +524,20 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Creating task with minimal fields...');
+      console.log('🔍 Creating task with required fields...');
       // Generate ticket number if not provided
       const ticketNumber = taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
       
+      request.input('ticketNumber', ticketNumber);
       request.input('title', taskData.title || 'New Task');
       request.input('status', taskData.status || 'pending');
       request.input('priority', taskData.priority || 'medium');
+      request.input('description', taskData.description || '');
       
       const result = await request.query(`
-        INSERT INTO tasks (title, status, priority)
-        OUTPUT INSERTED.id, INSERTED.title, INSERTED.status, INSERTED.priority
-        VALUES (@title, @status, @priority)
+        INSERT INTO tasks (ticketNumber, title, status, priority, description)
+        OUTPUT INSERTED.id, INSERTED.ticketNumber, INSERTED.title, INSERTED.status, INSERTED.priority
+        VALUES (@ticketNumber, @title, @status, @priority, @description)
       `);
       
       console.log('✅ Task created successfully:', result.recordset[0]);
