@@ -477,33 +477,31 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
+      console.log('🔍 Starting getAllTasks query...');
       const result = await request.query(`
         SELECT 
-          t.*, 
-          c.name as customerName,
-          c.address as customerAddress,
-          c.mobile_phone as customerPhone,
-          c.email as customerEmail,
-          c.customer_id as customerCustomerId
+          t.id,
+          t.title,
+          t.ticket_number,
+          t.status,
+          t.priority,
+          t.customer_id,
+          c.name as customerName
         FROM tasks t
         LEFT JOIN customers c ON t.customer_id = c.id
         ORDER BY t.created_at DESC
       `);
+      console.log('✅ getAllTasks query successful, rows:', result.recordset.length);
       
-      // Enhanced result mapping to ensure customer names are properly formatted
+      // Simple result mapping for debugging
       return result.recordset.map((task: any) => ({
-        ...task,
+        id: task.id,
+        title: task.title,
+        ticketNumber: task.ticket_number,
+        status: task.status,
+        priority: task.priority,
         customerName: task.customerName || 'Unknown Customer',
-        customer: task.customerName ? {
-          id: task.customer_id,
-          name: task.customerName,
-          address: task.customerAddress,
-          phone: task.customerPhone,
-          email: task.customerEmail,
-          customerId: task.customerCustomerId
-        } : null,
-        assignedUser: null,
-        createdByUser: null
+        customerId: task.customer_id
       }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
