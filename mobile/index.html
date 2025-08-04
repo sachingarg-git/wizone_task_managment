@@ -204,6 +204,11 @@
                             console.log('📱 Mobile login attempt:', username);
                             return fetch('/api/auth/login', {
                                 method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'User-Agent': 'WizoneAPK/2.0-Final'
+                                },
+                                credentials: 'include',
                                 body: JSON.stringify({ username, password })
                             }).then(response => {
                                 console.log('📱 Login response status:', response.status);
@@ -223,20 +228,54 @@
                             });
                         };
 
-                        // Auto-inject login debugging for forms
+                        // Auto-inject login debugging and fix for forms
                         setTimeout(() => {
                             const loginForms = document.querySelectorAll('form');
                             loginForms.forEach(form => {
                                 form.addEventListener('submit', function(e) {
-                                    console.log('📱 Form submission detected:', form);
-                                    const usernameInput = form.querySelector('input[type="text"], input[name*="username"], input[name*="user"]');
+                                    e.preventDefault(); // Prevent default form submission
+                                    console.log('📱 Form submission intercepted:', form);
+                                    
+                                    const usernameInput = form.querySelector('input[type="text"], input[name*="username"], input[name*="user"], input[placeholder*="username" i]');
                                     const passwordInput = form.querySelector('input[type="password"]');
+                                    
                                     if (usernameInput && passwordInput) {
-                                        console.log('📱 Login form values:', {
-                                            username: usernameInput.value,
-                                            password: passwordInput.value ? '***' : 'EMPTY'
+                                        const username = usernameInput.value;
+                                        const password = passwordInput.value;
+                                        
+                                        console.log('📱 Attempting mobile login:', {
+                                            username: username,
+                                            password: password ? '***' : 'EMPTY'
                                         });
+                                        
+                                        // Use the mobile login helper
+                                        window.mobileLogin(username, password)
+                                            .then(result => {
+                                                console.log('✅ Login successful:', result);
+                                                // Reload page to show authenticated state
+                                                window.location.reload();
+                                            })
+                                            .catch(error => {
+                                                console.error('❌ Login failed:', error);
+                                                // Show error message in the form
+                                                const errorMsg = form.querySelector('.error-message') || 
+                                                               document.createElement('div');
+                                                errorMsg.className = 'error-message';
+                                                errorMsg.style.color = 'red';
+                                                errorMsg.style.marginTop = '10px';
+                                                errorMsg.textContent = 'Login failed: ' + error.message;
+                                                form.appendChild(errorMsg);
+                                            });
                                     }
+                                });
+                            });
+                            
+                            // Also check for login buttons
+                            const loginButtons = document.querySelectorAll('button[type="submit"], input[type="submit"], .login-btn, [onclick*="login"]');
+                            loginButtons.forEach(button => {
+                                button.addEventListener('click', function(e) {
+                                    console.log('📱 Login button clicked:', button);
+                                    // Form handler above will take care of the actual login
                                 });
                             });
                         }, 3000);
@@ -248,6 +287,19 @@
                     const script = webview.contentDocument.createElement('script');
                     script.textContent = authScript;
                     webview.contentDocument.head.appendChild(script);
+                    
+                    // Also inject a fallback script that waits for page to fully load
+                    const fallbackScript = webview.contentDocument.createElement('script');
+                    fallbackScript.textContent = `
+                        // Fallback authentication for slow loading
+                        setTimeout(() => {
+                            if (!window.mobileLogin) {
+                                ${authScript}
+                            }
+                            console.log('📱 Fallback authentication helper loaded');
+                        }, 5000);
+                    `;
+                    webview.contentDocument.body.appendChild(fallbackScript);
                     
                     // Also send message for compatibility
                     webview.contentWindow.postMessage({
