@@ -490,10 +490,10 @@ export class MSSQLStorage implements IStorage {
           u2.firstName as createdByUserFirstName,
           u2.lastName as createdByUserLastName
         FROM tasks t
-        LEFT JOIN customers c ON t.customerId = c.id
-        LEFT JOIN users u1 ON t.assignedTo = u1.id
-        LEFT JOIN users u2 ON t.createdBy = u2.id
-        ORDER BY t.createdAt DESC
+        LEFT JOIN customers c ON t.customer_id = c.id
+        LEFT JOIN users u1 ON t.assigned_to = u1.id
+        LEFT JOIN users u2 ON t.created_by = u2.id
+        ORDER BY t.created_at DESC
       `);
       
       // Enhanced result mapping to ensure customer names are properly formatted
