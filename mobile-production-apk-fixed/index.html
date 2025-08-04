@@ -74,19 +74,14 @@
     .loading-text {
       color: #64748b;
       font-size: 16px;
-      text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 10px;
     }
     
     .connection-status {
-      color: #10b981;
+      color: #0ea5e9;
       font-size: 14px;
       text-align: center;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+      max-width: 300px;
     }
     
     .error-overlay {
@@ -101,26 +96,26 @@
       align-items: center;
       justify-content: center;
       z-index: 10000;
-      padding: 20px;
     }
     
     .error-content {
       text-align: center;
-      max-width: 300px;
+      max-width: 320px;
+      padding: 20px;
     }
     
     .error-title {
       color: #ef4444;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: bold;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     
     .error-message {
       color: #94a3b8;
       font-size: 14px;
-      margin-bottom: 20px;
       line-height: 1.5;
+      margin-bottom: 25px;
     }
     
     .retry-button {
@@ -129,13 +124,31 @@
       border: none;
       padding: 12px 24px;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
       transition: background 0.2s;
     }
     
     .retry-button:hover {
       background: #0284c7;
+    }
+
+    .debug-info {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: #22d3ee;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 10px;
+      z-index: 1000;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
   </style>
 </head>
@@ -167,60 +180,56 @@
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-top-navigation allow-downloads"
       allowfullscreen
       allow="clipboard-read; clipboard-write">
-      
-      <!-- Debug Console for Mobile -->
-      <script>
-        // Enhanced mobile debugging
-        window.addEventListener('message', function(event) {
-          console.log('📱 Mobile Debug Message:', event.data);
-        });
-        
-        // Override console methods for mobile debugging
-        const originalLog = console.log;
-        console.log = function(...args) {
-          originalLog.apply(console, args);
-          try {
-            parent.postMessage({ type: 'mobile-log', args: args }, '*');
-          } catch (e) {}
-        };
-      </script>
     </iframe>
+
+    <!-- Debug Info -->
+    <div class="debug-info" id="debugInfo">
+      Ready
+    </div>
   </div>
 
   <script>
-    // Production server configuration with HTTPS fallback
-    const PRIMARY_SERVER = 'https://194.238.19.19:5000';
-    const FALLBACK_SERVER = 'http://194.238.19.19:5000';
+    // UPDATED: Production server configuration with HTTPS fallback for SSL fix
+    const PRIMARY_SERVER = 'https://194.238.19.19:5000';  // Try HTTPS first for security
+    const FALLBACK_SERVER = 'http://194.238.19.19:5000';   // HTTP fallback
     const CONNECTION_TIMEOUT = 10000; // 10 seconds
     
-    let PRODUCTION_SERVER = PRIMARY_SERVER; // Try HTTPS first
-    
+    let PRODUCTION_SERVER = PRIMARY_SERVER; // Start with HTTPS
     let connectionAttempts = 0;
+    let usingFallback = false;
     const maxRetries = 3;
+    
+    // Update debug info
+    function updateDebugInfo(message) {
+      document.getElementById('debugInfo').textContent = message;
+    }
     
     async function testServerConnection() {
       try {
         connectionAttempts++;
+        const serverType = PRODUCTION_SERVER === PRIMARY_SERVER ? 'HTTPS' : 'HTTP';
         document.getElementById('connectionStatus').textContent = 
-          `Connecting to server... (Attempt ${connectionAttempts}/${maxRetries})`;
+          `Connecting via ${serverType}... (${connectionAttempts}/${maxRetries})`;
         
-        console.log(`🔍 Testing connection to: ${PRODUCTION_SERVER}`);
+        updateDebugInfo(`Testing ${serverType} connection...`);
+        console.log(`🔍 Testing ${serverType} connection to: ${PRODUCTION_SERVER}`);
         
-        // Create a timeout promise
+        // Create timeout promise
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Connection timeout')), CONNECTION_TIMEOUT)
         );
         
-        // Test server health endpoint with enhanced debugging
+        // Test server health endpoint with enhanced mobile debugging
         const fetchPromise = fetch(`${PRODUCTION_SERVER}/api/health`, {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile WebView)',
+            'User-Agent': 'WizoneFieldEngineerApp/2.0 (Mobile WebView Fixed)',
             'X-Requested-With': 'mobile',
-            'X-Mobile-Debug': 'true'
+            'X-Mobile-Debug': 'true',
+            'X-APK-Version': '2.0-fixed'
           }
         });
         
@@ -228,9 +237,10 @@
         
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Server connection successful:', data);
+          console.log(`✅ ${serverType} connection successful:`, data);
           
-          document.getElementById('connectionStatus').textContent = 'Connected successfully!';
+          updateDebugInfo(`Connected via ${serverType}`);
+          document.getElementById('connectionStatus').textContent = `Connected via ${serverType}!`;
           
           // Load the main application
           setTimeout(() => {
@@ -245,15 +255,26 @@
       } catch (error) {
         console.error('❌ Connection failed:', error);
         
+        // Try fallback server (HTTP) if HTTPS failed and we haven't tried it yet
+        if (PRODUCTION_SERVER === PRIMARY_SERVER && !usingFallback) {
+          console.log('🔄 HTTPS failed, trying HTTP fallback...');
+          updateDebugInfo('HTTPS failed, trying HTTP...');
+          PRODUCTION_SERVER = FALLBACK_SERVER;
+          usingFallback = true;
+          connectionAttempts = 0; // Reset attempts for fallback
+          return testServerConnection();
+        }
+        
         if (connectionAttempts < maxRetries) {
-          document.getElementById('connectionStatus').textContent = 
-            `Connection failed. Retrying in 3 seconds...`;
-          
+          console.log(`🔄 Retrying in 2 seconds... (${connectionAttempts}/${maxRetries})`);
+          updateDebugInfo(`Retry ${connectionAttempts}/${maxRetries}...`);
           setTimeout(() => {
             testServerConnection();
-          }, 3000);
+          }, 2000);
         } else {
-          showError('Maximum connection attempts reached. Please check your internet connection and server availability.');
+          console.log('❌ All connection attempts failed');
+          updateDebugInfo('Connection failed');
+          showError(`Connection failed after ${maxRetries} attempts: ${error.message}\n\nTried both HTTPS and HTTP protocols.`);
         }
         
         return false;
@@ -264,88 +285,94 @@
       const webview = document.getElementById('mobileWebview');
       const loadingOverlay = document.getElementById('loadingOverlay');
       
-      // Set the source to the production server with session credentials support
+      updateDebugInfo('Loading app...');
+      console.log(`📱 Loading application from: ${PRODUCTION_SERVER}`);
+      
+      // Set the source to the production server with enhanced session credentials
       webview.src = PRODUCTION_SERVER;
       
       // Enable credential sharing for authentication
       webview.style.display = 'block';
       
-      // Hide loading overlay after a short delay
+      // Hide loading overlay
       setTimeout(() => {
-        loadingOverlay.classList.add('hidden');
-      }, 500);
-      
-      // Handle iframe load events
-      webview.onload = function() {
-        console.log('✅ Application loaded successfully');
-        loadingOverlay.classList.add('hidden');
-      };
-      
-      webview.onerror = function() {
-        console.error('❌ Failed to load application');
-        showError('Failed to load the application. Please try again.');
-      };
+        loadingOverlay.style.display = 'none';
+        updateDebugInfo('App loaded');
+      }, 2000);
     }
     
     function showError(message) {
-      const errorOverlay = document.getElementById('errorOverlay');
-      const errorMessage = document.getElementById('errorMessage');
-      const loadingOverlay = document.getElementById('loadingOverlay');
-      
-      errorMessage.textContent = message;
-      loadingOverlay.style.display = 'none';
-      errorOverlay.style.display = 'flex';
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorOverlay').style.display = 'flex';
+      document.getElementById('loadingOverlay').style.display = 'none';
+      updateDebugInfo('Error displayed');
     }
     
     function retryConnection() {
-      const errorOverlay = document.getElementById('errorOverlay');
-      const loadingOverlay = document.getElementById('loadingOverlay');
+      document.getElementById('errorOverlay').style.display = 'none';
+      document.getElementById('loadingOverlay').style.display = 'flex';
       
-      // Reset connection attempts
+      // Reset connection state for fresh retry
       connectionAttempts = 0;
+      usingFallback = false;
+      PRODUCTION_SERVER = PRIMARY_SERVER; // Start with HTTPS again
       
-      // Show loading overlay and hide error
-      errorOverlay.style.display = 'none';
-      loadingOverlay.style.display = 'flex';
-      loadingOverlay.classList.remove('hidden');
+      updateDebugInfo('Retrying...');
+      testServerConnection();
+    }
+
+    // Test mobile connectivity function for debugging
+    function testMobileConnection() {
+      console.log('📱 Testing mobile connectivity...');
+      updateDebugInfo('Testing connectivity...');
       
-      // Reset iframe
-      const webview = document.getElementById('mobileWebview');
-      webview.src = 'about:blank';
-      
-      // Retry connection
-      setTimeout(() => {
-        testServerConnection();
-      }, 500);
+      fetch(`${PRODUCTION_SERVER}/api/mobile/connectivity-test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'WizoneFieldEngineerApp/2.0 (Mobile WebView Fixed)',
+          'X-Mobile-Debug': 'true'
+        },
+        body: JSON.stringify({
+          test: 'connectivity_check',
+          timestamp: new Date().toISOString(),
+          device: 'mobile_apk_fixed',
+          version: '2.0'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('📱 Connectivity test result:', data);
+        updateDebugInfo('Connectivity OK');
+        alert(`Mobile Connectivity: ${data.status}\nServer: ${PRODUCTION_SERVER}\nTime: ${data.timestamp}`);
+      })
+      .catch(error => {
+        console.error('📱 Connectivity test failed:', error);
+        updateDebugInfo('Connectivity failed');
+        alert(`Connectivity test failed: ${error.message}`);
+      });
     }
     
-    // Start the application
+    // Enhanced error handling for WebView
+    window.addEventListener('error', function(e) {
+      console.error('📱 Mobile WebView Error:', e.error);
+      updateDebugInfo('WebView error');
+    });
+    
+    // Start connection test when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Wizone Mobile App Starting...');
-      console.log('🌐 Production Server:', PRODUCTION_SERVER);
+      console.log('📱 Mobile APK v2.0 - Fixed Version Starting...');
+      updateDebugInfo('Starting...');
+      
+      // Add connection test button for debugging
+      const debugButton = document.createElement('button');
+      debugButton.textContent = 'Test Connection';
+      debugButton.style.cssText = 'position:fixed;top:10px;right:10px;z-index:1001;padding:5px 10px;background:#22d3ee;color:white;border:none;border-radius:4px;font-size:10px;';
+      debugButton.onclick = testMobileConnection;
+      document.body.appendChild(debugButton);
       
       // Start connection test
-      setTimeout(() => {
-        testServerConnection();
-      }, 1000);
-    });
-    
-    // Handle mobile-specific events
-    window.addEventListener('beforeunload', function() {
-      console.log('📱 App closing...');
-    });
-    
-    // Handle network status changes
-    window.addEventListener('online', function() {
-      console.log('📶 Network connection restored');
-      if (connectionAttempts >= maxRetries) {
-        retryConnection();
-      }
-    });
-    
-    window.addEventListener('offline', function() {
-      console.log('📵 Network connection lost');
-      showError('No internet connection. Please check your network settings.');
+      setTimeout(testServerConnection, 1000);
     });
   </script>
 </body>

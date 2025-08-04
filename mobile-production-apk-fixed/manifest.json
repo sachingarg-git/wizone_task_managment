@@ -1,0 +1,20 @@
+{
+  "name": "Wizone IT Support Portal",
+  "short_name": "Wizone",
+  "version": "2.0.0",
+  "description": "Field Engineer Task Management System - Fixed Version",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1e293b",
+  "background_color": "#1e293b",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ]
+}
