@@ -348,33 +348,18 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      request.input('customerId', customerData.customerId);
-      request.input('name', customerData.name);
+      console.log('🔍 Creating customer with minimal fields...');
+      request.input('name', customerData.name || 'New Customer');
       request.input('email', customerData.email || null);
-      request.input('phone', customerData.phone || null);
-      request.input('address', customerData.address || null);
-      request.input('serviceType', customerData.serviceType || null);
-      request.input('connectionStatus', customerData.connectionStatus || 'active');
-      request.input('installationDate', customerData.installationDate || null);
-      request.input('monthlyCharge', customerData.monthlyCharge || null);
-      request.input('lastPaymentDate', customerData.lastPaymentDate || null);
       
       const result = await request.query(`
-        INSERT INTO customers (
-          customer_id, name, email, mobile_phone, address, service_plan,
-          status, installation_date, monthly_charge, last_payment_date,
-          created_at, updated_at
-        )
-        OUTPUT INSERTED.id
-        VALUES (
-          @customerId, @name, @email, @phone, @address, @serviceType,
-          @connectionStatus, @installationDate, @monthlyCharge, @lastPaymentDate,
-          GETDATE(), GETDATE()
-        )
+        INSERT INTO customers (name, email)
+        OUTPUT INSERTED.id, INSERTED.name
+        VALUES (@name, @email)
       `);
       
-      const newId = result.recordset[0].id;
-      return await this.getCustomer(newId);
+      console.log('✅ Customer created successfully:', result.recordset[0]);
+      return result.recordset[0];
     } catch (error) {
       console.error('Error creating customer:', error);
       throw error;
@@ -538,37 +523,22 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
+      console.log('🔍 Creating task with minimal fields...');
       // Generate ticket number if not provided
       const ticketNumber = taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
       
-      request.input('ticketNumber', ticketNumber);
-      request.input('title', taskData.title);
-      request.input('description', taskData.description || null);
-      request.input('customerId', taskData.customerId || null);
-      request.input('customerName', taskData.customerName || null);
+      request.input('title', taskData.title || 'New Task');
       request.input('status', taskData.status || 'pending');
       request.input('priority', taskData.priority || 'medium');
-      request.input('issueType', taskData.issueType || null);
-      request.input('assignedTo', taskData.assignedTo || null);
-      request.input('fieldEngineerId', taskData.fieldEngineerId || null);
-      request.input('backendEngineerId', taskData.backendEngineerId || null);
       
       const result = await request.query(`
-        INSERT INTO tasks (
-          ticket_number, title, description, customer_id,
-          status, priority, issue_type, assigned_to, field_engineer_id,
-          created_at, updated_at
-        )
-        OUTPUT INSERTED.id
-        VALUES (
-          @ticketNumber, @title, @description, @customerId,
-          @status, @priority, @issueType, @assignedTo, @fieldEngineerId,
-          GETDATE(), GETDATE()
-        )
+        INSERT INTO tasks (title, status, priority)
+        OUTPUT INSERTED.id, INSERTED.title, INSERTED.status, INSERTED.priority
+        VALUES (@title, @status, @priority)
       `);
       
-      const newId = result.recordset[0].id;
-      return await this.getTask(newId);
+      console.log('✅ Task created successfully:', result.recordset[0]);
+      return result.recordset[0];
     } catch (error) {
       console.error('Error creating task:', error);
       throw error;
