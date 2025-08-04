@@ -326,9 +326,15 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
+      console.log('🔍 Starting simple getAllCustomers query...');
       const result = await request.query(`
-        SELECT * FROM customers ORDER BY created_at DESC
+        SELECT * FROM customers ORDER BY id DESC
       `);
+      console.log('✅ getAllCustomers query successful, rows:', result.recordset.length);
+      
+      if (result.recordset.length > 0) {
+        console.log('👥 Sample customer columns:', Object.keys(result.recordset[0]));
+      }
       
       return result.recordset;
     } catch (error) {
@@ -474,30 +480,29 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Starting getAllTasks with customer lookup...');
+      console.log('🔍 Starting simple getAllTasks query...');
       const result = await request.query(`
-        SELECT 
-          t.*,
-          c.name as customer_name
-        FROM tasks t
-        LEFT JOIN customers c ON t.customer_id = c.id
-        ORDER BY t.id DESC
+        SELECT * FROM tasks ORDER BY id DESC
       `);
       console.log('✅ getAllTasks query successful, rows:', result.recordset.length);
       
-      // Map results with proper customer names
+      if (result.recordset.length > 0) {
+        console.log('📋 Sample task columns:', Object.keys(result.recordset[0]));
+      }
+      
+      // Simple result mapping with dynamic column detection
       return result.recordset.map((task: any) => ({
         id: task.id,
         title: task.title || 'Untitled Task',
-        ticketNumber: task.ticket_number || 'No Ticket',
+        ticketNumber: task.ticketNumber || task.ticket_number || 'No Ticket',
         status: task.status || 'pending',
         priority: task.priority || 'medium',
-        customerName: task.customer_name || 'Unknown Customer',
-        customerId: task.customer_id || null,
+        customerName: task.customerName || 'Will Add Later',
+        customerId: task.customerId || task.customer_id || null,
         description: task.description,
-        assignedTo: task.assigned_to,
-        createdAt: task.created_at,
-        updatedAt: task.updated_at
+        assignedTo: task.assignedTo || task.assigned_to,
+        createdAt: task.createdAt || task.created_at,
+        updatedAt: task.updatedAt || task.updated_at
       }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
