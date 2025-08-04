@@ -448,11 +448,16 @@ export class MSSQLStorage implements IStorage {
       const result = await request.query(`
         SELECT 
           t.*, 
-          c.name as customerName
+          c.name as actualCustomerName
         FROM tasks t
-        LEFT JOIN customers c ON t.customer_id = c.id
+        LEFT JOIN customers c ON t.customerId = c.id
         WHERE t.id = @id
       `);
+      
+      if (result.recordset[0]) {
+        const task = result.recordset[0];
+        task.customerName = task.actualCustomerName || task.customerName;
+      }
       
       return result.recordset[0];
     } catch (error) {
@@ -506,14 +511,17 @@ export class MSSQLStorage implements IStorage {
       const result = await request.query(`
         SELECT 
           t.*, 
-          c.name as customerName
+          c.name as actualCustomerName
         FROM tasks t
-        LEFT JOIN customers c ON t.customer_id = c.id
-        WHERE t.customer_id = @customerId 
-        ORDER BY t.created_at DESC
+        LEFT JOIN customers c ON t.customerId = c.id
+        WHERE t.customerId = @customerId 
+        ORDER BY t.createdAt DESC
       `);
       
-      return result.recordset;
+      return result.recordset.map((task: any) => ({
+        ...task,
+        customerName: task.actualCustomerName || task.customerName
+      }));
     } catch (error) {
       console.error('Error getting tasks by customer:', error);
       return [];
@@ -574,6 +582,10 @@ export class MSSQLStorage implements IStorage {
         
         // Handle common status mappings
         if (normalizedStatus === 'inprogress' || normalizedStatus === 'in-progress') {
+          normalizedStatus = 'in_progress';
+        }
+        // Map start_task and other action statuses to in_progress
+        if (normalizedStatus === 'start_task' || normalizedStatus === 'start' || normalizedStatus === 'begin') {
           normalizedStatus = 'in_progress';
         }
         // Map assigned statuses to in_progress (since assigned is not valid in DB)
