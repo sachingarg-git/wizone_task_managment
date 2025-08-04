@@ -466,29 +466,30 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Starting simple getAllTasks query...');
+      console.log('🔍 Getting tasks with proper customer names...');
       const result = await request.query(`
-        SELECT * FROM tasks ORDER BY id DESC
+        SELECT 
+          t.*,
+          c.name as actualCustomerName
+        FROM tasks t
+        LEFT JOIN customers c ON t.customerId = c.id
+        ORDER BY t.id DESC
       `);
-      console.log('✅ getAllTasks query successful, rows:', result.recordset.length);
+      console.log('✅ getAllTasks with customer lookup successful, rows:', result.recordset.length);
       
-      if (result.recordset.length > 0) {
-        console.log('📋 Sample task columns:', Object.keys(result.recordset[0]));
-      }
-      
-      // Simple result mapping with dynamic column detection
+      // Return tasks with proper customer names
       return result.recordset.map((task: any) => ({
         id: task.id,
         title: task.title || 'Untitled Task',
-        ticketNumber: task.ticketNumber || task.ticket_number || 'No Ticket',
+        ticketNumber: task.ticketNumber || 'No Ticket',
         status: task.status || 'pending',
         priority: task.priority || 'medium',
-        customerName: task.customerName || 'Will Add Later',
-        customerId: task.customerId || task.customer_id || null,
+        customerName: task.actualCustomerName || task.customerName || 'No Customer Assigned',
+        customerId: task.customerId || null,
         description: task.description,
-        assignedTo: task.assignedTo || task.assigned_to,
-        createdAt: task.createdAt || task.created_at,
-        updatedAt: task.updatedAt || task.updated_at
+        assignedTo: task.assignedTo,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt
       }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
@@ -524,7 +525,7 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Creating task with required fields...');
+      console.log('🔍 Creating task with customer relationship...');
       // Generate ticket number if not provided
       const ticketNumber = taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
       
@@ -533,14 +534,16 @@ export class MSSQLStorage implements IStorage {
       request.input('status', taskData.status || 'pending');
       request.input('priority', taskData.priority || 'medium');
       request.input('description', taskData.description || '');
+      request.input('customerId', taskData.customerId || null);
+      request.input('customerName', taskData.customerName || null);
       
       const result = await request.query(`
-        INSERT INTO tasks (ticketNumber, title, status, priority, description)
-        OUTPUT INSERTED.id, INSERTED.ticketNumber, INSERTED.title, INSERTED.status, INSERTED.priority
-        VALUES (@ticketNumber, @title, @status, @priority, @description)
+        INSERT INTO tasks (ticketNumber, title, status, priority, description, customerId, customerName)
+        OUTPUT INSERTED.id, INSERTED.ticketNumber, INSERTED.title, INSERTED.status, INSERTED.priority, INSERTED.customerId, INSERTED.customerName
+        VALUES (@ticketNumber, @title, @status, @priority, @description, @customerId, @customerName)
       `);
       
-      console.log('✅ Task created successfully:', result.recordset[0]);
+      console.log('✅ Task created with customer info:', result.recordset[0]);
       return result.recordset[0];
     } catch (error) {
       console.error('Error creating task:', error);
