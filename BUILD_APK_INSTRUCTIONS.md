@@ -75,8 +75,13 @@
 - **Password**: admin123
 - **Role**: Administrator
 
-### Test Users (if available):
-- **Username**: engineer1
+### Field Engineer User (WORKING):
+- **Username**: RAVI
+- **Password**: admin123
+- **Role**: Field Engineer
+
+### Alternative Test Users:
+- **Username**: engineer1  
 - **Password**: password123
 - **Role**: Field Engineer
 
