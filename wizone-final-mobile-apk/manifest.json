@@ -1,0 +1,34 @@
+{
+  "name": "Wizone Task Manager",
+  "short_name": "Wizone",
+  "description": "Professional task management system for field engineers and support teams",
+  "version": "2.0.0",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#3b82f6",
+  "background_color": "#f8fafc",
+  "scope": "./",
+  "categories": ["productivity", "business", "utilities"],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View task dashboard",
+      "url": "./index.html",
+      "icons": []
+    }
+  ]
+}
