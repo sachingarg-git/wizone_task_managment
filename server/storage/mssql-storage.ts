@@ -482,13 +482,13 @@ export class MSSQLStorage implements IStorage {
           t.*, 
           c.name as customerName,
           c.address as customerAddress,
-          c.phone as customerPhone,
+          c.mobile_phone as customerPhone,
           c.email as customerEmail,
-          c.customerId as customerCustomerId,
-          u1.firstName as assignedUserFirstName,
-          u1.lastName as assignedUserLastName,
-          u2.firstName as createdByUserFirstName,
-          u2.lastName as createdByUserLastName
+          c.customer_id as customerCustomerId,
+          u1.first_name as assignedUserFirstName,
+          u1.last_name as assignedUserLastName,
+          u2.first_name as createdByUserFirstName,
+          u2.last_name as createdByUserLastName
         FROM tasks t
         LEFT JOIN customers c ON t.customer_id = c.id
         LEFT JOIN users u1 ON t.assigned_to = u1.id
@@ -501,7 +501,7 @@ export class MSSQLStorage implements IStorage {
         ...task,
         customerName: task.customerName || 'Unknown Customer',
         customer: task.customerName ? {
-          id: task.customerId,
+          id: task.customer_id,
           name: task.customerName,
           address: task.customerAddress,
           phone: task.customerPhone,
