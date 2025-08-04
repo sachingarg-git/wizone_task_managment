@@ -3,7 +3,13 @@
 ## ✅ WORKING CREDENTIALS (TESTED & CONFIRMED)
 
 ### 👑 **USE THESE CREDENTIALS FOR MOBILE APK:**
+
+**Admin Access:**
 - **Username**: `admin`
+- **Password**: `admin123`
+
+**Field Engineer Access (WORKING):**
+- **Username**: `engineer1`
 - **Password**: `admin123`
 
 ## 📱 **LOGIN INSTRUCTIONS:**

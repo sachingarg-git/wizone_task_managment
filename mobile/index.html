@@ -201,19 +201,45 @@
 
                         // Mobile-specific login helper
                         window.mobileLogin = function(username, password) {
+                            console.log('📱 Mobile login attempt:', username);
                             return fetch('/api/auth/login', {
                                 method: 'POST',
                                 body: JSON.stringify({ username, password })
                             }).then(response => {
+                                console.log('📱 Login response status:', response.status);
                                 if (response.ok) {
-                                    console.log('✅ Mobile login successful');
+                                    console.log('✅ Mobile login successful for:', username);
                                     return response.json();
                                 } else {
-                                    console.error('❌ Mobile login failed');
-                                    throw new Error('Login failed');
+                                    console.error('❌ Mobile login failed for:', username);
+                                    return response.text().then(text => {
+                                        console.error('❌ Error details:', text);
+                                        throw new Error('Login failed: ' + text);
+                                    });
                                 }
+                            }).catch(error => {
+                                console.error('📱 Mobile login error:', error);
+                                throw error;
                             });
                         };
+
+                        // Auto-inject login debugging for forms
+                        setTimeout(() => {
+                            const loginForms = document.querySelectorAll('form');
+                            loginForms.forEach(form => {
+                                form.addEventListener('submit', function(e) {
+                                    console.log('📱 Form submission detected:', form);
+                                    const usernameInput = form.querySelector('input[type="text"], input[name*="username"], input[name*="user"]');
+                                    const passwordInput = form.querySelector('input[type="password"]');
+                                    if (usernameInput && passwordInput) {
+                                        console.log('📱 Login form values:', {
+                                            username: usernameInput.value,
+                                            password: passwordInput.value ? '***' : 'EMPTY'
+                                        });
+                                    }
+                                });
+                            });
+                        }, 3000);
 
                         console.log('📱 Mobile APK authentication helper loaded');
                     `;

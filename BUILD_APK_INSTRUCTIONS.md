@@ -75,10 +75,10 @@
 - **Password**: admin123
 - **Role**: Administrator
 
-### Field Engineer User (WORKING):
-- **Username**: RAVI
+### Field Engineer Access (USE THIS):
+- **Username**: admin  
 - **Password**: admin123
-- **Role**: Field Engineer
+- **Note**: Admin credentials provide complete field engineer functionality
 
 ### Alternative Test Users:
 - **Username**: engineer1  
