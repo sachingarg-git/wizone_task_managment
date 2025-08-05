@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile APK Connection Test - FIXED</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
+        .test-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .server-info { background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #0066cc; }
+        .test-button { background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-size: 16px; }
+        .test-button:hover { background: #218838; }
+        .test-result { margin: 15px 0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        #log { height: 400px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-top: 20px; border-radius: 6px; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-ok { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="header">
+            <h1>🔧 Mobile APK Connection Test - FIXED</h1>
+            <p>Testing connection to production server with CORS fixes</p>
+        </div>
+        
+        <div class="server-info">
+            <strong>📍 Production Server:</strong> http://194.238.19.19:5000<br>
+            <strong>🔑 Test Credentials:</strong> admin / admin123<br>
+            <strong>🗄️ Database:</strong> 103.122.85.61:1440/WIZONE_TASK_MANAGER
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="test-button" onclick="testHealthEndpoint()">🔍 Test Health Endpoint</button>
+            <button class="test-button" onclick="testAuthentication()">🔐 Test Authentication</button>
+            <button class="test-button" onclick="testMainPage()">📄 Test Main Page</button>
+            <button class="test-button" onclick="runFullTest()" style="background: #007bff;">🚀 Run Full Test</button>
+            <button class="test-button" onclick="clearLog()" style="background: #6c757d;">🗑️ Clear Log</button>
+        </div>
+
+        <div id="results"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://194.238.19.19:5000';
+        let results = document.getElementById('results');
+        let log = document.getElementById('log');
+        let testCount = 0;
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logEntry.style.margin = '5px 0';
+            logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#495057';
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showResult(message, success, details = '') {
+            const result = document.createElement('div');
+            result.className = `test-result ${success ? 'success' : 'error'}`;
+            const indicator = `<span class="status-indicator ${success ? 'status-ok' : 'status-error'}"></span>`;
+            result.innerHTML = indicator + message + (details ? `<br><small>${details}</small>` : '');
+            results.appendChild(result);
+        }
+
+        function showLoading(message) {
+            const result = document.createElement('div');
+            result.className = 'test-result loading';
+            result.id = 'loading-' + (++testCount);
+            const indicator = '<span class="status-indicator status-loading"></span>';
+            result.innerHTML = indicator + message;
+            results.appendChild(result);
+            return result.id;
+        }
+
+        function updateLoading(id, message, success, details = '') {
+            const element = document.getElementById(id);
+            if (element) {
+                element.className = `test-result ${success ? 'success' : 'error'}`;
+                const indicator = `<span class="status-indicator ${success ? 'status-ok' : 'status-error'}"></span>`;
+                element.innerHTML = indicator + message + (details ? `<br><small>${details}</small>` : '');
+            }
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+            results.innerHTML = '';
+            testCount = 0;
+            addLog('🔄 Test log cleared');
+        }
+
+        async function testHealthEndpoint() {
+            const loadingId = showLoading('Testing health endpoint...');
+            addLog('🔍 Testing health endpoint...');
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`✅ Health endpoint success: Server is ${data.status}`);
+                    updateLoading(loadingId, `✅ Health Endpoint: ${data.status.toUpperCase()}`, true, `Server: ${data.server}, Version: ${data.version}`);
+                    return true;
+                } else {
+                    addLog(`❌ Health endpoint failed: HTTP ${response.status}`);
+                    updateLoading(loadingId, `❌ Health Endpoint Failed: HTTP ${response.status}`, false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Health endpoint error: ${error.message}`);
+                updateLoading(loadingId, `❌ Health Endpoint Error: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testAuthentication() {
+            const loadingId = showLoading('Testing authentication...');
+            addLog('🔍 Testing authentication with admin/admin123...');
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/auth/login`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    addLog(`✅ Authentication success: ${userData.username} (${userData.role})`);
+                    updateLoading(loadingId, `✅ Authentication: ${userData.username} logged in`, true, `Role: ${userData.role}, Department: ${userData.department}`);
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Authentication failed: ${response.status} - ${errorText}`);
+                    updateLoading(loadingId, `❌ Authentication Failed: HTTP ${response.status}`, false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Authentication error: ${error.message}`);
+                updateLoading(loadingId, `❌ Authentication Error: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testMainPage() {
+            const loadingId = showLoading('Testing main page...');
+            addLog('🔍 Testing main page accessibility...');
+            
+            try {
+                const response = await fetch(SERVER_URL, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    addLog('✅ Main page accessible - Wizone portal loads properly');
+                    updateLoading(loadingId, '✅ Main Page: Accessible', true, 'Wizone IT Support Portal is loading properly');
+                    return true;
+                } else {
+                    addLog(`❌ Main page failed: HTTP ${response.status}`);
+                    updateLoading(loadingId, `❌ Main Page: HTTP ${response.status}`, false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Main page error: ${error.message}`);
+                updateLoading(loadingId, `❌ Main Page Error: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function runFullTest() {
+            clearLog();
+            addLog('🚀 Starting full connection test...');
+            addLog(`🎯 Testing production server: ${SERVER_URL}`);
+            addLog('='.repeat(60));
+            
+            let passedTests = 0;
+            const totalTests = 3;
+            
+            // Test 1: Health endpoint
+            if (await testHealthEndpoint()) passedTests++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test 2: Authentication  
+            if (await testAuthentication()) passedTests++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test 3: Main page
+            if (await testMainPage()) passedTests++;
+            
+            addLog('='.repeat(60));
+            
+            if (passedTests === totalTests) {
+                addLog('🎉 ALL TESTS PASSED! Mobile APK should connect successfully!');
+                showResult('🎉 ALL TESTS PASSED!', true, `${passedTests}/${totalTests} tests successful - Your mobile APK is ready to connect!`);
+            } else {
+                addLog(`❌ ${totalTests - passedTests} tests failed. Mobile APK may have connectivity issues.`);
+                showResult(`❌ ${passedTests}/${totalTests} Tests Passed`, false, 'Some connectivity issues detected');
+            }
+            
+            return passedTests === totalTests;
+        }
+
+        // Auto-run test on page load
+        window.onload = function() {
+            addLog('📱 Mobile APK Connection Test Ready');
+            addLog(`🔧 Production server: ${SERVER_URL}`);
+            addLog('Click "Run Full Test" to verify connectivity');
+        };
+    </script>
+</body>
+</html>
