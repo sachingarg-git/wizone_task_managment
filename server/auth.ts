@@ -43,19 +43,45 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Use memory store for sessions (MS SQL session store will be added later)
+  // Enhanced session configuration for mobile APK compatibility
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "your-session-secret-here",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
+      httpOnly: false, // Allow JS access for mobile WebView
       secure: false, // Set to true in production with HTTPS
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: 'none', // Required for cross-origin mobile apps
     },
+    name: 'wizone.session', // Custom session name
   };
 
   app.set("trust proxy", 1);
+  
+  // Add CORS headers for mobile APK
+  app.use((req, res, next) => {
+    const userAgent = req.get('User-Agent') || '';
+    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') || 
+                       req.get('X-Mobile-App') === 'true' ||
+                       req.get('X-Requested-With') === 'mobile';
+    
+    if (isMobileApp) {
+      console.log('📱 Mobile APK request detected:', req.method, req.path);
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Mobile-App');
+    }
+    
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
+    
+    next();
+  });
+  
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());

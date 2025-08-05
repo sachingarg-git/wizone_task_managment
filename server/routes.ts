@@ -323,75 +323,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === AUTHENTICATION ROUTES ===
   
   // Login route for both web and mobile
-  app.post('/api/login', (req, res, next) => {
-    console.log('🔐 LOGIN REQUEST:', req.body.username);
+  app.post('/api/auth/login', async (req, res, next) => {
+    const userAgent = req.get('User-Agent') || '';
+    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') || 
+                       req.get('X-Mobile-App') === 'true' ||
+                       req.get('X-Requested-With') === 'mobile';
+    
+    console.log(`🔐 Login attempt: ${req.body.username}`);
+    console.log(`📱 User Agent: ${userAgent}`);
+    console.log(`🌐 Origin: ${req.get('Origin')}`);
+    
+    if (isMobileApp) {
+      console.log('💻 MOBILE APK REQUEST - Using passport authentication');
+    } else {
+      console.log('💻 WEB REQUEST - Using passport authentication');
+    }
     
     passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) {
-        console.error('❌ Login error:', err);
+        console.error('Authentication error:', err);
         return res.status(500).json({ message: 'Authentication error' });
       }
       
       if (!user) {
-        console.log('❌ Login failed for:', req.body.username);
-        return res.status(401).json({ message: info?.message || 'Invalid credentials' });
+        console.log(`❌ Authentication failed for: ${req.body.username}`);
+        return res.status(401).json({ message: 'Invalid username or password' });
       }
       
-      req.logIn(user, (err) => {
-        if (err) {
-          console.error('❌ Session error:', err);
-          return res.status(500).json({ message: 'Session error' });
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          return res.status(500).json({ message: 'Login failed' });
         }
         
-        console.log('✅ Login successful:', user?.username);
-        res.json({
-          success: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            role: user.role,
-            department: user.department
-          }
+        if (isMobileApp) {
+          console.log('✅ Mobile APK login successful for:', user.username);
+        } else {
+          console.log('✅ Web login successful for:', user.username);
+        }
+        
+        // Return user data for both web and mobile
+        return res.json({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          department: user.department,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
         });
       });
     })(req, res, next);
   });
 
   // Logout route
-  app.post('/api/logout', (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        console.error('Logout error:', err);
-        return res.status(500).json({ message: 'Logout error' });
-      }
+  app.post('/api/auth/logout', (req, res) => {
+    req.logout(() => {
       req.session.destroy((err) => {
         if (err) {
           console.error('Session destroy error:', err);
-          return res.status(500).json({ message: 'Session error' });
+          return res.status(500).json({ message: 'Logout failed' });
         }
-        res.json({ success: true, message: 'Logged out successfully' });
+        res.clearCookie('wizone.session');
+        res.json({ message: 'Logged out successfully' });
       });
     });
   });
 
   // Get current user route
   app.get('/api/auth/user', (req, res) => {
-    if (req.isAuthenticated() && req.user) {
-      res.json({
-        id: req.user.id,
-        username: req.user.username,
-        firstName: req.user.firstName,
-        lastName: req.user.lastName,
-        email: req.user.email,
-        role: req.user.role,
-        department: req.user.department
-      });
-    } else {
-      res.status(401).json({ message: 'Not authenticated' });
+    if (!req.isAuthenticated() || !req.user) {
+      console.log('❌ Unauthenticated request to /api/auth/user');
+      return res.status(401).json({ message: 'Unauthorized' });
     }
+    
+    const userAgent = req.get('User-Agent') || '';
+    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') || 
+                       req.get('X-Mobile-App') === 'true' ||
+                       req.get('X-Requested-With') === 'mobile';
+    
+    if (isMobileApp) {
+      console.log('✅ Mobile APK authenticated user request');
+    }
+    
+    res.json({
+      id: req.user.id,
+      username: req.user.username,
+      email: req.user.email,
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      role: req.user.role,
+      department: req.user.department,
+      isActive: req.user.isActive,
+      createdAt: req.user.createdAt,
+      updatedAt: req.user.updatedAt
+    });
   });
 
   // Health endpoint for mobile APK connectivity testing

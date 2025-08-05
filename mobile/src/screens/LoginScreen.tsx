@@ -19,8 +19,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('admin'); // Pre-fill for testing
+  const [password, setPassword] = useState('admin123'); // Pre-fill for testing
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -35,9 +35,12 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      console.log('🔐 Mobile APK login screen - attempting login for:', username.trim());
       await login(username.trim(), password);
+      console.log('✅ Mobile APK login screen - login successful');
       // Navigation will be handled automatically by AuthContext
     } catch (error) {
+      console.error('❌ Mobile APK login screen - login failed:', error);
       Alert.alert(
         'Login Failed',
         error instanceof Error ? error.message : 'Please check your credentials and try again'

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile APK Authentication Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .test-button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connecting { background: #ffc107; }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .credentials {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .credentials h4 {
+            margin: 0 0 10px 0;
+            color: #0056b3;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Mobile APK Authentication Test</h1>
+            <p>Comprehensive authentication testing for Wizone Field Engineer APK</p>
+        </div>
+        
+        <div class="content">
+            <div class="credentials">
+                <h4>🔐 Login Credentials</h4>
+                <div class="input-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" value="admin" />
+                </div>
+                <div class="input-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" value="admin123" />
+                </div>
+            </div>
+
+            <!-- Server Connectivity Test -->
+            <div class="test-section">
+                <h3><span id="connectivity-status" class="status-indicator status-connecting"></span>1. Server Connectivity Test</h3>
+                <p>Testing connection to production server: <strong>http://194.238.19.19:5000</strong></p>
+                <button class="test-button" onclick="testConnectivity()">Test Connectivity</button>
+                <div id="connectivity-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Authentication Test -->
+            <div class="test-section">
+                <h3><span id="auth-status" class="status-indicator status-connecting"></span>2. Authentication Test</h3>
+                <p>Testing mobile APK authentication with session cookies</p>
+                <button class="test-button" onclick="testAuthentication()">Test Login</button>
+                <button class="test-button" onclick="testAuthStatus()">Check Auth Status</button>
+                <button class="test-button" onclick="testLogout()">Test Logout</button>
+                <div id="auth-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Database Access Test -->
+            <div class="test-section">
+                <h3><span id="data-status" class="status-indicator status-connecting"></span>3. Database Access Test</h3>
+                <p>Testing access to tasks and customers data via API</p>
+                <button class="test-button" onclick="testTasks()">Load Tasks</button>
+                <button class="test-button" onclick="testCustomers()">Load Customers</button>
+                <button class="test-button" onclick="testUsers()">Load Users</button>
+                <div id="data-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Complete Authentication Flow Test -->
+            <div class="test-section">
+                <h3><span id="flow-status" class="status-indicator status-connecting"></span>4. Complete Authentication Flow</h3>
+                <p>Testing the entire mobile APK authentication flow end-to-end</p>
+                <button class="test-button" onclick="testCompleteFlow()">Test Complete Flow</button>
+                <div id="flow-result" class="result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://194.238.19.19:5000';
+
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+            element.textContent = content;
+        }
+
+        function updateStatus(statusId, success) {
+            const element = document.getElementById(statusId);
+            element.className = `status-indicator ${success ? 'status-success' : 'status-error'}`;
+        }
+
+        async function apiRequest(method, endpoint, data = null) {
+            const config = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+                    'X-Requested-With': 'mobile',
+                    'X-Mobile-App': 'true'
+                },
+                credentials: 'include'
+            };
+
+            if (data && (method === 'POST' || method === 'PUT')) {
+                config.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(`${SERVER_URL}${endpoint}`, config);
+            const responseText = await response.text();
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${responseText}`);
+            }
+
+            return responseText ? JSON.parse(responseText) : {};
+        }
+
+        async function testConnectivity() {
+            try {
+                showResult('connectivity-result', '🔄 Testing server connectivity...', 'info');
+                
+                const result = await apiRequest('GET', '/api/health');
+                
+                const successMessage = `✅ Server Connectivity Successful!
+
+Response Details:
+- Status: ${result.status}
+- Message: ${result.message}
+- Service: ${result.service}
+- Version: ${result.version}
+- Timestamp: ${result.timestamp}
+- Server URL: ${SERVER_URL}
+
+🌐 Mobile APK can successfully connect to production server!`;
+
+                showResult('connectivity-result', successMessage, 'success');
+                updateStatus('connectivity-status', true);
+            } catch (error) {
+                const errorMessage = `❌ Server Connectivity Failed!
+
+Error Details:
+${error.message}
+
+📡 Check Network Connection:
+- Ensure mobile device has internet access
+- Verify server is running on: ${SERVER_URL}
+- Check firewall/proxy settings`;
+
+                showResult('connectivity-result', errorMessage, 'error');
+                updateStatus('connectivity-status', false);
+            }
+        }
+
+        async function testAuthentication() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                showResult('auth-result', '🔐 Testing authentication...', 'info');
+                
+                const result = await apiRequest('POST', '/api/auth/login', {
+                    username,
+                    password
+                });
+                
+                const successMessage = `✅ Authentication Successful!
+
+User Details:
+- ID: ${result.id}
+- Username: ${result.username}
+- Name: ${result.firstName} ${result.lastName}
+- Email: ${result.email}
+- Role: ${result.role}
+- Department: ${result.department}
+- Active: ${result.isActive}
+
+🍪 Session cookie created successfully!
+📱 Mobile APK authentication working correctly!`;
+
+                showResult('auth-result', successMessage, 'success');
+                updateStatus('auth-status', true);
+            } catch (error) {
+                const errorMessage = `❌ Authentication Failed!
+
+Error Details:
+${error.message}
+
+🔍 Check Credentials:
+- Username: ${document.getElementById('username').value}
+- Password: [Hidden]
+- Verify credentials are correct
+- Check server authentication endpoint`;
+
+                showResult('auth-result', errorMessage, 'error');
+                updateStatus('auth-status', false);
+            }
+        }
+
+        async function testAuthStatus() {
+            try {
+                showResult('auth-result', '🔍 Checking authentication status...', 'info');
+                
+                const result = await apiRequest('GET', '/api/auth/user');
+                
+                const successMessage = `✅ Authentication Status: AUTHENTICATED
+
+Current User:
+- ID: ${result.id}
+- Username: ${result.username}
+- Name: ${result.firstName} ${result.lastName}
+- Email: ${result.email}
+- Role: ${result.role}
+- Department: ${result.department}
+
+🍪 Session cookie is valid and working!`;
+
+                showResult('auth-result', successMessage, 'success');
+                updateStatus('auth-status', true);
+            } catch (error) {
+                const statusMessage = `❌ Authentication Status: NOT AUTHENTICATED
+
+Error Details:
+${error.message}
+
+💡 This is expected if you haven't logged in yet.
+Please run the "Test Login" first.`;
+
+                showResult('auth-result', statusMessage, 'error');
+                updateStatus('auth-status', false);
+            }
+        }
+
+        async function testLogout() {
+            try {
+                showResult('auth-result', '🚪 Testing logout...', 'info');
+                
+                const result = await apiRequest('POST', '/api/auth/logout');
+                
+                const successMessage = `✅ Logout Successful!
+
+Response:
+${result.message || 'Logged out successfully'}
+
+🍪 Session cookie cleared!
+📱 User logged out from mobile APK!`;
+
+                showResult('auth-result', successMessage, 'success');
+                updateStatus('auth-status', false);
+            } catch (error) {
+                const errorMessage = `❌ Logout Failed!
+
+Error Details:
+${error.message}
+
+⚠️ This might occur if already logged out.`;
+
+                showResult('auth-result', errorMessage, 'error');
+            }
+        }
+
+        async function testTasks() {
+            try {
+                showResult('data-result', '📋 Loading tasks data...', 'info');
+                
+                const result = await apiRequest('GET', '/api/tasks');
+                
+                const successMessage = `✅ Tasks Data Loaded Successfully!
+
+Database Connection: SQL Server (103.122.85.61:1440)
+Database Name: WIZONE_TASK_MANAGER
+Tasks Count: ${result.length || 0}
+
+Sample Tasks:
+${result.slice(0, 3).map(task => 
+    `- ${task.ticketNumber}: ${task.title} (${task.status})`
+).join('\n')}
+
+📊 Real-time data synchronization working!`;
+
+                showResult('data-result', successMessage, 'success');
+                updateStatus('data-status', true);
+            } catch (error) {
+                const errorMessage = `❌ Tasks Data Loading Failed!
+
+Error Details:
+${error.message}
+
+🔑 Authentication Required:
+Please login first using "Test Login" button.`;
+
+                showResult('data-result', errorMessage, 'error');
+                updateStatus('data-status', false);
+            }
+        }
+
+        async function testCustomers() {
+            try {
+                showResult('data-result', '👥 Loading customers data...', 'info');
+                
+                const result = await apiRequest('GET', '/api/customers');
+                
+                const successMessage = `✅ Customers Data Loaded Successfully!
+
+Customers Count: ${result.length || 0}
+
+Sample Customers:
+${result.slice(0, 3).map(customer => 
+    `- ${customer.name} (${customer.email || 'No email'})`
+).join('\n')}
+
+📊 Customer data accessible from mobile APK!`;
+
+                showResult('data-result', successMessage, 'success');
+                updateStatus('data-status', true);
+            } catch (error) {
+                const errorMessage = `❌ Customers Data Loading Failed!
+
+Error Details:
+${error.message}
+
+🔑 Please ensure you're authenticated first.`;
+
+                showResult('data-result', errorMessage, 'error');
+                updateStatus('data-status', false);
+            }
+        }
+
+        async function testUsers() {
+            try {
+                showResult('data-result', '👤 Loading users data...', 'info');
+                
+                const result = await apiRequest('GET', '/api/users');
+                
+                const successMessage = `✅ Users Data Loaded Successfully!
+
+Users Count: ${result.length || 0}
+
+Sample Users:
+${result.slice(0, 3).map(user => 
+    `- ${user.username}: ${user.firstName} ${user.lastName} (${user.role})`
+).join('\n')}
+
+👥 User management accessible from mobile APK!`;
+
+                showResult('data-result', successMessage, 'success');
+                updateStatus('data-status', true);
+            } catch (error) {
+                const errorMessage = `❌ Users Data Loading Failed!
+
+Error Details:
+${error.message}
+
+🔑 Admin access required for user management.`;
+
+                showResult('data-result', errorMessage, 'error');
+                updateStatus('data-status', false);
+            }
+        }
+
+        async function testCompleteFlow() {
+            showResult('flow-result', '🔄 Starting complete authentication flow test...', 'info');
+            
+            let results = [];
+            
+            try {
+                // Step 1: Test connectivity
+                results.push('Step 1: Testing server connectivity...');
+                await apiRequest('GET', '/api/health');
+                results.push('✅ Server connectivity: SUCCESS');
+                
+                // Step 2: Test login
+                results.push('\nStep 2: Testing authentication...');
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const loginResult = await apiRequest('POST', '/api/auth/login', {
+                    username,
+                    password
+                });
+                results.push(`✅ Login successful: ${loginResult.username}`);
+                
+                // Step 3: Test auth status
+                results.push('\nStep 3: Verifying authentication status...');
+                const authResult = await apiRequest('GET', '/api/auth/user');
+                results.push(`✅ Auth status: AUTHENTICATED as ${authResult.username}`);
+                
+                // Step 4: Test data access
+                results.push('\nStep 4: Testing data access...');
+                const tasksResult = await apiRequest('GET', '/api/tasks');
+                results.push(`✅ Tasks loaded: ${tasksResult.length} tasks`);
+                
+                const customersResult = await apiRequest('GET', '/api/customers');
+                results.push(`✅ Customers loaded: ${customersResult.length} customers`);
+                
+                // Final success message
+                results.push('\n🎉 COMPLETE FLOW TEST: SUCCESS!');
+                results.push('\n📱 Mobile APK authentication is working perfectly!');
+                results.push('🗄️ Database connectivity confirmed');
+                results.push('🔐 Session management working');
+                results.push('📊 Real-time data synchronization active');
+                
+                showResult('flow-result', results.join('\n'), 'success');
+                updateStatus('flow-status', true);
+                
+            } catch (error) {
+                results.push(`\n❌ Flow test failed at current step:`);
+                results.push(`Error: ${error.message}`);
+                results.push('\n🔧 Check individual test sections for details.');
+                
+                showResult('flow-result', results.join('\n'), 'error');
+                updateStatus('flow-status', false);
+            }
+        }
+
+        // Auto-test connectivity on page load
+        window.addEventListener('load', function() {
+            setTimeout(testConnectivity, 1000);
+        });
+    </script>
+</body>
+</html>

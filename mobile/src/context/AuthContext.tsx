@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../utils/api';
 
 interface User {
@@ -33,20 +32,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('authToken');
       
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      // Check if the user is still authenticated
+      // For mobile APK, check if user session exists on server
+      // Don't rely on local token storage, use session cookies
       const response = await apiRequest('GET', '/api/auth/user');
       setUser(response);
     } catch (error) {
-      // If auth check fails, clear stored token
-      await AsyncStorage.removeItem('authToken');
+      // If auth check fails, user is not authenticated
       setUser(null);
+      console.log('Auth check failed:', error);
     } finally {
       setLoading(false);
     }
@@ -54,18 +48,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (username: string, password: string) => {
     try {
+      console.log('🔐 Mobile APK login attempt:', username);
+      
       const response = await apiRequest('POST', '/api/auth/login', {
         username,
         password,
       });
 
-      // Store auth token (assuming the API returns one)
-      if (response.token) {
-        await AsyncStorage.setItem('authToken', response.token);
-      }
+      console.log('✅ Mobile APK login successful:', response);
       
-      setUser(response.user || response);
+      // Server uses session cookies, no token storage needed
+      // Session cookie will be automatically stored by WebView
+      setUser(response);
     } catch (error) {
+      console.error('❌ Mobile APK login failed:', error);
       throw error;
     }
   };
@@ -73,12 +69,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout');
-    } catch (error) {
-      // Continue with logout even if API call fails
-      console.warn('Logout API call failed:', error);
-    } finally {
-      await AsyncStorage.removeItem('authToken');
+      
+      // Clear user state
       setUser(null);
+      console.log('✅ Mobile APK logout successful');
+    } catch (error) {
+      console.error('❌ Mobile APK logout error:', error);
+      setUser(null); // Clear user state even if logout request fails
     }
   };
 

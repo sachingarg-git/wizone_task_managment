@@ -54,47 +54,58 @@ export async function apiRequest(
     // Get the current API base URL (with network detection for mobile)
     if (!API_BASE_URL) {
       API_BASE_URL = await getApiBaseUrl();
-      console.log(`🌐 Using API base URL: ${API_BASE_URL}`);
+      console.log(`🌐 Mobile APK using API base URL: ${API_BASE_URL}`);
     }
-    
-    const token = await AsyncStorage.getItem('authToken');
     
     const config: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
         'X-Requested-With': 'mobile',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        'X-Mobile-App': 'true', // Mobile identification
       },
-      credentials: 'include', // Important for cookie-based sessions
+      credentials: 'include', // Essential for session cookies
+      mode: 'cors', // Explicit CORS mode
     };
 
     if (data && (method === 'POST' || method === 'PUT')) {
       config.body = JSON.stringify(data);
     }
 
-    console.log(`📡 API Request: ${method} ${API_BASE_URL}${endpoint}`);
+    console.log(`📡 Mobile APK Request: ${method} ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
+    console.log(`📡 Mobile APK Response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Network error' }));
-      throw new Error(errorData.message || `HTTP ${response.status}`);
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      console.error(`❌ API Error ${response.status}:`, errorData);
+      throw new Error(errorData.message || `HTTP ${response.status}: Authentication failed`);
     }
 
-    // Handle empty responses
+    // Handle empty responses (like logout)
     const responseText = await response.text();
     if (!responseText) {
       return {};
     }
 
-    return JSON.parse(responseText);
+    const responseData = JSON.parse(responseText);
+    console.log('✅ Mobile APK Response data received');
+    return responseData;
   } catch (error) {
-    console.error('API Request Error:', error);
+    console.error('❌ Mobile APK API Request Error:', error);
     
     // If network error, try to reconnect with network detection
     const errorMessage = (error as Error).message || '';
-    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+    if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
       console.log('🔄 Network error, attempting reconnection...');
       mobileNetworkConfig.reset();
       API_BASE_URL = null; // Reset for next request
