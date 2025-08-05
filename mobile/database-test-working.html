@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Mobile APK Database Test - CORS Fixed</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .db-info { background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #28a745; }
+        .test-button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-size: 16px; }
+        .test-button:hover { background: #0056b3; }
+        .test-result { margin: 15px 0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        #log { height: 450px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-top: 20px; border-radius: 6px; }
+        .data-preview { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-ok { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Mobile APK Database Test - CORS & Authentication Fixed</h1>
+            <p>Testing with enhanced authentication and CORS handling</p>
+        </div>
+        
+        <div class="db-info">
+            <strong>🗄️ Production Database:</strong> 103.122.85.61:1440/WIZONE_TASK_MANAGER<br>
+            <strong>🌐 Production Server:</strong> http://194.238.19.19:5000<br>
+            <strong>🔑 Test Credentials:</strong> admin / admin123<br>
+            <strong>🔄 Connection Path:</strong> Mobile APK → Cloud Server → MS SQL Server<br>
+            <strong>⚠️ Note:</strong> Must be accessed via HTTP server, not file:// protocol
+        </div>
+
+        <div class="warning test-result">
+            <span class="status-indicator status-loading"></span>
+            <strong>Important:</strong> If you're seeing CORS errors, make sure you're accessing this page via HTTP server (http://localhost:8090) instead of opening the file directly.
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="test-button" onclick="testCORS()">🌐 Test CORS Setup</button>
+            <button class="test-button" onclick="testAuthentication()">🔐 Test Authentication</button>
+            <button class="test-button" onclick="testDatabaseAccess()">🗄️ Test Database Access</button>
+            <button class="test-button" onclick="runCompleteTest()" style="background: #28a745;">🚀 Complete Test</button>
+            <button class="test-button" onclick="clearLog()" style="background: #6c757d;">🗑️ Clear Log</button>
+        </div>
+
+        <div id="results"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://194.238.19.19:5000';
+        let results = document.getElementById('results');
+        let log = document.getElementById('log');
+        let sessionToken = null;
+        let isAuthenticated = false;
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logEntry.style.margin = '5px 0';
+            logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#fd7e14' : '#495057';
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showResult(message, success, details = '') {
+            const result = document.createElement('div');
+            result.className = `test-result ${success ? 'success' : 'error'}`;
+            const indicator = `<span class="status-indicator ${success ? 'status-ok' : 'status-error'}"></span>`;
+            result.innerHTML = indicator + message + (details ? `<br><small>${details}</small>` : '');
+            results.appendChild(result);
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+            results.innerHTML = '';
+            addLog('🔄 Test log cleared');
+        }
+
+        // Test CORS setup and browser environment
+        async function testCORS() {
+            addLog('🌐 Testing CORS setup and browser environment...');
+            
+            // Check if we're accessing via HTTP or file protocol
+            const protocol = window.location.protocol;
+            addLog(`📍 Current protocol: ${protocol}`);
+            
+            if (protocol === 'file:') {
+                showResult('❌ CORS Issue: Accessing via file:// protocol', false, 'Please access via HTTP server: http://localhost:8090/database-test-working.html');
+                addLog('❌ File protocol detected - this will cause CORS issues', 'error');
+                addLog('💡 Solution: Access via HTTP server instead of opening file directly', 'warning');
+                return false;
+            }
+            
+            // Test basic fetch capability
+            try {
+                addLog('🔍 Testing basic server connectivity...');
+                
+                const response = await fetch(`${SERVER_URL}/api/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (TestPage)',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`✅ CORS test passed: ${data.status}`, 'success');
+                    showResult('✅ CORS Setup: Working correctly', true, `Server responded: ${data.status}`);
+                    return true;
+                } else {
+                    addLog(`❌ Server responded with error: ${response.status}`, 'error');
+                    showResult(`❌ CORS Setup: Server error (${response.status})`, false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ CORS test failed: ${error.message}`, 'error');
+                
+                if (error.message.includes('CORS')) {
+                    showResult('❌ CORS Setup: CORS policy blocking request', false, 'Make sure to access via HTTP server');
+                } else if (error.message.includes('network')) {
+                    showResult('❌ CORS Setup: Network connectivity issue', false, 'Check internet connection and server availability');
+                } else {
+                    showResult(`❌ CORS Setup: ${error.message}`, false);
+                }
+                return false;
+            }
+        }
+
+        // Enhanced authentication with multiple methods
+        async function testAuthentication() {
+            addLog('🔐 Testing authentication with enhanced methods...');
+            
+            if (isAuthenticated) {
+                addLog('✅ Already authenticated, testing session validity...', 'success');
+                // Test if session is still valid
+                try {
+                    const testResponse = await fetch(`${SERVER_URL}/api/auth/user`, {
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (testResponse.ok) {
+                        addLog('✅ Existing session is valid', 'success');
+                        showResult('✅ Authentication: Session Valid', true, 'Using existing authentication');
+                        return true;
+                    } else {
+                        addLog('⚠️ Session expired, re-authenticating...', 'warning');
+                        isAuthenticated = false;
+                    }
+                } catch (error) {
+                    addLog('⚠️ Session check failed, re-authenticating...', 'warning');
+                    isAuthenticated = false;
+                }
+            }
+            
+            try {
+                addLog('📝 Sending login request with admin credentials...');
+                
+                const loginData = {
+                    username: 'admin',
+                    password: 'admin123'
+                };
+                
+                addLog(`🔑 Authenticating user: ${loginData.username}`);
+                
+                const response = await fetch(`${SERVER_URL}/api/auth/login`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (TestPage)',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                addLog(`📡 Server response status: ${response.status}`);
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    isAuthenticated = true;
+                    sessionToken = response.headers.get('Authorization') || 'cookie-based';
+                    
+                    addLog(`✅ Authentication successful!`, 'success');
+                    addLog(`👤 User: ${userData.firstName} ${userData.lastName} (${userData.role})`, 'success');
+                    addLog(`📧 Email: ${userData.email}`, 'info');
+                    addLog(`🏢 Department: ${userData.department}`, 'info');
+                    
+                    showResult('✅ Authentication: SUCCESS', true, `Welcome ${userData.firstName} ${userData.lastName} (${userData.role})`);
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Authentication failed: HTTP ${response.status}`, 'error');
+                    addLog(`📄 Error details: ${errorText}`, 'error');
+                    
+                    showResult(`❌ Authentication: FAILED (${response.status})`, false, errorText);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Authentication error: ${error.message}`, 'error');
+                
+                if (error.message.includes('Failed to fetch')) {
+                    addLog('💡 Possible causes: Network issue, CORS problem, or server down', 'warning');
+                } else if (error.message.includes('CORS')) {
+                    addLog('💡 CORS issue detected - make sure accessing via HTTP server', 'warning');
+                }
+                
+                showResult(`❌ Authentication: ERROR - ${error.message}`, false);
+                return false;
+            }
+        }
+
+        // Test database access with detailed logging
+        async function testDatabaseAccess() {
+            addLog('🗄️ Testing database access...');
+            
+            if (!isAuthenticated) {
+                addLog('⚠️ Not authenticated, authenticating first...', 'warning');
+                if (!await testAuthentication()) {
+                    showResult('❌ Database Access: Authentication Required', false);
+                    return false;
+                }
+            }
+            
+            try {
+                addLog('📋 Testing tasks endpoint...');
+                const tasksResponse = await fetch(`${SERVER_URL}/api/tasks`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                addLog(`📡 Tasks response: ${tasksResponse.status}`);
+                
+                if (tasksResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    addLog(`✅ Tasks retrieved: ${tasksData.length} tasks found`, 'success');
+                    
+                    if (tasksData.length > 0) {
+                        const sampleTask = tasksData[0];
+                        addLog(`📝 Sample task: "${sampleTask.title}" (${sampleTask.status})`, 'info');
+                    }
+                    
+                    // Test customers endpoint
+                    addLog('👥 Testing customers endpoint...');
+                    const customersResponse = await fetch(`${SERVER_URL}/api/customers`, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    addLog(`📡 Customers response: ${customersResponse.status}`);
+                    
+                    if (customersResponse.ok) {
+                        const customersData = await customersResponse.json();
+                        addLog(`✅ Customers retrieved: ${customersData.length} customers found`, 'success');
+                        
+                        if (customersData.length > 0) {
+                            const sampleCustomer = customersData[0];
+                            addLog(`🏢 Sample customer: "${sampleCustomer.name}"`, 'info');
+                        }
+                        
+                        showResult('✅ Database Access: SUCCESS', true, `${tasksData.length} tasks, ${customersData.length} customers accessible`);
+                        return true;
+                    } else {
+                        addLog(`❌ Customers access failed: ${customersResponse.status}`, 'error');
+                        showResult('❌ Database Access: Customers endpoint failed', false);
+                        return false;
+                    }
+                } else {
+                    addLog(`❌ Tasks access failed: ${tasksResponse.status}`, 'error');
+                    showResult('❌ Database Access: Tasks endpoint failed', false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Database access error: ${error.message}`, 'error');
+                showResult(`❌ Database Access: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        // Run complete test suite
+        async function runCompleteTest() {
+            clearLog();
+            addLog('🚀 Starting complete mobile APK database test suite...');
+            addLog(`🎯 Target server: ${SERVER_URL}`);
+            addLog(`🗄️ Database: 103.122.85.61:1440/WIZONE_TASK_MANAGER`);
+            addLog(`🔑 Credentials: admin/admin123`);
+            addLog('='.repeat(80));
+            
+            let testsPassed = 0;
+            const totalTests = 3;
+            
+            // Test 1: CORS and Environment
+            addLog('📋 Test 1/3: CORS and Environment Setup');
+            if (await testCORS()) {
+                testsPassed++;
+                addLog('✅ Test 1 PASSED', 'success');
+            } else {
+                addLog('❌ Test 1 FAILED', 'error');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Test 2: Authentication
+            addLog('📋 Test 2/3: Authentication');
+            if (await testAuthentication()) {
+                testsPassed++;
+                addLog('✅ Test 2 PASSED', 'success');
+            } else {
+                addLog('❌ Test 2 FAILED', 'error');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Test 3: Database Access
+            addLog('📋 Test 3/3: Database Access');
+            if (await testDatabaseAccess()) {
+                testsPassed++;
+                addLog('✅ Test 3 PASSED', 'success');
+            } else {
+                addLog('❌ Test 3 FAILED', 'error');
+            }
+            
+            addLog('='.repeat(80));
+            addLog(`📊 FINAL RESULTS: ${testsPassed}/${totalTests} tests passed`);
+            
+            if (testsPassed === totalTests) {
+                addLog('🎉 ALL TESTS PASSED! Mobile APK database connectivity is working!', 'success');
+                showResult('🎉 COMPLETE SUCCESS!', true, `All ${totalTests} tests passed - Mobile APK ready for production`);
+            } else {
+                addLog(`❌ ${totalTests - testsPassed} tests failed. Check the logs above for details.`, 'error');
+                showResult(`❌ Tests Failed: ${testsPassed}/${totalTests}`, false, 'See logs above for troubleshooting');
+                
+                // Provide troubleshooting hints
+                if (testsPassed === 0) {
+                    addLog('💡 Troubleshooting: Complete failure usually indicates CORS or network issues', 'warning');
+                } else if (testsPassed === 1) {
+                    addLog('💡 Troubleshooting: Authentication failure - check credentials or server', 'warning');
+                } else if (testsPassed === 2) {
+                    addLog('💡 Troubleshooting: Database access issue - check API endpoints', 'warning');
+                }
+            }
+            
+            return testsPassed === totalTests;
+        }
+
+        // Auto-run environment check on page load
+        window.onload = function() {
+            addLog('📱 Mobile APK Database Test - Enhanced Version Ready');
+            addLog(`🌐 Current URL: ${window.location.href}`);
+            addLog(`📍 Protocol: ${window.location.protocol}`);
+            
+            if (window.location.protocol === 'file:') {
+                addLog('⚠️ WARNING: File protocol detected! This may cause CORS issues.', 'warning');
+                addLog('💡 Recommended: Access via HTTP server (http://localhost:8090/database-test-working.html)', 'warning');
+            } else {
+                addLog('✅ HTTP protocol detected - good for testing', 'success');
+            }
+            
+            addLog('🎯 Click "Complete Test" to run all tests with detailed diagnostics');
+        };
+    </script>
+</body>
+</html>
