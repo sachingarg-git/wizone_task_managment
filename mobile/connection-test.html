@@ -3,31 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile APK Connection Test</title>
+    <title>📱 Mobile APK Connection Test</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-        .test-container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; font-family: monospace; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .server-info { background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #28a745; }
+        .test-button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; }
+        .test-button:hover { background: #0056b3; }
+        .result { margin: 15px 0; padding: 15px; border-radius: 8px; font-family: monospace; }
         .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
-        button:hover { background: #0056b3; }
-        #log { height: 300px; overflow-y: scroll; background: #f8f9fa; border: 1px solid #ddd; padding: 10px; margin-top: 10px; }
+        #log { height: 300px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-top: 20px; border-radius: 6px; }
     </style>
 </head>
 <body>
-    <div class="test-container">
-        <h1>🔧 Mobile APK Connection Test</h1>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Mobile APK Connection Test</h1>
+            <p>Testing connection to production server and authentication</p>
+        </div>
         
-        <div class="info">
-            <strong>Testing Server:</strong> http://194.238.19.19:5000
+        <div class="server-info">
+            <strong>🌐 Production Server:</strong> http://194.238.19.19:5000<br>
+            <strong>🗄️ Database:</strong> 103.122.85.61:1440/WIZONE_TASK_MANAGER<br>
+            <strong>🔑 Login Credentials:</strong> admin / admin123
         </div>
 
-        <button onclick="testHealthEndpoint()">Test Health Endpoint</button>
-        <button onclick="testAuthentication()">Test Authentication</button>
-        <button onclick="testFullConnection()">Full Connection Test</button>
-        <button onclick="clearLog()">Clear Log</button>
+        <div style="text-align: center;">
+            <button class="test-button" onclick="testServerConnection()">🌐 Test Server Connection</button>
+            <button class="test-button" onclick="testAuthentication()">🔐 Test Authentication</button>
+            <button class="test-button" onclick="testDataAccess()">📊 Test Data Access</button>
+            <button class="test-button" onclick="runAllTests()" style="background: #28a745;">🚀 Run All Tests</button>
+            <button class="test-button" onclick="openMobileAPK()" style="background: #dc3545;">📱 Open Mobile APK</button>
+        </div>
 
         <div id="results"></div>
         <div id="log"></div>
@@ -37,51 +47,51 @@
         const SERVER_URL = 'http://194.238.19.19:5000';
         let results = document.getElementById('results');
         let log = document.getElementById('log');
+        let sessionCookie = null;
 
-        function addLog(message, type = 'info') {
+        function addLog(message) {
             const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.innerHTML = `[${timestamp}] ${message}`;
-            log.appendChild(logEntry);
+            log.innerHTML += `<div><strong>[${timestamp}]</strong> ${message}</div>`;
             log.scrollTop = log.scrollHeight;
         }
 
         function showResult(message, success) {
             const result = document.createElement('div');
-            result.className = `test-result ${success ? 'success' : 'error'}`;
+            result.className = `result ${success ? 'success' : 'error'}`;
             result.innerHTML = message;
             results.appendChild(result);
         }
 
-        function clearLog() {
-            log.innerHTML = '';
-            results.innerHTML = '';
-        }
-
-        async function testHealthEndpoint() {
-            addLog('🔍 Testing health endpoint...');
+        async function testServerConnection() {
+            addLog('🌐 Testing server connection...');
             try {
-                const response = await fetch(`${SERVER_URL}/api/health`);
-                const data = await response.json();
+                const response = await fetch(`${SERVER_URL}/`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
                 
                 if (response.ok) {
-                    addLog(`✅ Health endpoint success: ${JSON.stringify(data)}`);
-                    showResult(`✅ Health Endpoint: ${data.status} - ${data.message}`, true);
+                    addLog(`✅ Server responded: ${response.status}`);
+                    showResult(`✅ Server Connection: SUCCESS (${response.status})`, true);
+                    return true;
                 } else {
-                    addLog(`❌ Health endpoint failed: ${response.status}`);
-                    showResult(`❌ Health Endpoint Failed: HTTP ${response.status}`, false);
+                    addLog(`❌ Server error: ${response.status}`);
+                    showResult(`❌ Server Connection: FAILED (${response.status})`, false);
+                    return false;
                 }
             } catch (error) {
-                addLog(`❌ Health endpoint error: ${error.message}`);
-                showResult(`❌ Health Endpoint Error: ${error.message}`, false);
+                addLog(`❌ Connection failed: ${error.message}`);
+                showResult(`❌ Server Connection: FAILED - ${error.message}`, false);
+                return false;
             }
         }
 
         async function testAuthentication() {
-            addLog('🔍 Testing authentication...');
+            addLog('🔐 Testing authentication with admin/admin123...');
             try {
                 const response = await fetch(`${SERVER_URL}/api/auth/login`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -93,53 +103,93 @@
 
                 if (response.ok) {
                     const userData = await response.json();
-                    addLog(`✅ Authentication success: ${userData.username} (${userData.role})`);
-                    showResult(`✅ Authentication: ${userData.username} logged in successfully`, true);
+                    sessionCookie = true;
+                    addLog(`✅ Login successful: ${userData.username} (${userData.role})`);
+                    showResult(`✅ Authentication: SUCCESS - Welcome ${userData.firstName} ${userData.lastName}`, true);
+                    return true;
                 } else {
-                    const errorData = await response.text();
-                    addLog(`❌ Authentication failed: ${response.status} - ${errorData}`);
-                    showResult(`❌ Authentication Failed: HTTP ${response.status}`, false);
+                    addLog(`❌ Login failed: ${response.status}`);
+                    showResult(`❌ Authentication: FAILED (${response.status})`, false);
+                    return false;
                 }
             } catch (error) {
                 addLog(`❌ Authentication error: ${error.message}`);
-                showResult(`❌ Authentication Error: ${error.message}`, false);
+                showResult(`❌ Authentication: FAILED - ${error.message}`, false);
+                return false;
             }
         }
 
-        async function testFullConnection() {
-            addLog('🚀 Running full connection test...');
-            
-            // Test 1: Health
-            await testHealthEndpoint();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Test 2: Authentication
-            await testAuthentication();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Test 3: Basic HTML page
-            addLog('🔍 Testing main page...');
+        async function testDataAccess() {
+            if (!sessionCookie) {
+                addLog('⚠️ Need to authenticate first...');
+                if (!await testAuthentication()) {
+                    return false;
+                }
+            }
+
+            addLog('📊 Testing data access...');
             try {
-                const response = await fetch(SERVER_URL);
-                if (response.ok) {
-                    addLog('✅ Main page accessible');
-                    showResult('✅ Main Page: Accessible', true);
+                const [tasksResponse, customersResponse] = await Promise.all([
+                    fetch(`${SERVER_URL}/api/tasks`, { credentials: 'include' }),
+                    fetch(`${SERVER_URL}/api/customers`, { credentials: 'include' })
+                ]);
+
+                if (tasksResponse.ok && customersResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    const customersData = await customersResponse.json();
+                    
+                    addLog(`✅ Data access successful: ${tasksData.length} tasks, ${customersData.length} customers`);
+                    showResult(`✅ Data Access: SUCCESS - ${tasksData.length} tasks, ${customersData.length} customers accessible`, true);
+                    return true;
                 } else {
-                    addLog(`❌ Main page failed: ${response.status}`);
-                    showResult(`❌ Main Page: HTTP ${response.status}`, false);
+                    addLog(`❌ Data access failed: Tasks=${tasksResponse.status}, Customers=${customersResponse.status}`);
+                    showResult(`❌ Data Access: FAILED`, false);
+                    return false;
                 }
             } catch (error) {
-                addLog(`❌ Main page error: ${error.message}`);
-                showResult(`❌ Main Page Error: ${error.message}`, false);
+                addLog(`❌ Data access error: ${error.message}`);
+                showResult(`❌ Data Access: FAILED - ${error.message}`, false);
+                return false;
             }
-
-            addLog('🎯 Full connection test completed!');
         }
 
-        // Auto-run test on page load
+        async function runAllTests() {
+            results.innerHTML = '';
+            log.innerHTML = '';
+            addLog('🚀 Starting complete mobile APK connection test...');
+            
+            let passed = 0;
+            const total = 3;
+            
+            if (await testServerConnection()) passed++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (await testAuthentication()) passed++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (await testDataAccess()) passed++;
+            
+            addLog(`=== Test Results: ${passed}/${total} tests passed ===`);
+            
+            if (passed === total) {
+                showResult(`🎉 ALL TESTS PASSED! Mobile APK is ready for production use.`, true);
+                addLog('✅ Mobile APK can successfully connect to production server and database!');
+            } else {
+                showResult(`❌ ${total - passed} tests failed. Please check server configuration.`, false);
+            }
+        }
+
+        function openMobileAPK() {
+            addLog('📱 Opening Mobile APK...');
+            window.open('/mobile/', '_blank');
+        }
+
+        // Auto-run basic info on load
         window.onload = function() {
-            addLog('📱 Mobile APK Connection Test Started');
-            addLog(`🎯 Testing production server: ${SERVER_URL}`);
+            addLog('📱 Mobile APK Connection Test Ready');
+            addLog(`🎯 Target: ${SERVER_URL}`);
+            addLog('🔑 Test credentials: admin/admin123');
+            addLog('Click "Run All Tests" to verify complete functionality');
         };
     </script>
 </body>

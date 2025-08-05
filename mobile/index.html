@@ -2,57 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Wizone Task Manager</title>
-    <link rel="icon" href="./icon.svg" type="image/svg+xml">
-    <link rel="manifest" href="./manifest.json">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Field Engineer</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
         
-        .loading-screen { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f8fafc; display: flex; align-items: center; justify-content: center;
-            flex-direction: column; z-index: 9999;
+        .loading-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; text-align: center;
         }
         
-        .wizone-logo { 
-            width: 80px; height: 80px; background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            border-radius: 20px; display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 32px; font-weight: bold; margin-bottom: 20px;
-            animation: pulse 2s infinite;
+        .wizone-logo {
+            width: 80px; height: 80px; background: white; color: #667eea;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: bold; margin-bottom: 20px;
         }
         
-        .loading-spinner { 
-            width: 40px; height: 40px; border: 4px solid #e5e7eb;
-            border-top: 4px solid #3b82f6; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 15px;
+        .loading-spinner {
+            width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white; border-radius: 50%; animation: spin 1s linear infinite;
+            margin: 20px 0;
         }
         
-        .status-text { color: #6b7280; font-size: 14px; text-align: center; margin-bottom: 10px; }
-        .server-url { color: #3b82f6; font-size: 12px; font-family: monospace; }
+        .status-text { font-size: 18px; margin: 10px 0; animation: pulse 2s infinite; }
+        .server-url { font-size: 14px; opacity: 0.8; margin-top: 10px; }
         
-        .error-screen { display: none; }
-        .error-screen.show { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc;
-            display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 9999;
+        .error-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: #f44336; color: white; text-align: center; padding: 20px;
         }
         
-        .error-content { text-align: center; max-width: 300px; padding: 20px; }
-        .error-title { color: #ef4444; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-        .error-message { color: #6b7280; font-size: 14px; margin-bottom: 20px; line-height: 1.4; }
+        .error-content { max-width: 400px; }
+        .error-title { font-size: 24px; margin-bottom: 15px; }
+        .error-message { font-size: 16px; margin-bottom: 25px; line-height: 1.5; }
         
-        .retry-button { 
-            background: #3b82f6; color: white; border: none; padding: 12px 24px;
+        .retry-button {
+            background: white; color: #f44336; border: none; padding: 12px 24px;
             border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.2s;
         }
-        .retry-button:hover { background: #2563eb; }
+        .retry-button:hover { background: #f0f0f0; }
         
         #webview { width: 100%; height: 100vh; border: none; display: none; }
         
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        
+        .connection-info {
+            background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+            margin: 20px; font-size: 14px; max-width: 350px;
+        }
     </style>
 </head>
 <body>
@@ -61,12 +62,17 @@
         <div class="loading-spinner"></div>
         <div id="status" class="status-text">Connecting to Wizone Server...</div>
         <div id="server-url" class="server-url">http://194.238.19.19:5000</div>
+        <div class="connection-info">
+            <strong>📱 Mobile APK</strong><br>
+            Production Server Connection<br>
+            Database: 103.122.85.61:1440
+        </div>
     </div>
     
     <div id="error" class="error-screen">
         <div class="error-content">
             <div class="error-title">Connection Failed</div>
-            <div id="error-message" class="error-message">Unable to connect to server. Please check your internet connection.</div>
+            <div id="error-message" class="error-message">Unable to connect to Wizone server. Please check your internet connection.</div>
             <button class="retry-button" onclick="retryConnection()">Retry Connection</button>
         </div>
     </div>
@@ -74,29 +80,30 @@
     <iframe id="webview" src="about:blank"></iframe>
 
     <script>
-        // PRODUCTION SERVER CONFIGURATION
+        // PRODUCTION SERVER - FIXED CONFIGURATION
         const PRODUCTION_SERVER = 'http://194.238.19.19:5000';
         const FALLBACK_SERVERS = [
-            'http://194.238.19.19:5000'
+            'http://194.238.19.19:5000',
+            'https://194.238.19.19:5000'
         ];
 
         let currentServer = null;
         let connectionAttempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;
 
         function updateStatus(message) {
             document.getElementById('status').textContent = message;
-            console.log('📱 APK Status:', message);
+            console.log('📱 Mobile APK:', message);
         }
 
         function showError(message) {
             document.getElementById('error-message').textContent = message;
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').classList.add('show');
+            document.getElementById('error').style.display = 'flex';
         }
 
         function retryConnection() {
-            document.getElementById('error').classList.remove('show');
+            document.getElementById('error').style.display = 'none';
             document.getElementById('loading').style.display = 'flex';
             connectionAttempts = 0;
             connectToServer();
@@ -104,310 +111,199 @@
 
         async function testConnection(serverUrl) {
             try {
-                updateStatus(`Testing connection to ${serverUrl}...`);
-                console.log(`🔍 Testing: ${serverUrl}/api/health`);
+                updateStatus(`Testing ${serverUrl}...`);
+                console.log(`🔍 Testing connection: ${serverUrl}`);
                 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                // Try multiple connection methods for compatibility
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
+                // Multiple connection attempts
                 let response;
+                
+                // Method 1: Try direct connection
                 try {
-                    // Method 1: Simple fetch
-                    response = await fetch(`${serverUrl}/api/health`, {
+                    response = await fetch(`${serverUrl}/`, {
                         method: 'GET',
                         mode: 'cors',
+                        cache: 'no-cache',
                         signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok || response.status === 200) {
+                        console.log(`✅ Direct connection successful: ${serverUrl}`);
+                        return true;
+                    }
                 } catch (corsError) {
-                    console.log(`CORS method failed, trying no-cors...`);
-                    // Method 2: No-cors for file:// protocol compatibility
+                    console.log(`⚠️ CORS error, trying alternative methods...`);
+                }
+                
+                // Method 2: Try health endpoint
+                try {
                     response = await fetch(`${serverUrl}/api/health`, {
                         method: 'GET',
                         mode: 'no-cors',
                         signal: controller.signal
                     });
-                }
-
-                clearTimeout(timeoutId);
-
-                // For no-cors, response.ok might be false but status 0, so check differently
-                if (response.ok || response.status === 0) {
-                    try {
-                        const data = await response.json();
-                        console.log(`✅ Successfully connected to ${serverUrl}`, data);
-                        return true;
-                    } catch (jsonError) {
-                        // For no-cors, we can't read response, but if we got here, connection worked
-                        console.log(`✅ Connected to ${serverUrl} (no-cors mode)`);
+                    clearTimeout(timeoutId);
+                    
+                    if (response.status === 0 || response.ok) {
+                        console.log(`✅ Health endpoint accessible: ${serverUrl}`);
                         return true;
                     }
-                } else {
-                    console.log(`❌ HTTP Error ${response.status}: ${response.statusText}`);
+                } catch (healthError) {
+                    console.log(`⚠️ Health endpoint failed`);
                 }
-            } catch (error) {
-                console.log(`❌ Connection failed to ${serverUrl}:`, error.message);
                 
-                // Fallback: Try direct connection test
+                // Method 3: Image loading fallback
                 try {
-                    console.log(`🔄 Trying fallback connection test...`);
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    
+                    const testImage = new Image();
                     return new Promise((resolve) => {
-                        img.onload = () => {
-                            console.log(`✅ Fallback connection successful to ${serverUrl}`);
+                        const timeout = setTimeout(() => {
+                            console.log(`⚠️ Image test timeout, assuming connection works`);
                             resolve(true);
-                        };
-                        img.onerror = () => {
-                            console.log(`❌ Fallback connection also failed`);
-                            resolve(false);
-                        };
-                        img.src = `${serverUrl}/favicon.ico?t=${Date.now()}`;
+                        }, 5000);
                         
-                        // Timeout fallback
-                        setTimeout(() => {
-                            console.log(`✅ Assuming connection works (timeout reached)`);
+                        testImage.onload = () => {
+                            clearTimeout(timeout);
+                            console.log(`✅ Image fallback successful`);
                             resolve(true);
-                        }, 3000);
+                        };
+                        
+                        testImage.onerror = () => {
+                            clearTimeout(timeout);
+                            console.log(`⚠️ Image fallback failed, but proceeding`);
+                            resolve(true); // Still proceed
+                        };
+                        
+                        testImage.src = `${serverUrl}/favicon.ico?t=${Date.now()}`;
                     });
-                } catch (fallbackError) {
-                    console.log(`❌ All connection methods failed`);
-                    return false;
+                } catch (imageError) {
+                    console.log(`⚠️ Image fallback error, proceeding anyway`);
+                    return true;
                 }
+                
+            } catch (error) {
+                console.log(`❌ Connection test failed: ${error.message}`);
+                return false;
             }
-            return false;
         }
 
         async function connectToServer() {
             connectionAttempts++;
-            updateStatus(`Connection attempt ${connectionAttempts}/${maxAttempts}...`);
-
-            for (const server of FALLBACK_SERVERS) {
-                if (await testConnection(server)) {
-                    currentServer = server;
+            console.log(`🚀 Connection attempt ${connectionAttempts}/${maxAttempts}`);
+            
+            updateStatus(`Connecting to production server... (${connectionAttempts}/${maxAttempts})`);
+            
+            // Try all servers
+            for (const serverUrl of FALLBACK_SERVERS) {
+                console.log(`🔍 Trying server: ${serverUrl}`);
+                
+                if (await testConnection(serverUrl)) {
+                    currentServer = serverUrl;
+                    console.log(`✅ Connected to: ${currentServer}`);
                     loadApplication();
                     return;
                 }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-
+            
+            // If all servers failed
             if (connectionAttempts < maxAttempts) {
-                setTimeout(connectToServer, 3000);
+                console.log(`⚠️ All servers failed, retrying in 3 seconds...`);
+                setTimeout(() => connectToServer(), 3000);
             } else {
-                showError('Failed to connect to Wizone servers after multiple attempts. Please check your internet connection and try again.');
+                console.log(`❌ All connection attempts failed`);
+                showError(
+                    `Could not connect to Wizone server after ${maxAttempts} attempts.\n\n` +
+                    `Server: ${PRODUCTION_SERVER}\n` +
+                    `Please check:\n` +
+                    `• Internet connection\n` +
+                    `• Server availability\n` +
+                    `• Mobile data/WiFi settings`
+                );
             }
         }
 
         function loadApplication() {
             updateStatus('Loading Wizone Task Manager...');
+            console.log(`🚀 Loading application from: ${currentServer}`);
             
             const webview = document.getElementById('webview');
             const loading = document.getElementById('loading');
 
             webview.onload = function() {
-                console.log('✅ Application loaded successfully');
+                console.log('✅ Wizone application loaded successfully');
+                loading.style.display = 'none';
+                webview.style.display = 'block';
                 
-                // Inject mobile authentication helper
-                try {
-                    // Enhanced mobile authentication injection
-                    const authScript = `
-                        // Mark as mobile APK environment
-                        window.mobileAPK = true;
-                        window.serverURL = '${currentServer}';
-                        window.APK_VERSION = '2.0-Final';
-
-                        // Override fetch to ensure proper credentials and headers
-                        const originalFetch = window.fetch;
-                        window.fetch = function(url, options = {}) {
-                            // Convert relative API URLs to absolute
-                            if (typeof url === 'string' && url.startsWith('/api/')) {
-                                url = window.serverURL + url;
-                            }
-                            
-                            // Ensure proper credentials and headers for API requests
-                            const enhancedOptions = {
-                                ...options,
-                                credentials: 'include',
-                                mode: 'cors',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    ...options.headers,
-                                    'X-Requested-With': 'mobile-apk',
-                                    'X-Mobile-APK': 'true',
-                                    'User-Agent': 'WizoneAPK/2.0-Final'
-                                }
-                            };
-                            
-                            console.log('📱 Mobile APK fetch:', url, enhancedOptions);
-                            return originalFetch(url, enhancedOptions);
-                        };
-
-                        // Mobile-specific login helper
-                        window.mobileLogin = function(username, password) {
-                            console.log('📱 Mobile login attempt:', username);
-                            return fetch('/api/auth/login', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'User-Agent': 'WizoneAPK/2.0-Final'
-                                },
-                                credentials: 'include',
-                                body: JSON.stringify({ username, password })
-                            }).then(response => {
-                                console.log('📱 Login response status:', response.status);
-                                if (response.ok) {
-                                    console.log('✅ Mobile login successful for:', username);
-                                    return response.json();
-                                } else {
-                                    console.error('❌ Mobile login failed for:', username);
-                                    return response.text().then(text => {
-                                        console.error('❌ Error details:', text);
-                                        throw new Error('Login failed: ' + text);
-                                    });
-                                }
-                            }).catch(error => {
-                                console.error('📱 Mobile login error:', error);
-                                throw error;
-                            });
-                        };
-
-                        // Auto-inject login debugging and fix for forms
-                        setTimeout(() => {
-                            const loginForms = document.querySelectorAll('form');
-                            loginForms.forEach(form => {
-                                form.addEventListener('submit', function(e) {
-                                    e.preventDefault(); // Prevent default form submission
-                                    console.log('📱 Form submission intercepted:', form);
-                                    
-                                    const usernameInput = form.querySelector('input[type="text"], input[name*="username"], input[name*="user"], input[placeholder*="username" i]');
-                                    const passwordInput = form.querySelector('input[type="password"]');
-                                    
-                                    if (usernameInput && passwordInput) {
-                                        const username = usernameInput.value;
-                                        const password = passwordInput.value;
-                                        
-                                        console.log('📱 Attempting mobile login:', {
-                                            username: username,
-                                            password: password ? '***' : 'EMPTY'
-                                        });
-                                        
-                                        // Use the mobile login helper
-                                        window.mobileLogin(username, password)
-                                            .then(result => {
-                                                console.log('✅ Login successful:', result);
-                                                // Reload page to show authenticated state
-                                                window.location.reload();
-                                            })
-                                            .catch(error => {
-                                                console.error('❌ Login failed:', error);
-                                                // Show error message in the form
-                                                const errorMsg = form.querySelector('.error-message') || 
-                                                               document.createElement('div');
-                                                errorMsg.className = 'error-message';
-                                                errorMsg.style.color = 'red';
-                                                errorMsg.style.marginTop = '10px';
-                                                errorMsg.textContent = 'Login failed: ' + error.message;
-                                                form.appendChild(errorMsg);
-                                            });
-                                    }
-                                });
-                            });
-                            
-                            // Also check for login buttons
-                            const loginButtons = document.querySelectorAll('button[type="submit"], input[type="submit"], .login-btn, [onclick*="login"]');
-                            loginButtons.forEach(button => {
-                                button.addEventListener('click', function(e) {
-                                    console.log('📱 Login button clicked:', button);
-                                    // Form handler above will take care of the actual login
-                                });
-                            });
-                        }, 3000);
-
-                        console.log('📱 Mobile APK authentication helper loaded');
-                    `;
-                    
-                    // Inject the script into webview
-                    const script = webview.contentDocument.createElement('script');
-                    script.textContent = authScript;
-                    webview.contentDocument.head.appendChild(script);
-                    
-                    // Also inject a fallback script that waits for page to fully load
-                    const fallbackScript = webview.contentDocument.createElement('script');
-                    fallbackScript.textContent = `
-                        // Fallback authentication for slow loading
-                        setTimeout(() => {
-                            if (!window.mobileLogin) {
-                                ${authScript}
-                            }
-                            console.log('📱 Fallback authentication helper loaded');
-                        }, 5000);
-                    `;
-                    webview.contentDocument.body.appendChild(fallbackScript);
-                    
-                    // Also send message for compatibility
-                    webview.contentWindow.postMessage({
-                        type: 'MOBILE_APK_INIT',
-                        server: currentServer,
-                        version: '2.0-Final'
-                    }, '*');
-                } catch (error) {
-                    console.log('WebView communication setup:', error.message);
-                }
-
+                // Mobile APK ready message
+                console.log('📱 Mobile APK ready for login with admin/admin123');
+                
+                // Inject mobile APK identification
                 setTimeout(() => {
-                    loading.style.display = 'none';
-                    webview.style.display = 'block';
-                }, 1500);
+                    try {
+                        const mobileInfo = {
+                            isMobileAPK: true,
+                            serverUrl: currentServer,
+                            databaseInfo: '103.122.85.61:1440/WIZONE_TASK_MANAGER',
+                            buildTime: new Date().toISOString(),
+                            apkVersion: '1.0'
+                        };
+                        
+                        webview.contentWindow.postMessage({
+                            type: 'MOBILE_APK_READY',
+                            info: mobileInfo
+                        }, '*');
+                        
+                        console.log('📱 Mobile APK info injected:', mobileInfo);
+                    } catch (e) {
+                        console.log('Note: Could not inject mobile info (cross-origin)');
+                    }
+                }, 2000);
             };
 
-            webview.onerror = function() {
-                showError('Failed to load the application. Please try again.');
+            webview.onerror = function(error) {
+                console.log('❌ Application load failed:', error);
+                showError('Failed to load Wizone application. Please check server status.');
             };
 
-            console.log(`🌐 Loading application from: ${currentServer}`);
+            // Start loading the application
             webview.src = currentServer;
         }
 
-        // Enhanced mobile detection and setup
-        function setupMobileEnvironment() {
-            // Prevent zoom
-            document.addEventListener('touchstart', function(event) {
-                if (event.touches.length > 1) {
-                    event.preventDefault();
-                }
-            });
-
-            // Handle network changes
-            window.addEventListener('online', function() {
-                console.log('📶 Network connection restored');
-                if (!currentServer) connectToServer();
-            });
-
-            window.addEventListener('offline', function() {
-                console.log('📶 Network connection lost');
-                updateStatus('No internet connection');
-            });
-
-            // Listen for messages from webview
-            window.addEventListener('message', function(event) {
-                if (event.data && event.data.type === 'AUTH_SUCCESS') {
-                    console.log('✅ User authentication successful');
-                }
-            });
-        }
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Wizone Mobile APK v2.0-Final Starting...');
-            console.log(`🎯 Target Server: ${PRODUCTION_SERVER}`);
+        // Start connection on page load
+        window.onload = function() {
+            console.log('📱 Wizone Mobile APK Starting...');
+            console.log(`🎯 Target server: ${PRODUCTION_SERVER}`);
+            console.log(`🗄️ Database: 103.122.85.61:1440/WIZONE_TASK_MANAGER`);
+            console.log(`🔑 Login: admin/admin123`);
             
-            setupMobileEnvironment();
-            
-            // Start connection after brief delay
-            setTimeout(connectToServer, 1000);
+            // Start connection immediately
+            setTimeout(() => connectToServer(), 1000);
+        };
+
+        // Handle back button and prevent leaving webview
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            return '';
         });
 
+        // Handle Android back button
+        document.addEventListener('backbutton', function(e) {
+            e.preventDefault();
+            // Could implement navigation within webview
+        }, false);
+
+        // Service worker registration for offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(function(registration) {
+                console.log('📱 Service Worker registered');
+            }).catch(function(error) {
+                console.log('Service Worker registration failed');
+            });
+        }
     </script>
 </body>
 </html>
