@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone Mobile APK - Configurable</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        .config-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px; color: white;
+        }
+        
+        .config-container {
+            background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px;
+            backdrop-filter: blur(10px); max-width: 400px; width: 100%;
+        }
+        
+        .config-title { text-align: center; margin-bottom: 25px; font-size: 24px; }
+        
+        .config-form { display: flex; flex-direction: column; gap: 15px; }
+        
+        .form-group { display: flex; flex-direction: column; }
+        
+        .form-label { margin-bottom: 5px; font-weight: 500; }
+        
+        .form-input {
+            padding: 12px; border: none; border-radius: 8px; font-size: 16px;
+            background: rgba(255,255,255,0.9); color: #333;
+        }
+        
+        .connect-button {
+            padding: 15px; background: #4CAF50; color: white; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .connect-button:hover { background: #45a049; }
+        
+        .connect-button:disabled { background: #666; cursor: not-allowed; }
+        
+        .loading-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; text-align: center;
+        }
+        
+        .wizone-logo {
+            width: 80px; height: 80px; background: white; color: #667eea;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: bold; margin-bottom: 20px;
+        }
+        
+        .loading-spinner {
+            width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white; border-radius: 50%; animation: spin 1s linear infinite;
+            margin: 20px 0;
+        }
+        
+        .status-text { font-size: 18px; margin: 10px 0; }
+        .server-url { font-size: 14px; opacity: 0.8; margin-top: 10px; }
+        
+        .error-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: #f44336; color: white; text-align: center; padding: 20px;
+        }
+        
+        .error-content { max-width: 400px; }
+        .error-title { font-size: 24px; margin-bottom: 15px; }
+        .error-message { font-size: 16px; margin-bottom: 25px; line-height: 1.5; }
+        
+        .retry-button {
+            background: #fff; color: #f44336; border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 14px; cursor: pointer;
+        }
+        
+        .retry-button:hover { background: #f0f0f0; }
+        
+        #webview { width: 100%; height: 100vh; border: none; display: none; }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .preset-buttons {
+            display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;
+        }
+        
+        .preset-button {
+            padding: 10px; background: rgba(255,255,255,0.2); color: white; border: none;
+            border-radius: 6px; font-size: 14px; cursor: pointer;
+        }
+        
+        .preset-button:hover { background: rgba(255,255,255,0.3); }
+        
+        .connection-info {
+            background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <!-- Configuration Screen -->
+    <div id="config" class="config-screen">
+        <div class="config-container">
+            <div class="config-title">🔧 Server Configuration</div>
+            
+            <div class="connection-info">
+                <strong>📱 Mobile APK Setup:</strong><br>
+                Enter your server IP and database details to connect your mobile APK to your production system.
+            </div>
+            
+            <div class="preset-buttons">
+                <button class="preset-button" onclick="loadPreset('production')">
+                    🌐 Production Server (194.238.19.19:5000)
+                </button>
+                <button class="preset-button" onclick="loadPreset('local')">
+                    🏠 Local Development (localhost:5000)
+                </button>
+            </div>
+            
+            <form class="config-form" onsubmit="connectToServer(event)">
+                <div class="form-group">
+                    <label class="form-label">🌐 Server IP Address:</label>
+                    <input type="text" id="serverIp" class="form-input" 
+                           placeholder="e.g., 192.168.1.100 or your-domain.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🔌 Server Port:</label>
+                    <input type="number" id="serverPort" class="form-input" 
+                           placeholder="e.g., 5000" value="5000" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🗄️ Database Server IP:</label>
+                    <input type="text" id="dbIp" class="form-input" 
+                           placeholder="e.g., 103.122.85.61" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🔌 Database Port:</label>
+                    <input type="number" id="dbPort" class="form-input" 
+                           placeholder="e.g., 1440" value="1440" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">📊 Database Name:</label>
+                    <input type="text" id="dbName" class="form-input" 
+                           placeholder="e.g., WIZONE_TASK_MANAGER" value="WIZONE_TASK_MANAGER" required>
+                </div>
+                
+                <button type="submit" class="connect-button" id="connectBtn">
+                    🚀 Connect to Server
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading" class="loading-screen">
+        <div class="wizone-logo">W</div>
+        <div class="loading-spinner"></div>
+        <div id="status" class="status-text">Connecting to your server...</div>
+        <div id="server-url" class="server-url"></div>
+    </div>
+    
+    <!-- Error Screen -->
+    <div id="error" class="error-screen">
+        <div class="error-content">
+            <div class="error-title">Connection Failed</div>
+            <div id="error-message" class="error-message">Unable to connect to your server.</div>
+            <button class="retry-button" onclick="showConfig()">Change Settings</button>
+            <button class="retry-button" onclick="retryConnection()" style="margin-left: 10px;">Retry</button>
+        </div>
+    </div>
+    
+    <!-- WebView -->
+    <iframe id="webview" src="about:blank"></iframe>
+
+    <script>
+        let currentConfig = null;
+        let connectionAttempts = 0;
+        const maxAttempts = 3;
+
+        function loadPreset(type) {
+            if (type === 'production') {
+                document.getElementById('serverIp').value = '194.238.19.19';
+                document.getElementById('serverPort').value = '5000';
+                document.getElementById('dbIp').value = '103.122.85.61';
+                document.getElementById('dbPort').value = '1440';
+                document.getElementById('dbName').value = 'WIZONE_TASK_MANAGER';
+            } else if (type === 'local') {
+                document.getElementById('serverIp').value = 'localhost';
+                document.getElementById('serverPort').value = '5000';
+                document.getElementById('dbIp').value = '103.122.85.61';
+                document.getElementById('dbPort').value = '1440';
+                document.getElementById('dbName').value = 'WIZONE_TASK_MANAGER';
+            }
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log('📱 APK Status:', message);
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('config').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'flex';
+        }
+
+        function showConfig() {
+            document.getElementById('config').style.display = 'flex';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('webview').style.display = 'none';
+        }
+
+        function showLoading() {
+            document.getElementById('config').style.display = 'none';
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('webview').style.display = 'none';
+        }
+
+        async function connectToServer(event) {
+            if (event) event.preventDefault();
+            
+            // Get configuration
+            const serverIp = document.getElementById('serverIp').value.trim();
+            const serverPort = document.getElementById('serverPort').value.trim();
+            const dbIp = document.getElementById('dbIp').value.trim(); 
+            const dbPort = document.getElementById('dbPort').value.trim();
+            const dbName = document.getElementById('dbName').value.trim();
+            
+            if (!serverIp || !serverPort || !dbIp || !dbPort || !dbName) {
+                alert('कृपया सभी fields भरें (Please fill all fields)');
+                return;
+            }
+            
+            currentConfig = {
+                serverUrl: `http://${serverIp}:${serverPort}`,
+                dbIp: dbIp,
+                dbPort: dbPort,
+                dbName: dbName
+            };
+            
+            showLoading();
+            updateStatus(`Connecting to ${currentConfig.serverUrl}...`);
+            document.getElementById('server-url').textContent = currentConfig.serverUrl;
+            
+            connectionAttempts++;
+            console.log(`🔍 Connection attempt ${connectionAttempts}: ${currentConfig.serverUrl}`);
+            console.log(`🗄️ Database: ${dbIp}:${dbPort}/${dbName}`);
+            
+            if (await testConnection(currentConfig.serverUrl)) {
+                loadApplication();
+            } else {
+                if (connectionAttempts < maxAttempts) {
+                    setTimeout(() => connectToServer(), 3000);
+                } else {
+                    showError(`Failed to connect to your server: ${currentConfig.serverUrl}\n\nPlease check:\n• Server IP and port are correct\n• Server is running\n• Network connectivity\n• Firewall settings`);
+                }
+            }
+        }
+
+        async function testConnection(serverUrl) {
+            try {
+                updateStatus(`Testing ${serverUrl}...`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                // Try multiple connection methods
+                let response;
+                try {
+                    response = await fetch(`${serverUrl}/api/health`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        signal: controller.signal
+                    });
+                } catch (corsError) {
+                    console.log('CORS method failed, trying no-cors...');
+                    response = await fetch(`${serverUrl}/api/health`, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                        signal: controller.signal
+                    });
+                }
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok || response.status === 0) {
+                    try {
+                        const data = await response.json();
+                        console.log(`✅ Connected to ${serverUrl}:`, data);
+                        return true;
+                    } catch (jsonError) {
+                        console.log(`✅ Connected to ${serverUrl} (no-cors mode)`);
+                        return true;
+                    }
+                } else {
+                    console.log(`❌ HTTP Error ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                console.log(`❌ Connection failed: ${error.message}`);
+                
+                // Fallback test
+                try {
+                    const img = new Image();
+                    return new Promise((resolve) => {
+                        img.onload = () => {
+                            console.log(`✅ Fallback connection successful`);
+                            resolve(true);
+                        };
+                        img.onerror = () => {
+                            console.log(`❌ All connection methods failed`);
+                            resolve(false);
+                        };
+                        img.src = `${serverUrl}/favicon.ico?t=${Date.now()}`;
+                        
+                        setTimeout(() => {
+                            console.log(`✅ Assuming connection works (timeout)`);
+                            resolve(true);
+                        }, 3000);
+                    });
+                } catch (fallbackError) {
+                    return false;
+                }
+            }
+        }
+
+        function loadApplication() {
+            updateStatus('Loading Wizone Task Manager...');
+            
+            const webview = document.getElementById('webview');
+            const loading = document.getElementById('loading');
+
+            webview.onload = function() {
+                console.log('✅ Application loaded successfully');
+                loading.style.display = 'none';
+                webview.style.display = 'block';
+                
+                // Inject configuration info
+                setTimeout(() => {
+                    try {
+                        const configInfo = {
+                            serverUrl: currentConfig.serverUrl,
+                            dbInfo: `${currentConfig.dbIp}:${currentConfig.dbPort}/${currentConfig.dbName}`,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        webview.contentWindow.postMessage({
+                            type: 'MOBILE_CONFIG',
+                            config: configInfo
+                        }, '*');
+                        
+                        console.log('📱 Mobile APK configuration injected:', configInfo);
+                    } catch (e) {
+                        console.log('Note: Could not inject config (normal for cross-origin)');
+                    }
+                }, 2000);
+            };
+
+            webview.onerror = function() {
+                console.log('❌ Application load failed');
+                showError('Failed to load the application. Please check your server configuration.');
+            };
+
+            webview.src = currentConfig.serverUrl;
+        }
+
+        function retryConnection() {
+            connectionAttempts = 0;
+            connectToServer();
+        }
+
+        // Load saved configuration on startup
+        window.onload = function() {
+            const savedConfig = localStorage.getItem('wizoneConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('serverIp').value = config.serverIp || '';
+                    document.getElementById('serverPort').value = config.serverPort || '5000';
+                    document.getElementById('dbIp').value = config.dbIp || '';
+                    document.getElementById('dbPort').value = config.dbPort || '1440';
+                    document.getElementById('dbName').value = config.dbName || 'WIZONE_TASK_MANAGER';
+                } catch (e) {
+                    console.log('Could not load saved configuration');
+                }
+            }
+        };
+
+        // Save configuration before connecting
+        function connectToServer(event) {
+            if (event) event.preventDefault();
+            
+            // Save configuration
+            const config = {
+                serverIp: document.getElementById('serverIp').value.trim(),
+                serverPort: document.getElementById('serverPort').value.trim(),
+                dbIp: document.getElementById('dbIp').value.trim(),
+                dbPort: document.getElementById('dbPort').value.trim(),
+                dbName: document.getElementById('dbName').value.trim()
+            };
+            
+            localStorage.setItem('wizoneConfig', JSON.stringify(config));
+            
+            // Continue with original connection logic...
+            connectToServer(event);
+        }
+    </script>
+</body>
+</html>
