@@ -77,8 +77,7 @@
         // PRODUCTION SERVER CONFIGURATION
         const PRODUCTION_SERVER = 'http://194.238.19.19:5000';
         const FALLBACK_SERVERS = [
-            'http://194.238.19.19:5000',
-            'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev'
+            'http://194.238.19.19:5000'
         ];
 
         let currentServer = null;
@@ -106,31 +105,29 @@
         async function testConnection(serverUrl) {
             try {
                 updateStatus(`Testing connection to ${serverUrl}...`);
+                console.log(`🔍 Testing: ${serverUrl}/api/health`);
                 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+                // Simple fetch without complex headers to avoid CORS issues
                 const response = await fetch(`${serverUrl}/api/health`, {
                     method: 'GET',
-                    mode: 'cors',
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'WizoneAPK/2.0-Final',
-                        'X-Mobile-APK': 'true'
-                    },
                     signal: controller.signal
                 });
 
                 clearTimeout(timeoutId);
 
                 if (response.ok) {
-                    console.log(`✅ Successfully connected to ${serverUrl}`);
+                    const data = await response.json();
+                    console.log(`✅ Successfully connected to ${serverUrl}`, data);
                     return true;
+                } else {
+                    console.log(`❌ HTTP Error ${response.status}: ${response.statusText}`);
                 }
             } catch (error) {
-                console.log(`❌ Failed to connect to ${serverUrl}:`, error.message);
+                console.log(`❌ Connection failed to ${serverUrl}:`, error.message);
+                console.log(`Error details:`, error);
             }
             return false;
         }
