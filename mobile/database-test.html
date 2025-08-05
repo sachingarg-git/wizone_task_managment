@@ -74,6 +74,47 @@
             log.scrollTop = log.scrollHeight;
         }
 
+        // Enhanced authentication function with proper session handling
+        async function authenticate() {
+            if (sessionCookie) {
+                addLog('✅ Already authenticated', 'success');
+                return true;
+            }
+
+            addLog('🔐 Starting authentication process...', 'info');
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'WizoneFieldEngineerApp/1.0 (Mobile)',
+                        'X-Requested-With': 'mobile'
+                    },
+                    credentials: 'include', // Important for cookies
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    sessionCookie = true; // Mark as authenticated
+                    addLog(`✅ Authentication successful: ${userData.username} (${userData.role})`, 'success');
+                    addLog(`👤 User: ${userData.firstName} ${userData.lastName}`, 'info');
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    addLog(`❌ Authentication failed: ${response.status} - ${errorText}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Authentication error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
         function showResult(message, success, details = '') {
             const result = document.createElement('div');
             result.className = `test-result ${success ? 'success' : 'error'}`;
@@ -96,42 +137,12 @@
             addLog('🔄 Database test log cleared');
         }
 
-        async function authenticateFirst() {
-            if (sessionCookie) return true;
-            
-            addLog('🔐 Authenticating with admin credentials...');
-            try {
-                const response = await fetch(`${SERVER_URL}/api/auth/login`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username: 'admin',
-                        password: 'admin123'
-                    })
-                });
 
-                if (response.ok) {
-                    const userData = await response.json();
-                    sessionCookie = true;
-                    addLog(`✅ Authentication successful: ${userData.username} (${userData.role})`);
-                    return true;
-                } else {
-                    addLog(`❌ Authentication failed: ${response.status}`);
-                    return false;
-                }
-            } catch (error) {
-                addLog(`❌ Authentication error: ${error.message}`);
-                return false;
-            }
-        }
 
         async function testDatabaseConnection() {
             addLog('🗄️ Testing database connection through mobile APK...');
             
-            if (!await authenticateFirst()) {
+            if (!await authenticate()) {
                 showResult('❌ Database Connection: Authentication Failed', false);
                 return false;
             }
@@ -162,7 +173,7 @@
         async function testTaskData() {
             addLog('📋 Testing task data access from mobile APK...');
             
-            if (!await authenticateFirst()) {
+            if (!await authenticate()) {
                 showResult('❌ Task Data: Authentication Failed', false);
                 return false;
             }
@@ -201,7 +212,7 @@
         async function testCustomerData() {
             addLog('👥 Testing customer data access from mobile APK...');
             
-            if (!await authenticateFirst()) {
+            if (!await authenticate()) {
                 showResult('❌ Customer Data: Authentication Failed', false);
                 return false;
             }
@@ -240,7 +251,7 @@
         async function testDataSync() {
             addLog('🔄 Testing data synchronization between web and mobile...');
             
-            if (!await authenticateFirst()) {
+            if (!await authenticate()) {
                 showResult('❌ Data Sync: Authentication Failed', false);
                 return false;
             }
