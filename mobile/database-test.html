@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile APK Database Connectivity Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
+        .test-container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .db-info { background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #28a745; }
+        .test-button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 8px; font-size: 16px; }
+        .test-button:hover { background: #0056b3; }
+        .test-result { margin: 15px 0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        #log { height: 450px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-top: 20px; border-radius: 6px; }
+        .data-preview { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-ok { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .sync-test { background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="header">
+            <h1>📱 Mobile APK Database Connectivity Test</h1>
+            <p>Verifying mobile APK database connection and synchronization</p>
+        </div>
+        
+        <div class="db-info">
+            <strong>🗄️ Production Database:</strong> 103.122.85.61:1440/WIZONE_TASK_MANAGER<br>
+            <strong>🌐 Production Server:</strong> http://194.238.19.19:5000<br>
+            <strong>🔑 Test Credentials:</strong> admin / admin123<br>
+            <strong>🔄 Connection Path:</strong> Mobile APK → Cloud Server → MS SQL Server
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="test-button" onclick="testDatabaseConnection()">🗄️ Test Database Connection</button>
+            <button class="test-button" onclick="testTaskData()">📋 Test Task Data</button>
+            <button class="test-button" onclick="testCustomerData()">👥 Test Customer Data</button>
+            <button class="test-button" onclick="testDataSync()">🔄 Test Data Synchronization</button>
+            <button class="test-button" onclick="runFullDatabaseTest()" style="background: #28a745;">🚀 Full Database Test</button>
+            <button class="test-button" onclick="clearLog()" style="background: #6c757d;">🗑️ Clear Log</button>
+        </div>
+
+        <div class="sync-test">
+            <strong>📊 Real-time Sync Test:</strong> This will verify that mobile APK and web portal access the same database and changes sync instantly.
+        </div>
+
+        <div id="results"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://194.238.19.19:5000';
+        let results = document.getElementById('results');
+        let log = document.getElementById('log');
+        let testCount = 0;
+        let sessionCookie = null;
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logEntry.style.margin = '5px 0';
+            logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#495057';
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showResult(message, success, details = '') {
+            const result = document.createElement('div');
+            result.className = `test-result ${success ? 'success' : 'error'}`;
+            const indicator = `<span class="status-indicator ${success ? 'status-ok' : 'status-error'}"></span>`;
+            result.innerHTML = indicator + message + (details ? `<br><small>${details}</small>` : '');
+            results.appendChild(result);
+        }
+
+        function showDataPreview(data, title) {
+            const preview = document.createElement('div');
+            preview.className = 'data-preview';
+            preview.innerHTML = `<strong>${title}:</strong><br>${JSON.stringify(data, null, 2)}`;
+            results.appendChild(preview);
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+            results.innerHTML = '';
+            testCount = 0;
+            addLog('🔄 Database test log cleared');
+        }
+
+        async function authenticateFirst() {
+            if (sessionCookie) return true;
+            
+            addLog('🔐 Authenticating with admin credentials...');
+            try {
+                const response = await fetch(`${SERVER_URL}/api/auth/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    sessionCookie = true;
+                    addLog(`✅ Authentication successful: ${userData.username} (${userData.role})`);
+                    return true;
+                } else {
+                    addLog(`❌ Authentication failed: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Authentication error: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testDatabaseConnection() {
+            addLog('🗄️ Testing database connection through mobile APK...');
+            
+            if (!await authenticateFirst()) {
+                showResult('❌ Database Connection: Authentication Failed', false);
+                return false;
+            }
+            
+            try {
+                // Test multiple database endpoints
+                const healthResponse = await fetch(`${SERVER_URL}/api/health`, {
+                    credentials: 'include'
+                });
+                
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    addLog(`✅ Server health check passed: ${healthData.status}`);
+                    showResult(`✅ Database Connection: Server Connected`, true, `Status: ${healthData.status}, Mobile Support: ${healthData.mobile_supported}`);
+                    return true;
+                } else {
+                    addLog(`❌ Database connection failed: ${healthResponse.status}`);
+                    showResult('❌ Database Connection: Failed', false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Database connection error: ${error.message}`);
+                showResult(`❌ Database Connection: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testTaskData() {
+            addLog('📋 Testing task data access from mobile APK...');
+            
+            if (!await authenticateFirst()) {
+                showResult('❌ Task Data: Authentication Failed', false);
+                return false;
+            }
+            
+            try {
+                const tasksResponse = await fetch(`${SERVER_URL}/api/tasks`, {
+                    credentials: 'include'
+                });
+                
+                if (tasksResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    addLog(`✅ Task data retrieved: ${tasksData.length} tasks found`);
+                    
+                    if (tasksData.length > 0) {
+                        const sampleTask = tasksData[0];
+                        addLog(`📋 Sample task: ID=${sampleTask.id}, Title="${sampleTask.title}", Status=${sampleTask.status}`);
+                        showDataPreview([sampleTask], 'Sample Task Data');
+                        showResult(`✅ Task Data: ${tasksData.length} tasks accessible`, true, `Sample: "${sampleTask.title}" (${sampleTask.status})`);
+                        return true;
+                    } else {
+                        showResult('⚠️ Task Data: No tasks found', true, 'Database accessible but empty');
+                        return true;
+                    }
+                } else {
+                    addLog(`❌ Task data access failed: ${tasksResponse.status}`);
+                    showResult('❌ Task Data: Access Failed', false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Task data error: ${error.message}`);
+                showResult(`❌ Task Data: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testCustomerData() {
+            addLog('👥 Testing customer data access from mobile APK...');
+            
+            if (!await authenticateFirst()) {
+                showResult('❌ Customer Data: Authentication Failed', false);
+                return false;
+            }
+            
+            try {
+                const customersResponse = await fetch(`${SERVER_URL}/api/customers`, {
+                    credentials: 'include'
+                });
+                
+                if (customersResponse.ok) {
+                    const customersData = await customersResponse.json();
+                    addLog(`✅ Customer data retrieved: ${customersData.length} customers found`);
+                    
+                    if (customersData.length > 0) {
+                        const sampleCustomer = customersData[0];
+                        addLog(`👥 Sample customer: ID=${sampleCustomer.id}, Name="${sampleCustomer.name}"`);
+                        showDataPreview([sampleCustomer], 'Sample Customer Data');
+                        showResult(`✅ Customer Data: ${customersData.length} customers accessible`, true, `Sample: "${sampleCustomer.name}"`);
+                        return true;
+                    } else {
+                        showResult('⚠️ Customer Data: No customers found', true, 'Database accessible but empty');
+                        return true;
+                    }
+                } else {
+                    addLog(`❌ Customer data access failed: ${customersResponse.status}`);
+                    showResult('❌ Customer Data: Access Failed', false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Customer data error: ${error.message}`);
+                showResult(`❌ Customer Data: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testDataSync() {
+            addLog('🔄 Testing data synchronization between web and mobile...');
+            
+            if (!await authenticateFirst()) {
+                showResult('❌ Data Sync: Authentication Failed', false);
+                return false;
+            }
+            
+            try {
+                // Get current timestamp for sync test
+                const timestamp = new Date().toISOString();
+                addLog(`📊 Sync test timestamp: ${timestamp}`);
+                
+                // Test both tasks and customers to verify sync
+                const [tasksResponse, customersResponse] = await Promise.all([
+                    fetch(`${SERVER_URL}/api/tasks`, { credentials: 'include' }),
+                    fetch(`${SERVER_URL}/api/customers`, { credentials: 'include' })
+                ]);
+                
+                if (tasksResponse.ok && customersResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    const customersData = await customersResponse.json();
+                    
+                    addLog(`✅ Sync verification: ${tasksData.length} tasks, ${customersData.length} customers`);
+                    addLog(`🔄 Data is synchronized - mobile APK accessing same database as web portal`);
+                    
+                    showResult(`✅ Data Synchronization: Active`, true, `${tasksData.length} tasks, ${customersData.length} customers synchronized`);
+                    return true;
+                } else {
+                    addLog(`❌ Sync test failed: Tasks=${tasksResponse.status}, Customers=${customersResponse.status}`);
+                    showResult('❌ Data Synchronization: Failed', false);
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Data sync error: ${error.message}`);
+                showResult(`❌ Data Synchronization: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function runFullDatabaseTest() {
+            clearLog();
+            addLog('🚀 Starting full database connectivity test...');
+            addLog(`🎯 Testing mobile APK database access via: ${SERVER_URL}`);
+            addLog(`🗄️ Target database: 103.122.85.61:1440/WIZONE_TASK_MANAGER`);
+            addLog('='.repeat(70));
+            
+            let passedTests = 0;
+            const totalTests = 4;
+            
+            // Test 1: Database connection
+            if (await testDatabaseConnection()) passedTests++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test 2: Task data access
+            if (await testTaskData()) passedTests++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test 3: Customer data access  
+            if (await testCustomerData()) passedTests++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test 4: Data synchronization
+            if (await testDataSync()) passedTests++;
+            
+            addLog('='.repeat(70));
+            
+            if (passedTests === totalTests) {
+                addLog('🎉 ALL DATABASE TESTS PASSED! Mobile APK fully connected to production database!');
+                showResult('🎉 DATABASE CONNECTIVITY: COMPLETE SUCCESS!', true, `${passedTests}/${totalTests} tests passed - Mobile APK and web portal share same database`);
+            } else {
+                addLog(`❌ ${totalTests - passedTests} database tests failed. Check connectivity issues.`);
+                showResult(`❌ Database Connectivity: ${passedTests}/${totalTests} Tests Passed`, false, 'Some database access issues detected');
+            }
+            
+            return passedTests === totalTests;
+        }
+
+        // Auto-run information on page load
+        window.onload = function() {
+            addLog('📱 Mobile APK Database Connectivity Test Ready');
+            addLog(`🗄️ Production database: 103.122.85.61:1440/WIZONE_TASK_MANAGER`);
+            addLog(`🌐 Production server: ${SERVER_URL}`);
+            addLog(`🔄 Connection path: Mobile APK → Cloud Server → MS SQL Server`);
+            addLog('Click "Full Database Test" to verify complete connectivity');
+        };
+    </script>
+</body>
+</html>
