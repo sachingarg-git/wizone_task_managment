@@ -394,6 +394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health endpoint for mobile APK connectivity testing
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      message: 'Server is running',
+      timestamp: new Date().toISOString(),
+      service: 'Wizone Task Manager',
+      version: '2.0'
+    });
+  });
+
   // Mobile-specific authentication and debugging endpoints
   app.get('/api/mobile/connectivity-test', (req, res) => {
     const userAgent = req.get('user-agent') || '';
