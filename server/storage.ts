@@ -725,11 +725,11 @@ export class DatabaseStorage implements IStorage {
 
   async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
     if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN') {
-      console.error("Invalid userId provided to getTasksByUser:", userId);
-      return []; // Return empty array instead of throwing error
+      console.error("❌ Invalid userId provided to getTasksByUser:", userId);
+      return [];
     }
     
-    console.log("Building query for userId:", userId, "type:", typeof userId);
+    console.log(`🔍 Fetching tasks for Field Engineer: ${userId}`);
     
     const result = await db
       .select({
@@ -740,8 +740,25 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .leftJoin(customers, eq(tasks.customerId, customers.id))
       .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(or(eq(tasks.assignedTo, userId), eq(tasks.fieldEngineerId, userId)))
+      .where(
+        or(
+          eq(tasks.assignedTo, userId),
+          eq(tasks.fieldEngineerId, userId)
+        )
+      )
       .orderBy(desc(tasks.createdAt));
+    
+    console.log(`📊 Found ${result.length} tasks assigned to Field Engineer ${userId}`);
+    
+    if (result.length > 0) {
+      console.log("✅ Sample task:", {
+        id: result[0].task.id,
+        ticketNumber: result[0].task.ticketNumber,
+        title: result[0].task.title,
+        status: result[0].task.status,
+        customer: result[0].customer?.companyName || 'No customer'
+      });
+    }
     
     return result.map(row => ({
       ...row.task,
