@@ -1154,7 +1154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("User ID:", userId);
       console.log("User role:", (req.user as any)?.role);
       
-      const userTasks = await storage.getTasksByUser(userId);
+      const userTasks = await storage.getAllTasks({ assignedTo: userId, fieldEngineerId: userId });
       console.log("Tasks retrieved:", userTasks.length);
       
       if (userTasks.length > 0) {

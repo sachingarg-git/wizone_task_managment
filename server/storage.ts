@@ -756,7 +756,7 @@ export class DatabaseStorage implements IStorage {
         ticketNumber: result[0].task.ticketNumber,
         title: result[0].task.title,
         status: result[0].task.status,
-        customer: result[0].customer?.companyName || 'No customer'
+        customer: result[0].customer?.name || 'No customer'
       });
     }
     
