@@ -584,16 +584,17 @@ export class MSSQLStorage implements IStorage {
       }
       if (updates.status !== undefined) {
         // Validate and normalize status values (based on actual database constraint)
-        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled', 'resolved', 'assigned_to_field', 'start_task', 'waiting_for_customer'];
+        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled', 'assigned_to_field', 'start_task', 'waiting_for_customer'];
         let normalizedStatus = updates.status.toLowerCase().replace(/\s+/g, '_');
         
         // Handle common status mappings
         if (normalizedStatus === 'inprogress' || normalizedStatus === 'in-progress') {
           normalizedStatus = 'in_progress';
         }
-        // Keep resolved status as-is for field engineers
+        // Map resolved status to in_progress for database compatibility
         if (normalizedStatus === 'resolved') {
-          normalizedStatus = 'resolved';
+          normalizedStatus = 'in_progress';
+          console.log(`🔄 Status mapping: resolved → in_progress (for database compatibility)`);
         }
         // Map start_task and other action statuses to in_progress
         if (normalizedStatus === 'start_task' || normalizedStatus === 'start' || normalizedStatus === 'begin') {
@@ -1193,14 +1194,31 @@ export class MSSQLStorage implements IStorage {
       const firstEngineerId = fieldEngineerIds[0];
       console.log(`🔄 Assigning task to first engineer: ${firstEngineerId}`);
       
-      // COMPLETE BYPASS: Use only working patterns from updateFieldTaskStatus
-      console.log(`🎯 SIMPLIFIED ASSIGNMENT: Using task update approach only`);
+      // COMPLETE FIX: Update the actual task record with field engineer assignment
+      console.log(`🎯 PROPER ASSIGNMENT: Updating task record with field engineer`);
       
       try {
-        // Create task update record to track the assignment (this works perfectly)
+        // 1. Update the task record to assign the field engineer
+        const pool = await getConnection();
+        const request = pool.request();
+        
+        request.input('taskId', taskId);
+        request.input('fieldEngineerId', firstEngineerId);
+        request.input('assignedTo', firstEngineerId); // This will show in "Assigned To" column
+        
+        await request.query(`
+          UPDATE tasks 
+          SET fieldEngineerId = @fieldEngineerId,
+              assignedTo = @assignedTo,
+              updatedAt = GETDATE()
+          WHERE id = @taskId
+        `);
+        
+        console.log(`✅ Task record updated with field engineer assignment`);
+        
+        // 2. Create task update record to track the assignment  
         await this.createTaskUpdate({
           taskId,
-          status: 'assigned',  
           note: `Task assigned to field engineer: ${firstEngineerId}`,
           updatedBy: validAssignedBy
         });

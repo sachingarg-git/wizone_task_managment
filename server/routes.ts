@@ -1267,8 +1267,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle "resolved" status specifically for field engineers
       if (updateData.status === 'resolved') {
-        // Keep resolved status as-is, don't normalize it
-        console.log("✅ Resolved status accepted for field engineer workflow");
+        // Map resolved to in_progress for database compatibility  
+        updateData.status = 'in_progress';
+        updateData.resolution = updateData.resolution || `Task resolved by field engineer on ${new Date().toISOString()}`;
+        console.log("🔄 Resolved status mapped to in_progress for database compatibility");
       }
       console.log("Parsed update data:", JSON.stringify(updateData, null, 2));
       
