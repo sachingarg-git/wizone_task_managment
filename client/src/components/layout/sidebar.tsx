@@ -18,7 +18,8 @@ import {
   Clock,
   Building2,
   Bot,
-  Smartphone
+  Smartphone,
+  Activity
 } from "lucide-react";
 import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
@@ -54,6 +55,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Android APK", href: "/apk-download", icon: Smartphone },
       { name: "Tracking History", href: "/tracking-history", icon: Clock },
       { name: "Office Management", href: "/office-management", icon: Building2 },
+      { name: "Real-time Monitor", href: "/real-time-monitor", icon: Activity },
       { name: "Engineer Chat", href: "/chat", icon: MessageCircle },
       { name: "My Portal", href: "/portal", icon: User },
     ];
@@ -73,6 +75,7 @@ const getIconColor = (name: string, isActive: boolean) => {
     'SQL Connections': isActive ? '#6366f1' : '#4f46e5', // Indigo
     'Bot Configuration': isActive ? '#8b5cf6' : '#7c3aed', // Purple
     'Android APK': isActive ? '#22c55e' : '#16a34a', // Green
+    'Real-time Monitor': isActive ? '#06b6d4' : '#0891b2', // Cyan/Teal
     'Tracking History': isActive ? '#f97316' : '#ea580c', // Orange
     'Office Management': isActive ? '#64748b' : '#475569', // Slate
     'Engineer Chat': isActive ? '#ec4899' : '#db2777', // Pink

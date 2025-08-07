@@ -27,6 +27,7 @@ import CustomerPortal from "@/pages/customer-portal";
 import UnifiedLogin from "@/pages/unified-login";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
+import RealTimeMonitor from "@/pages/RealTimeMonitor";
 
 function Router() {
   console.log("Router component rendering...");
@@ -119,7 +120,7 @@ function Router() {
               window.location.href = '/portal';
               return null;
             }
-            return <Dashboard {...props} />;
+            return <Dashboard />;
           }} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/customers" component={Customers} />
@@ -135,6 +136,7 @@ function Router() {
           <Route path="/office-management" component={OfficeManagement} />
           <Route path="/chat" component={Chat} />
           <Route path="/portal" component={Portal} />
+          <Route path="/real-time-monitor" component={RealTimeMonitor} />
           <Route component={NotFound} />
         </Switch>
       </div>
@@ -152,7 +154,7 @@ function Router() {
       }}>
         <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
           <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Router Error</h1>
-          <p style={{ marginBottom: '16px' }}>Error: {error.message}</p>
+          <p style={{ marginBottom: '16px' }}>Error: {(error as Error).message}</p>
           <button 
             onClick={() => window.location.reload()} 
             style={{ 

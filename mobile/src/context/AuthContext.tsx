@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest } from '../utils/api';
+import { mobileWebSocket } from '../services/websocket';
 
 interface User {
   id: string;
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // For mobile APK, check if user session exists on server
       // Don't rely on local token storage, use session cookies
       const response = await apiRequest('GET', '/api/auth/user');
-      setUser(response);
+      setUser(response as User);
     } catch (error) {
       // If auth check fails, user is not authenticated
       setUser(null);
@@ -59,7 +60,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Server uses session cookies, no token storage needed
       // Session cookie will be automatically stored by WebView
-      setUser(response);
+      setUser(response as User);
+      
+      // Connect to WebSocket for real-time updates
+      console.log('🔗 Connecting to real-time WebSocket...');
+      mobileWebSocket.connect((response as User).id, (response as User).role);
     } catch (error) {
       console.error('❌ Mobile APK login failed:', error);
       throw error;
@@ -69,6 +74,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout');
+      
+      // Disconnect WebSocket
+      mobileWebSocket.disconnect();
       
       // Clear user state
       setUser(null);

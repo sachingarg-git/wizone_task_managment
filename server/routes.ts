@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage/mssql-storage";
@@ -1216,6 +1217,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the task creation if notification fails
       }
       
+      // Real-time WebSocket notification
+      if ((app as any).broadcastToAll) {
+        (app as any).broadcastToAll({
+          type: 'task_created',
+          task: task,
+          createdBy: userId,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Notify assigned field engineer specifically
+        if (task.assignedTo) {
+          (app as any).broadcastToUser(task.assignedTo, {
+            type: 'task_assigned',
+            task: task,
+            message: `New task assigned: ${task.title}`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+      
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1367,6 +1388,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Task updated successfully:", task.id);
       console.log("=== TASK UPDATE COMPLETE ===");
+      
+      // Real-time WebSocket notification for task updates
+      if ((app as any).broadcastToAll) {
+        (app as any).broadcastToAll({
+          type: 'task_updated',
+          task: task,
+          updatedBy: userId,
+          changes: req.body,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Notify assigned field engineer specifically
+        if (task.assignedTo && task.assignedTo !== userId) {
+          (app as any).broadcastToUser(task.assignedTo, {
+            type: 'task_update_notification',
+            task: task,
+            message: `Task updated: ${task.title}`,
+            updatedBy: userId,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -2038,6 +2082,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail user creation if SQL sync fails
       }
 
+      // Real-time notification for new user creation
+      if ((app as any).broadcastToAdmins) {
+        (app as any).broadcastToAdmins({
+          type: 'user_created',
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName
+          },
+          message: `New ${user.role} created: ${user.firstName} ${user.lastName}`,
+          canLoginImmediately: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       res.status(201).json(user);
     } catch (error) {
       console.error("Error creating user:", error);
@@ -3336,5 +3397,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // WebSocket server for real-time communication
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws'
+  });
+  
+  // Store connected clients by user ID and type
+  const connectedClients = new Map<string, {
+    ws: WebSocket;
+    userId: string;
+    userRole: string;
+    clientType: 'mobile' | 'web';
+    lastActivity: Date;
+  }>();
+  
+  wss.on('connection', (ws, req) => {
+    console.log('🔗 New WebSocket connection from:', req.socket.remoteAddress);
+    
+    let clientInfo: any = null;
+    
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('📩 WebSocket message received:', data.type);
+        
+        switch (data.type) {
+          case 'authenticate':
+            // Authenticate the WebSocket connection
+            const { userId, token, clientType } = data;
+            // In production, verify the token properly
+            
+            if (userId) {
+              clientInfo = {
+                ws,
+                userId,
+                userRole: data.userRole || 'unknown',
+                clientType: clientType || 'web',
+                lastActivity: new Date()
+              };
+              
+              connectedClients.set(`${userId}_${clientType}`, clientInfo);
+              
+              ws.send(JSON.stringify({
+                type: 'authenticated',
+                message: 'WebSocket connection authenticated',
+                userId,
+                clientType
+              }));
+              
+              console.log(`✅ WebSocket authenticated: ${userId} (${clientType})`);
+              
+              // Broadcast user online status to admins
+              broadcastToAdmins({
+                type: 'user_status',
+                userId,
+                status: 'online',
+                userRole: data.userRole,
+                clientType,
+                timestamp: new Date().toISOString()
+              });
+            }
+            break;
+            
+          case 'ping':
+            ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+            if (clientInfo) {
+              clientInfo.lastActivity = new Date();
+            }
+            break;
+            
+          case 'task_update':
+            // Real-time task updates
+            console.log(`📝 Task update from ${clientInfo?.userId}:`, data.taskId);
+            broadcastToAll({
+              type: 'task_updated',
+              taskId: data.taskId,
+              updatedBy: clientInfo?.userId,
+              updates: data.updates,
+              timestamp: new Date().toISOString()
+            });
+            break;
+            
+          case 'location_update':
+            // Real-time location updates from field engineers
+            if (clientInfo?.userRole === 'field_engineer') {
+              console.log(`📍 Location update from ${clientInfo.userId}`);
+              broadcastToAdmins({
+                type: 'engineer_location',
+                userId: clientInfo.userId,
+                location: data.location,
+                timestamp: new Date().toISOString()
+              });
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('❌ WebSocket message error:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Invalid message format'
+        }));
+      }
+    });
+    
+    ws.on('close', () => {
+      if (clientInfo) {
+        console.log(`🔌 WebSocket disconnected: ${clientInfo.userId} (${clientInfo.clientType})`);
+        connectedClients.delete(`${clientInfo.userId}_${clientInfo.clientType}`);
+        
+        // Broadcast user offline status to admins
+        broadcastToAdmins({
+          type: 'user_status',
+          userId: clientInfo.userId,
+          status: 'offline',
+          userRole: clientInfo.userRole,
+          clientType: clientInfo.clientType,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+    
+    ws.on('error', (error) => {
+      console.error('❌ WebSocket error:', error);
+    });
+  });
+  
+  // Broadcast functions
+  function broadcastToAll(message: any) {
+    const messageStr = JSON.stringify(message);
+    connectedClients.forEach((client) => {
+      if (client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(messageStr);
+      }
+    });
+  }
+  
+  function broadcastToAdmins(message: any) {
+    const messageStr = JSON.stringify(message);
+    connectedClients.forEach((client) => {
+      if (client.ws.readyState === WebSocket.OPEN && 
+          (client.userRole === 'admin' || client.userRole === 'manager')) {
+        client.ws.send(messageStr);
+      }
+    });
+  }
+  
+  function broadcastToFieldEngineers(message: any) {
+    const messageStr = JSON.stringify(message);
+    connectedClients.forEach((client) => {
+      if (client.ws.readyState === WebSocket.OPEN && 
+          client.userRole === 'field_engineer') {
+        client.ws.send(messageStr);
+      }
+    });
+  }
+  
+  function broadcastToUser(userId: string, message: any) {
+    const messageStr = JSON.stringify(message);
+    connectedClients.forEach((client, key) => {
+      if (client.userId === userId && client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(messageStr);
+      }
+    });
+  }
+  
+  // Store broadcast functions globally for use in routes
+  (app as any).wsClients = connectedClients;
+  (app as any).broadcastToAll = broadcastToAll;
+  (app as any).broadcastToAdmins = broadcastToAdmins;
+  (app as any).broadcastToFieldEngineers = broadcastToFieldEngineers;
+  (app as any).broadcastToUser = broadcastToUser;
+  
+  console.log('🚀 WebSocket server initialized on /ws path');
+  
   return httpServer;
 }
