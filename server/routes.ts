@@ -1349,21 +1349,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const task = await storage.updateTask(id, updateData);
       
-      // Always log status updates (even if status doesn't change)
-      if (newStatus) {
-        const updateType = oldStatus !== newStatus ? 'status_change' : 'status_update';
-        const updateNotes = oldStatus !== newStatus 
-          ? notes || `Status changed from ${oldStatus} to ${newStatus}`
-          : notes || `Status updated to ${newStatus}`;
+      // Always log status updates (only if status actually changes)
+      if (newStatus && oldStatus !== newStatus) {
+        const updateNotes = notes || `Status changed from ${oldStatus} to ${newStatus}`;
           
         await storage.createTaskUpdate({
           taskId: id,
           updatedBy: userId,
-          updateType: updateType,
-          oldValue: oldStatus !== newStatus ? oldStatus : undefined,
-          newValue: newStatus,
+          status: newStatus,
           note: updateNotes,
         });
+        
+        console.log(`✅ Task update record created for task ${id}`);
+      } else if (newStatus && oldStatus === newStatus) {
+        console.log(`⚠️ Status update skipped - no actual change (${oldStatus} → ${newStatus})`);
       }
       
       // Log notes if provided without status update
