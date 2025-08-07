@@ -584,23 +584,27 @@ export class MSSQLStorage implements IStorage {
       }
       if (updates.status !== undefined) {
         // Validate and normalize status values (based on actual database constraint)
-        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled', 'resolved', 'assigned_to_field', 'start_task', 'waiting_for_customer'];
         let normalizedStatus = updates.status.toLowerCase().replace(/\s+/g, '_');
         
         // Handle common status mappings
         if (normalizedStatus === 'inprogress' || normalizedStatus === 'in-progress') {
           normalizedStatus = 'in_progress';
         }
+        // Keep resolved status as-is for field engineers
+        if (normalizedStatus === 'resolved') {
+          normalizedStatus = 'resolved';
+        }
         // Map start_task and other action statuses to in_progress
         if (normalizedStatus === 'start_task' || normalizedStatus === 'start' || normalizedStatus === 'begin') {
           normalizedStatus = 'in_progress';
         }
-        // Map assigned statuses to in_progress (since assigned is not valid in DB)
+        // Map assigned statuses to assigned_to_field for field engineer workflow
         if (normalizedStatus === 'assign' || normalizedStatus === 'assigned' || normalizedStatus === 'assigned_to' || normalizedStatus === 'assignedto') {
-          normalizedStatus = 'in_progress';
+          normalizedStatus = 'assigned_to_field';
         }
         if (normalizedStatus === 'field' || normalizedStatus === 'field_assigned' || normalizedStatus === 'assigned_to_field') {
-          normalizedStatus = 'in_progress';
+          normalizedStatus = 'assigned_to_field';
         }
         
         if (!validStatuses.includes(normalizedStatus)) {
@@ -612,8 +616,8 @@ export class MSSQLStorage implements IStorage {
         updateFields.push('status = @status');
         request.input('status', normalizedStatus);
         
-        // Set resolvedAt if status is completed
-        if (normalizedStatus === 'completed') {
+        // Set resolvedAt if status is completed or resolved
+        if (normalizedStatus === 'completed' || normalizedStatus === 'resolved') {
           updateFields.push('resolvedAt = GETDATE()');
         }
       }
@@ -1213,6 +1217,15 @@ export class MSSQLStorage implements IStorage {
         console.error(`❌ Assignment recording failed:`, (assignError as Error).message);
         throw new Error(`Assignment failed: ${(assignError as Error).message}`);
       }
+      
+      // Return results in the expected format
+      console.log(`✅ Returning ${results.length} assigned tasks`);
+      return {
+        success: true,
+        tasks: results,
+        assignedCount: results.length,
+        message: `Successfully assigned task to ${fieldEngineerIds.length} field engineer(s)`
+      };
       
     } catch (error) {
       console.error('❌ COMPLETE ERROR in assignMultipleFieldEngineers:', (error as Error).message);

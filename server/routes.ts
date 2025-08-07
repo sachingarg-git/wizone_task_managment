@@ -1263,7 +1263,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid task ID" });
       }
       
-      const updateData = insertTaskSchema.partial().parse(req.body);
+      let updateData = insertTaskSchema.partial().parse(req.body);
+      
+      // Handle "resolved" status specifically for field engineers
+      if (updateData.status === 'resolved') {
+        // Keep resolved status as-is, don't normalize it
+        console.log("✅ Resolved status accepted for field engineer workflow");
+      }
       console.log("Parsed update data:", JSON.stringify(updateData, null, 2));
       
       // Get the current task to check status changes
@@ -1538,7 +1544,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send notification for each assigned task
       try {
         console.log("Sending field assignment notifications...");
-        for (const task of result.tasks) {
+        
+        // Handle different return types from storage
+        let tasksToNotify = [];
+        if (result && Array.isArray(result.tasks)) {
+          tasksToNotify = result.tasks;
+        } else if (result && result.id) {
+          // Single task result
+          tasksToNotify = [result];
+        } else if (Array.isArray(result)) {
+          // Array of tasks
+          tasksToNotify = result;
+        }
+        
+        for (const task of tasksToNotify) {
           await sendTaskNotification(task, 'task_update');
         }
         console.log("Field assignment notifications sent successfully");
@@ -1569,7 +1588,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send notification for each assigned task
       try {
         console.log("Sending field assignment notifications...");
-        for (const task of result.tasks) {
+        
+        // Handle different return types from storage
+        let tasksToNotify = [];
+        if (result && Array.isArray(result.tasks)) {
+          tasksToNotify = result.tasks;
+        } else if (result && result.id) {
+          // Single task result
+          tasksToNotify = [result];
+        } else if (Array.isArray(result)) {
+          // Array of tasks
+          tasksToNotify = result;
+        }
+        
+        for (const task of tasksToNotify) {
           await sendTaskNotification(task, 'task_update');
         }
         console.log("Field assignment notifications sent successfully");
