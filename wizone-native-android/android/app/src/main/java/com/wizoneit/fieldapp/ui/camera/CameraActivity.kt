@@ -71,12 +71,7 @@ class CameraActivity : AppCompatActivity() {
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
             
-            // Image analysis use case (optional)
-            val imageAnalyzer = ImageAnalysis.Builder().build().also {
-                it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                    // Optional: Use luminosity for UI feedback
-                })
-            }
+            // Image analysis use case (optional) - removed for simplicity
             
             // Select back camera as default
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -90,8 +85,7 @@ class CameraActivity : AppCompatActivity() {
                     this,
                     cameraSelector,
                     preview,
-                    imageCapture,
-                    imageAnalyzer
+                    imageCapture
                 )
                 
                 // Optional: Set up camera controls
