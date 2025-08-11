@@ -1,0 +1,164 @@
+Build a native Android app (Kotlin) that connects to the main application server at http://194.238.19.19:5000 and implements the Field Engineer workflow below. The app must include Capacitor Android integration (Capacitor/Gradle configured) so it will match the existing mobile folder’s structure if needed. I only need the mobile app — deliver a ready-to-build Android Studio project (single-shot deliverable).
+
+Important links
+
+Inspect current Replit app configuration (optional reference): https://8fa8ca79-ce6c-469b-b993-391a2785eb67-00-332jl4g86uk98.janeway.replit.dev/
+(You can view that to see server endpoints, sample data, or config if helpful.)
+
+Server base URL (use this exactly)
+http://194.238.19.19:5000
+(If you require HTTPS, tell me and we’ll update the server. If HTTP must be used, include network-config allowCleartextTraffic.)
+
+Functional requirements (user stories)
+
+Authentication / Login
+
+Login uses credentials validated against main server /login endpoint.
+
+On successful login the server returns an auth token (JWT or session token). Store token securely and use for all subsequent requests.
+
+Auto-save credentials/token on device and auto-login on app open. Allow logout to clear saved credentials.
+
+If token expires, attempt token refresh (if server supports) or force re-login with a helpful error message.
+
+Field engineer task list & detail
+
+After login, the field engineer sees a Task List screen showing only their assigned tasks (server endpoint like /engineer/{id}/tasks or /tasks?assignedTo={id}).
+
+Each task row displays: Task ID, brief description, priority, status (Open / In Progress / Completed / Resolved), scheduled date/time.
+
+Tap a task to open Task Detail.
+
+Task update flow (updates only allowed when status != Completed and != Resolved)
+
+Field engineer can update a task (notes, status change, add time spent) unless the task is Completed or Resolved.
+
+If a task is Completed or Resolved, disable update UI and show status is locked.
+
+Provide status options (e.g., Open → In Progress → Completed → Resolved). Allow only valid transitions per business rules (e.g., cannot move from Resolved back to Open).
+
+Attachments (photo & files)
+
+From Task Update screen let the engineer:
+
+Capture photo via camera (direct capture).
+
+Choose photo(s) or file(s) from storage.
+
+Add multiple attachments per update.
+
+Upload attachments to server using multipart/form-data to endpoint like /tasks/{id}/attachments with the auth token.
+
+On upload failure allow retry. Show progress indicator.
+
+Location & tracking / publish activities
+
+On app open and during lifecycle events (e.g., every X minutes or on task update), send engineer location to server endpoint /engineer/{id}/location or /activity/publish.
+
+Location must be sent whether on mobile data or Wi-Fi.
+
+Provide an option to enable/disable live tracking (but default ON per requirement).
+
+Include timestamped entries — the server should be able to see history just like the KSATH web tracking (the mobile must publish events so the portal can show history).
+
+Use Android FusedLocationProvider for accuracy and battery efficiency.
+
+Background connectivity & test connection
+
+Implement a background worker (WorkManager) to keep publishing activities and attempt to maintain a connection to the server even when the app is not in foreground.
+
+The background worker should:
+
+Periodically attempt server connection and send pending updates/locations when network available.
+
+Respect battery optimizations and use WorkManager constraints (network required).
+
+Provide a Test Connection screen/file: a simple test that makes a request to http://194.238.19.19:5000/test-connection (or /health) and shows JSON result and connection latency. Also expose this as a background check that the app runs automatically on app start and logs the result to local storage / server.
+
+The test connection file should also attempt to connect to the database via server endpoints (server side handles DB access); mobile only calls server API.
+
+Security & storage
+
+Save credentials/token using EncryptedSharedPreferences (or equivalent secure storage).
+
+Use HTTPS for production. If must use plain HTTP, configure network_security_config.xml to allow cleartext for 194.238.19.19.
+
+Sanitize filenames and validate file sizes before upload.
+
+Permissions
+
+Request and explain at runtime: CAMERA, WRITE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE (or use scoped storage as per modern Android), ACCESS_FINE_LOCATION, ACCESS_BACKGROUND_LOCATION (if publishing location in background), INTERNET.
+
+Gracefully handle permission denial with a helpful UI and retry flow.
+
+UI/UX & Screens (deliver mockups + implemented views)
+
+Login screen (with auto-login if saved).
+
+Tasks list (infinite scroll / swipe to refresh).
+
+Task detail / update screen (notes, status dropdown, attachments, save/update button).
+
+Camera/file pick UI.
+
+Activity & upload status view (shows pending uploads, last sync time).
+
+Settings screen: logout, toggle tracking on/off, test connection, app version.
+
+Make mobile view modern, clean, easy to use (Material 3 components). Keep layout optimized for phones.
+
+Business rules & validations
+
+After a task is set to Completed or Resolved, the UI must prevent further edits and status changes.
+
+Allow attachments after marking Completed only if business requires — by default disable per requirement.
+
+Show last-modified timestamp on tasks (server-provided) and warn if data is stale.
+
+Edge cases & reliability
+
+Offline mode: allow engineers to create updates offline (store locally) and sync when network returns. Show a queue of pending updates.
+
+Retry/exponential backoff for failed uploads.
+
+Deduplicate duplicate uploads.
+
+Show clear error messages for server errors (4xx/5xx) and network errors.
+
+Technical stack & libraries (recommended)
+
+Language: Kotlin
+
+Network: Retrofit + OkHttp + Kotlin Coroutines
+
+Multipart uploads: Retrofit multipart
+
+Background: WorkManager
+
+Location: Google Play services — FusedLocationProvider
+
+Image handling: Coil (or Glide), compress images before upload
+
+Storage: EncryptedSharedPreferences (credentials), Room for local queue if needed
+
+JSON: Moshi or Gson
+
+Capacitor: add Capacitor Android platform for compatibility with existing mobile folder if required (see Capacitor setup below)
+
+MinSdk: 23+ (or target your company requirement)
+
+Capacitor / Gradle configuration (requirements)
+
+The Android project should include a Capacitor Android module so it can interoperate with an existing capacitor mobile folder. If the current mobile folder already includes capacitor setup, keep compatibility. If not, integrate as follows:
+
+Add capacitor.config.json or capacitor.config.ts to project root with appId, appName and webDir.
+
+Add Capacitor Android platform: include capacitor-android as per Capacitor docs and ensure android/app/build.gradle is configured.
+
+Ensure android/gradle.properties and AndroidManifest.xml contain required permissions and intent filters.
+
+Ensure Gradle builds successfully in Android Studio (provide Gradle wrapper).
+
+Network & server specifics
+
+Base URL hardcoded for build/testing: http://194.238.19.19:5000 (make endpoint path constants)
