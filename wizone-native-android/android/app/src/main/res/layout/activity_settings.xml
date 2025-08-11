@@ -176,7 +176,7 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Sync & Data Card -->
+            <!-- Sync and Data Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -193,7 +193,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Sync & Data"
+                        android:text="Sync &amp; Data"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="12dp" />
