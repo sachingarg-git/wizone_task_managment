@@ -111,11 +111,11 @@ class LocationTrackingService : Service() {
                     app.apiService.updateLocation(userId, locationUpdate)
                     
                     // Publish activity
-                    val activityData = mapOf(
+                    val activityData = mapOf<String, Any>(
                         "latitude" to location.latitude,
                         "longitude" to location.longitude,
                         "accuracy" to location.accuracy,
-                        "provider" to location.provider,
+                        "provider" to (location.provider ?: "unknown"),
                         "altitude" to location.altitude,
                         "speed" to location.speed,
                         "bearing" to location.bearing

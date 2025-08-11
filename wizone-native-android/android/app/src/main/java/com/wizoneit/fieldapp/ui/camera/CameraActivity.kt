@@ -190,20 +190,3 @@ class CameraActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 }
-
-// Simple luminosity analyzer for camera feedback
-private class LuminosityAnalyzer(private val listener: (Double) -> Unit) : ImageAnalysis.Analyzer {
-    
-    private fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
-    
-    override fun analyze(image: ImageProxy) {
-        val buffer = image.planes[0].buffer
-        val data = buffer.toByteArray()
-        val pixels = data.map { it.toInt() and 0xFF }
-        val luma = pixels.average()
-        
-        listener(luma)
-        
-        image.close()
-    }
-}
