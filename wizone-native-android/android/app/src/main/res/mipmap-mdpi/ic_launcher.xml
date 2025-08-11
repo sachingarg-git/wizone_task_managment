@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/primary"/>
-    <foreground>
-        <inset android:drawable="@drawable/ic_wizone_logo" android:inset="20%"/>
-    </foreground>
-</adaptive-icon>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- Background Circle -->
+    <path
+        android:fillColor="@color/primary"
+        android:pathData="M24,4C35.05,4 44,12.95 44,24C44,35.05 35.05,44 24,44C12.95,44 4,35.05 4,24C4,12.95 12.95,4 24,4Z"/>
+    
+    <!-- W Letter -->
+    <path
+        android:fillColor="@color/on_primary"
+        android:strokeWidth="2"
+        android:pathData="M12,14 L16,32 L20,18 L24,32 L28,18 L32,32 L36,14"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeColor="@color/on_primary"/>
+        
+    <!-- Tech elements -->
+    <path
+        android:fillColor="@color/secondary"
+        android:pathData="M16,36 L20,36 L20,40 M28,36 L32,36 L32,40 M24,8 L24,12 M8,24 L12,24 M36,24 L40,24"/>
+    
+</vector>
