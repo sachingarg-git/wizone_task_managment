@@ -394,10 +394,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get current user route
+  // Get current user route - Enhanced for both passport and manual sessions
   app.get('/api/auth/user', (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
-      console.log('❌ Unauthenticated request to /api/auth/user');
+    console.log('🔍 Auth check - req.isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : false);
+    console.log('🔍 Auth check - req.user exists:', !!req.user);
+    console.log('🔍 Auth check - req.session.user exists:', !!(req.session as any)?.user);
+    
+    // Check both passport authentication and manual session
+    let currentUser = null;
+    
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      console.log('✅ Using passport authenticated user');
+      currentUser = req.user;
+    } else if ((req.session as any)?.user) {
+      console.log('✅ Using manual session user');
+      currentUser = (req.session as any).user;
+    }
+    
+    if (!currentUser) {
+      console.log('❌ No authenticated user found');
       return res.status(401).json({ message: 'Unauthorized' });
     }
     
@@ -411,16 +426,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.json({
-      id: req.user.id,
-      username: req.user.username,
-      email: req.user.email,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
-      role: req.user.role,
-      department: req.user.department,
-      isActive: req.user.isActive,
-      createdAt: req.user.createdAt,
-      updatedAt: req.user.updatedAt
+      id: currentUser.id,
+      username: currentUser.username,
+      email: currentUser.email,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName,
+      role: currentUser.role,
+      department: currentUser.department,
+      isActive: currentUser.isActive,
+      createdAt: currentUser.createdAt,
+      updatedAt: currentUser.updatedAt
     });
   });
 
@@ -2869,19 +2884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get current user (for both web and mobile)
-  app.get('/api/auth/user', isAuthenticated, (req, res) => {
-    const user = req.user;
-    res.json({
-      id: user.id,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      department: user.department
-    });
-  });
+  // Note: /api/auth/user endpoint is handled above at line 400 with enhanced session logic
 
   // Customer Portal Authentication Routes
   app.post('/api/customer/login', async (req, res) => {

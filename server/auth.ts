@@ -170,8 +170,17 @@ export function setupAuth(app: Express) {
           console.log(`✅ MOBILE LOGIN SUCCESS for: ${username}`);
           console.log(`✅ User details: ID=${verifiedUser.id}, Role=${verifiedUser.role}`);
           
-          // Create session for authenticated user
+          // Create both manual session and passport session for compatibility
           req.session.user = verifiedUser;
+          
+          // Also log in through passport for consistency
+          req.login(verifiedUser, (loginErr) => {
+            if (loginErr) {
+              console.error('❌ Passport login error:', loginErr);
+            } else {
+              console.log(`✅ Passport login successful for: ${verifiedUser.username}`);
+            }
+          });
           
           // Force session save
           req.session.save((err: any) => {
@@ -240,11 +249,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Get current user endpoint
-  app.get("/api/auth/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
-  });
+  // Note: /api/auth/user endpoint is now handled in routes.ts with enhanced logic
 
   // Register endpoint (for creating new users)
   app.post("/api/auth/register", async (req, res, next) => {
