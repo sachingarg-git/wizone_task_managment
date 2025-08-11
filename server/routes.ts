@@ -2362,7 +2362,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Domain management routes
   app.get('/api/domains', isAuthenticated, async (req, res) => {
     try {
+      console.log('🔍 Storage getAllDomains check:', typeof storage.getAllDomains);
+      console.log('🔍 Storage object keys:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
+      
+      if (typeof storage.getAllDomains !== 'function') {
+        console.error('❌ getAllDomains is not a function on storage object');
+        return res.status(500).json({ message: "Storage method not available" });
+      }
+      
       const domains = await storage.getAllDomains();
+      console.log('✅ Domains fetched successfully:', domains.length);
       res.json(domains);
     } catch (error) {
       console.error("Error fetching domains:", error);
