@@ -478,30 +478,43 @@ export class MSSQLStorage implements IStorage {
       const pool = await getConnection();
       const request = pool.request();
       
-      console.log('🔍 Getting tasks with proper customer names...');
+      console.log('🔍 Getting tasks with proper customer names and assigned users...');
       const result = await request.query(`
         SELECT 
           t.*,
-          c.name as actualCustomerName
+          c.name as actualCustomerName,
+          u.firstName as assignedFirstName,
+          u.lastName as assignedLastName,
+          u.email as assignedEmail
         FROM tasks t
         LEFT JOIN customers c ON t.customerId = c.id
+        LEFT JOIN users u ON t.assignedTo = u.id
         ORDER BY t.id DESC
       `);
-      console.log('✅ getAllTasks with customer lookup successful, rows:', result.recordset.length);
+      console.log('✅ getAllTasks with customer and user lookup successful, rows:', result.recordset.length);
       
-      // Return tasks with proper customer names
+      // Return tasks with proper customer names and assigned user objects
       return result.recordset.map((task: any) => ({
         id: task.id,
         title: task.title || 'Untitled Task',
         ticketNumber: task.ticketNumber || 'No Ticket',
         status: task.status || 'pending',
         priority: task.priority || 'medium',
+        issueType: task.issueType || null,
         customerName: task.actualCustomerName || task.customerName || 'No Customer Assigned',
         customerId: task.customerId || null,
         description: task.description,
         assignedTo: task.assignedTo,
+        assignedUser: task.assignedFirstName ? {
+          firstName: task.assignedFirstName,
+          lastName: task.assignedLastName,
+          email: task.assignedEmail
+        } : null,
+        fieldEngineerId: task.fieldEngineerId,
+        backendEngineerId: task.backendEngineerId,
         createdAt: task.createdAt,
-        updatedAt: task.updatedAt
+        updatedAt: task.updatedAt,
+        resolvedAt: task.resolvedAt
       }));
     } catch (error) {
       console.error('Error getting all tasks:', error);
@@ -1611,20 +1624,206 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
-  async getAnalyticsOverview(days: number): Promise<any> {
-    return { message: 'Analytics overview not implemented for MSSQL yet' };
+  async getAnalyticsOverview(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('startDate', startDate);
+      request.input('endDate', endDate);
+      
+      // Get basic stats
+      const statsResult = await request.query(`
+        SELECT 
+          COUNT(*) as totalTasks,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          AVG(CASE WHEN status = 'completed' AND resolvedAt IS NOT NULL AND createdAt IS NOT NULL 
+              THEN DATEDIFF(MINUTE, createdAt, resolvedAt) ELSE NULL END) as avgResponseTime
+        FROM tasks 
+        WHERE createdAt BETWEEN @startDate AND @endDate
+      `);
+      
+      const stats = statsResult.recordset[0];
+      const completionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
+      
+      // Get engineer counts
+      const engineerResult = await request.query(`
+        SELECT 
+          COUNT(DISTINCT u.id) as totalEngineers,
+          COUNT(DISTINCT CASE WHEN u.isActive = 1 THEN u.id END) as activeEngineers
+        FROM users u WHERE u.role IN ('field_engineer', 'admin', 'manager')
+      `);
+      
+      const engineerStats = engineerResult.recordset[0];
+      
+      // Get status distribution
+      const statusResult = await request.query(`
+        SELECT 
+          status as name,
+          COUNT(*) as value
+        FROM tasks 
+        WHERE createdAt BETWEEN @startDate AND @endDate
+        GROUP BY status
+      `);
+      
+      // Get priority distribution
+      const priorityResult = await request.query(`
+        SELECT 
+          priority as name,
+          COUNT(*) as value
+        FROM tasks 
+        WHERE createdAt BETWEEN @startDate AND @endDate
+        GROUP BY priority
+      `);
+      
+      return {
+        totalTasks: stats.totalTasks || 0,
+        completedTasks: stats.completedTasks || 0,
+        completionRate: Math.round(completionRate * 100) / 100,
+        avgResponseTime: Math.round(stats.avgResponseTime || 0),
+        activeEngineers: engineerStats.activeEngineers || 0,
+        totalEngineers: engineerStats.totalEngineers || 0,
+        taskGrowth: 0, // Can implement later with historical comparison
+        completionGrowth: 0,
+        responseImprovement: 0,
+        statusDistribution: statusResult.recordset.map((row: any) => ({
+          name: row.name || 'Unknown',
+          value: row.value || 0
+        })),
+        priorityDistribution: priorityResult.recordset.map((row: any) => ({
+          name: row.name || 'Unknown', 
+          value: row.value || 0
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching analytics overview:', error);
+      return {
+        totalTasks: 0, completedTasks: 0, completionRate: 0,
+        avgResponseTime: 0, activeEngineers: 0, totalEngineers: 0,
+        taskGrowth: 0, completionGrowth: 0, responseImprovement: 0,
+        statusDistribution: [], priorityDistribution: []
+      };
+    }
   }
 
-  async getEngineerPerformance(days: number): Promise<any[]> {
-    return [];
+  async getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('startDate', startDate);
+      request.input('endDate', endDate);
+      
+      const result = await request.query(`
+        SELECT 
+          u.id,
+          u.firstName,
+          u.lastName,
+          u.email,
+          COUNT(t.id) as totalTasks,
+          SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          AVG(CASE WHEN t.status = 'completed' AND t.resolvedAt IS NOT NULL AND t.createdAt IS NOT NULL 
+              THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END) as avgResponseTime,
+          CASE 
+            WHEN COUNT(t.id) > 0 
+            THEN (CAST(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as FLOAT) / COUNT(t.id)) * 100 
+            ELSE 0 
+          END as performanceScore,
+          CASE WHEN u.isActive = 1 THEN 1 ELSE 0 END as isActive
+        FROM users u
+        LEFT JOIN tasks t ON u.id = t.assignedTo AND t.createdAt BETWEEN @startDate AND @endDate
+        WHERE u.role IN ('field_engineer', 'admin', 'manager')
+        GROUP BY u.id, u.firstName, u.lastName, u.email, u.isActive
+        ORDER BY completedTasks DESC
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        email: row.email,
+        completedTasks: row.completedTasks || 0,
+        totalTasks: row.totalTasks || 0,
+        avgResponseTime: Math.round(row.avgResponseTime || 0),
+        performanceScore: Math.round((row.performanceScore || 0) * 100) / 100,
+        isActive: row.isActive === 1
+      }));
+    } catch (error) {
+      console.error('Error fetching engineer analytics:', error);
+      return [];
+    }
   }
 
-  async getCustomerAnalytics(days: number): Promise<any> {
-    return { message: 'Customer analytics not implemented for MSSQL yet' };
+  async getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('startDate', startDate);
+      request.input('endDate', endDate);
+      
+      const result = await request.query(`
+        SELECT 
+          c.id,
+          c.name,
+          c.city,
+          COUNT(t.id) as totalTasks,
+          SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          AVG(CASE WHEN t.status = 'completed' AND t.resolvedAt IS NOT NULL AND t.createdAt IS NOT NULL 
+              THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END) as avgResolutionTime,
+          4.2 as satisfaction
+        FROM customers c
+        LEFT JOIN tasks t ON c.id = t.customerId AND t.createdAt BETWEEN @startDate AND @endDate
+        GROUP BY c.id, c.name, c.city
+        HAVING COUNT(t.id) > 0
+        ORDER BY totalTasks DESC
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        totalTasks: row.totalTasks || 0,
+        completedTasks: row.completedTasks || 0,
+        avgResolutionTime: Math.round(row.avgResolutionTime || 0),
+        satisfaction: row.satisfaction
+      }));
+    } catch (error) {
+      console.error('Error fetching customer analytics:', error);
+      return [];
+    }
   }
 
-  async getTrendAnalytics(days: number): Promise<any> {
-    return { message: 'Trend analytics not implemented for MSSQL yet' };
+  async getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input('startDate', startDate);
+      request.input('endDate', endDate);
+      
+      const result = await request.query(`
+        SELECT 
+          CAST(createdAt as DATE) as date,
+          COUNT(*) as created,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+        FROM tasks
+        WHERE createdAt BETWEEN @startDate AND @endDate
+        GROUP BY CAST(createdAt as DATE)
+        ORDER BY date ASC
+      `);
+      
+      return result.recordset.map((row: any) => ({
+        date: row.date.toISOString().split('T')[0],
+        created: row.created || 0,
+        completed: row.completed || 0,
+        cancelled: row.cancelled || 0
+      }));
+    } catch (error) {
+      console.error('Error fetching trends analytics:', error);
+      return [];
+    }
   }
 
   async getTopPerformers(limit: number = 10): Promise<any[]> {
@@ -1655,65 +1854,50 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
-  async getPerformanceAnalytics(days: number): Promise<any> {
+  async getPerformanceAnalytics(startDate: Date, endDate: Date, metric: string): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('days', days);
+      
+      request.input('startDate', startDate);
+      request.input('endDate', endDate);
+      
+      // Based on metric, return time-series data for performance metrics
+      let valueField = 'COUNT(t.id)'; // default to task count
+      
+      switch(metric) {
+        case 'completion_rate':
+          valueField = 'AVG(CASE WHEN t.status = "completed" THEN 100.0 ELSE 0.0 END)';
+          break;
+        case 'response_time':
+          valueField = 'AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)';
+          break;
+        case 'resolution_time':
+          valueField = 'AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)';
+          break;
+      }
       
       const result = await request.query(`
         SELECT 
-          u.firstName + ' ' + u.lastName as engineerName,
-          u.role,
-          COALESCE(pm.tasksCompleted, 0) as tasksCompleted,
-          COALESCE(pm.averageResolutionTime, 24) as avgResolutionTime,
-          COALESCE(pm.customerSatisfactionScore, 85.0) as satisfactionScore
-        FROM users u
-        LEFT JOIN performance_metrics pm ON u.id = pm.userId
-        WHERE u.role IN ('engineer', 'backend_engineer', 'field_engineer') AND u.isActive = 1
-        ORDER BY COALESCE(pm.tasksCompleted, 0) DESC
+          CAST(t.createdAt as DATE) as date,
+          ${valueField} as value
+        FROM tasks t
+        WHERE t.createdAt BETWEEN @startDate AND @endDate
+        GROUP BY CAST(t.createdAt as DATE)
+        ORDER BY date ASC
       `);
       
-      return {
-        engineers: result.recordset,
-        totalTasks: result.recordset.reduce((sum: number, eng: any) => sum + eng.tasksCompleted, 0),
-        averageTime: result.recordset.reduce((sum: number, eng: any) => sum + eng.avgResolutionTime, 0) / Math.max(result.recordset.length, 1)
-      };
+      return result.recordset.map((row: any) => ({
+        date: row.date.toISOString().split('T')[0],
+        value: Math.round((row.value || 0) * 100) / 100
+      }));
     } catch (error) {
       console.error('Error getting performance analytics:', error);
-      return { engineers: [], totalTasks: 0, averageTime: 24 };
+      return [];
     }
   }
 
-  async getTrendsAnalytics(days: number): Promise<any> {
-    try {
-      const pool = await getConnection();
-      const request = pool.request();
-      request.input('days', days);
-      
-      const result = await request.query(`
-        SELECT 
-          CAST(createdAt as DATE) as date,
-          COUNT(*) as taskCount,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
-          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingTasks
-        FROM tasks
-        WHERE DATEDIFF(day, createdAt, GETDATE()) <= @days
-        GROUP BY CAST(createdAt as DATE)
-        ORDER BY date DESC
-      `);
-      
-      return {
-        dailyTasks: result.recordset,
-        totalTrend: result.recordset.length > 0 ? 
-          ((result.recordset[0].taskCount - (result.recordset[result.recordset.length - 1]?.taskCount || 0)) / 
-           Math.max(result.recordset[result.recordset.length - 1]?.taskCount || 1, 1)) * 100 : 0
-      };
-    } catch (error) {
-      console.error('Error getting trends analytics:', error);
-      return { dailyTasks: [], totalTrend: 0 };
-    }
-  }
+
 
   // Method to get task statistics - Fixed implementation
   async getTaskStats(): Promise<any> {
