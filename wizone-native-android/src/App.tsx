@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/SimpleAuthContext'
 import { Layout } from './components/Layout'
 import { LoginScreen } from './screens/LoginScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
@@ -28,11 +28,15 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { user, loading } = useAuth()
 
+  console.log('AppRoutes render - loading:', loading, 'user:', user ? 'logged in' : 'not logged in')
+
   if (loading) {
+    console.log('Showing loading spinner')
     return <LoadingSpinner />
   }
 
   if (!user) {
+    console.log('No user, showing login screen')
     return (
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
@@ -40,6 +44,8 @@ function AppRoutes() {
       </Routes>
     )
   }
+
+  console.log('User authenticated, showing main app')
 
   return (
     <Layout>

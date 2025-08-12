@@ -33,9 +33,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setLoading(true)
       const currentUser = await apiService.getCurrentUser()
-      setUser(currentUser)
-    } catch (error) {
-      console.error('Auth check failed:', error)
+      console.log('Auth check successful:', currentUser)
+      setUser(currentUser as User)
+    } catch (error: any) {
+      console.log('Auth check failed - this is normal for logged out users:', error?.message)
       setUser(null)
       // Clear any stored token if auth fails
       try {
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.warn('Storage clear error:', e)
       }
     } finally {
+      console.log('Auth check complete, setting loading to false')
       setLoading(false)
     }
   }

@@ -1,7 +1,15 @@
 # TaskFlow - Task Management & Performance Tracking System
 
 ## Overview
-TaskFlow is a comprehensive task management and performance tracking system for ISP operations, managing tasks, customers, and performance metrics. It features user authentication, role-based access control, and real-time synchronization. The project aims to provide a robust, scalable, and user-friendly platform for efficient IT support and field engineer operations, with ambitions for cross-platform availability and seamless data management, enhancing business vision and market potential.
+TaskFlow is a comprehensive task management and performance tracking system for ISP operations, managing tasks, customers, and performance metrics. It features user authentication, role-based access control, and real-time synchronization. The project includes both a web portal and a **native mobile application** built with React and Capacitor for field engineer operations.
+
+## Recent Changes (January 2025)
+- **Mobile Native Interface**: Successfully transformed WebView-based APK into proper React-based mobile interface
+- **Capacitor Integration**: Implemented Capacitor for hybrid native mobile functionality
+- **Mobile-Optimized UI**: Created responsive mobile screens with bottom navigation and touch-friendly design
+- **Authentication Flow**: Implemented robust authentication context with proper error handling and token management
+- **API Integration**: Direct connection to existing backend server (http://194.238.19.19:5000) from mobile app
+- **Build System**: Established Vite → Capacitor → Android APK build pipeline
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -28,11 +36,13 @@ Preferred communication style: Simple, everyday language.
 - **Data Synchronization**: Real-time bidirectional synchronization between the web portal and SQL Server for users and tasks.
 
 ### Mobile Application
-- **Platform**: React Native (Expo) and WebView-based Android applications.
-- **Feature Parity**: Full feature parity with the web version, including core functionality, authentication, task management, customer data, and analytics.
-- **Specific Features**: Dedicated field engineer mobile interface with task assignment viewing, status updates, file attachments, and GPS location tracking.
-- **Connectivity**: Network-resilient architecture with dynamic server detection and offline capabilities.
-- **APK Generation**: Multiple methods for APK generation including Android Studio, online builders, and PWA installation.
+- **Platform**: Capacitor-based hybrid Android app with native React interface (no longer WebView).
+- **Architecture**: React 18 + TypeScript + Vite with responsive mobile-first design.
+- **UI/UX**: Modern mobile interface with bottom tab navigation, touch-optimized components, and gradient designs.
+- **Authentication**: Secure token-based authentication with localStorage persistence and proper error handling.
+- **Screens**: Login, Dashboard, Tasks, Customers, Users (admin), and Profile with full mobile responsiveness.
+- **API Integration**: Direct connection to existing backend at http://194.238.19.19:5000.
+- **Build Process**: Vite build → Capacitor sync → Android APK generation.
 
 ### System Design Choices
 - **Authentication System**: Traditional username/password authentication with secure session management.

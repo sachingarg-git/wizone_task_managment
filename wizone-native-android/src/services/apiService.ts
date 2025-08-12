@@ -64,13 +64,19 @@ class ApiService {
     }
 
     try {
+      console.log('Making API request:', method, `${this.baseURL}${endpoint}`)
       const response = await fetch(`${this.baseURL}${endpoint}`, config)
       
+      console.log('API response status:', response.status, response.statusText)
+      
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
+        const errorText = await response.text()
+        console.log('API error response:', errorText)
+        throw new Error(`${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
+      console.log('API response data:', data)
       return data
     } catch (error) {
       console.error('API Request Error:', error)

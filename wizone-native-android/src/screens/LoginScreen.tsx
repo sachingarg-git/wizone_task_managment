@@ -1,25 +1,24 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/SimpleAuthContext'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
-  const { login } = useAuth()
+  const { login, error, clearError } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    clearError()
     setIsLoading(true)
 
     try {
       await login(username, password)
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.')
+      // Error is handled by the context
     } finally {
       setIsLoading(false)
     }

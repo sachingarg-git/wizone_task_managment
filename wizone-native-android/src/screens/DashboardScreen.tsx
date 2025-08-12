@@ -1,7 +1,7 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiService } from '../services/apiService'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/SimpleAuthContext'
 import { 
   BarChart3, 
   CheckCircle, 
