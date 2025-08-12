@@ -87,7 +87,7 @@ function startApp() {
       
       // Clear the loading message
       setTimeout(() => {
-        const loadingDiv = rootElement.querySelector('.fallback-loading')
+        const loadingDiv = rootElement.querySelector('.fallback-loading') as HTMLElement
         if (loadingDiv) {
           loadingDiv.style.display = 'none'
         }
