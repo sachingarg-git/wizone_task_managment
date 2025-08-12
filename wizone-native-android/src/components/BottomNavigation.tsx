@@ -1,6 +1,6 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/DebugAuthContext'
+import { useAuth } from '../context/DirectAuthContext'
 import { 
   Home, 
   ClipboardList, 

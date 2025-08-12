@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '../context/DebugAuthContext'
+import { useAuth } from '../context/DirectAuthContext'
 import { 
   User, 
   Mail, 
