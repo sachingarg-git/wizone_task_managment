@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/SimpleAuthContext'
+import { useAuth } from '../context/DebugAuthContext'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export function LoginScreen() {

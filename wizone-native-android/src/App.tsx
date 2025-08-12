@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider, useAuth } from './context/SimpleAuthContext'
+import { AuthProvider, useAuth } from './context/DebugAuthContext'
 import { Layout } from './components/Layout'
 import { LoginScreen } from './screens/LoginScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
@@ -28,15 +28,25 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { user, loading } = useAuth()
 
-  console.log('AppRoutes render - loading:', loading, 'user:', user ? 'logged in' : 'not logged in')
+  console.log('🎯 DEBUG: AppRoutes render - loading:', loading, 'user:', user ? 'LOGGED IN' : 'NOT LOGGED IN')
 
+  // Force show login screen if loading for too long or no user
   if (loading) {
-    console.log('Showing loading spinner')
-    return <LoadingSpinner />
+    console.log('⏳ DEBUG: Still loading, showing spinner')
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold mb-2">Wizone Field Engineer</h2>
+          <p className="text-blue-100">Loading...</p>
+          <p className="text-xs text-blue-200 mt-4">Debug: loading={loading.toString()}</p>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {
-    console.log('No user, showing login screen')
+    console.log('👤 DEBUG: No user found, showing login screen')
     return (
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
@@ -45,7 +55,7 @@ function AppRoutes() {
     )
   }
 
-  console.log('User authenticated, showing main app')
+  console.log('✅ DEBUG: User authenticated, showing main app')
 
   return (
     <Layout>
