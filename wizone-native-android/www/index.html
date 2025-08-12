@@ -329,7 +329,7 @@
       // Function to add dashboard styles
       function addDashboardStyles() {
         const style = document.createElement('style');
-        style.textContent = \`
+        style.textContent = `
           .mobile-dashboard {
             min-height: 100vh;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -519,7 +519,7 @@
             border-radius: 15px;
             border: 2px dashed rgba(255,255,255,0.3);
           }
-        \`;
+        `;
         document.head.appendChild(style);
       }
       
@@ -572,26 +572,26 @@
           return;
         }
         
-        const tasksHTML = tasks.map(task => \`
+        const tasksHTML = tasks.map(task => `
           <div class="task-card">
             <div class="task-header">
-              <div class="task-id">\${task.taskId || task.id || 'T-001'}</div>
-              <div class="task-status status-\${(task.status || 'pending').toLowerCase().replace(' ', '-')}">
-                \${task.status || 'Pending'}
+              <div class="task-id">${task.taskId || task.id || 'T-001'}</div>
+              <div class="task-status status-${(task.status || 'pending').toLowerCase().replace(' ', '-')}">
+                ${task.status || 'Pending'}
               </div>
             </div>
             <div class="task-customer">
-              👤 Customer: \${task.customerName || task.customer || 'Unknown'}
+              👤 Customer: ${task.customerName || task.customer || 'Unknown'}
             </div>
             <div class="task-description">
-              \${task.description || task.taskType || 'No description available'}
+              ${task.description || task.taskType || 'No description available'}
             </div>
             <div class="task-meta">
-              <span>📅 \${task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'Today'}</span>
-              <span>⏰ \${task.priority || 'Normal'}</span>
+              <span>📅 ${task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'Today'}</span>
+              <span>⏰ ${task.priority || 'Normal'}</span>
             </div>
           </div>
-        \`).join('');
+        `).join('');
         
         tasksList.innerHTML = tasksHTML;
       }
