@@ -1,24 +1,37 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/DirectAuthContext'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { apiService } from '../services/apiService'
 
 export function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  
-  const { login, error, clearError } = useAuth()
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearError()
+    if (!username || !password) return
+    
+    setError(null)
     setIsLoading(true)
 
+    console.log('🔐 SIMPLE TEST: Login attempt for:', username, 'to server:', 'http://194.238.19.19:5000')
+
     try {
-      await login(username, password)
+      const response = await apiService.login({ username, password })
+      console.log('✅ SIMPLE TEST: Login successful!', response)
+      alert('Login successful! Check console for details.')
     } catch (err: any) {
-      // Error is handled by the context
+      console.error('❌ SIMPLE TEST: Login failed:', err)
+      
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        setError('Connection Error: Cannot reach server at http://194.238.19.19:5000')
+      } else if (err.message?.includes('401')) {
+        setError('Invalid username or password')
+      } else {
+        setError('Login failed: ' + (err.message || 'Unknown error'))
+      }
     } finally {
       setIsLoading(false)
     }
