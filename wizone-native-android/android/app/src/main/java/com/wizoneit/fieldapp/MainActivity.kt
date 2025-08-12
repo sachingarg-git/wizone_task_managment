@@ -78,10 +78,6 @@ class MainActivity : AppCompatActivity() {
                 cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                 mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
-                
-                // Enable local storage and session storage
-                setAppCacheEnabled(true)
-                setAppCachePath(applicationContext.cacheDir.absolutePath)
             }
             
             // Load the web portal
@@ -112,7 +108,6 @@ class MainActivity : AppCompatActivity() {
             cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
-            setAppCacheEnabled(true)
         }
         
         webView.loadUrl("http://194.238.19.19:5000")
