@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Wizone Field Engineer',
   webDir: 'www',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    hostname: 'localhost'
   },
   android: {
     allowMixedContent: true,

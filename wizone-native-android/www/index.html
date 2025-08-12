@@ -6,60 +6,63 @@
     <title>Wizone Field Engineer</title>
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0ea5e9" />
     <style>
       html, body {
         margin: 0;
         padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        background-color: #f8fafc;
-        overscroll-behavior-y: contain;
+        font-family: system-ui, sans-serif;
+        background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
+        height: 100vh;
+        color: white;
       }
       
-      /* Prevent zoom on inputs */
-      input, select, textarea {
-        font-size: 16px;
-      }
-      
-      /* Loading screen */
-      .loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
+      #root {
         width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        height: 100vh;
+      }
+      
+      /* Simple fallback if React doesn't load */
+      .fallback-loading {
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: white;
-        z-index: 9999;
+        height: 100vh;
+        flex-direction: column;
       }
       
-      .loading-spinner {
-        width: 50px;
-        height: 50px;
-        border: 3px solid rgba(255,255,255,0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 1s ease-in-out infinite;
+      .fallback-loading h1 {
+        margin: 0 0 20px 0;
+        font-size: 24px;
       }
       
-      @keyframes spin {
-        to { transform: rotate(360deg); }
+      .fallback-loading p {
+        margin: 0;
+        opacity: 0.8;
       }
     </style>
-    <script type="module" crossorigin src="/assets/main-D2qzvlJr.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/main-CqrZelBm.css">
+    <script type="module" crossorigin src="/assets/main-D-ooKzIo.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-Dw_M-x5u.css">
   </head>
   <body>
     <div id="root">
-      <div class="loading-screen">
-        <div class="loading-spinner"></div>
-        <h2 style="margin-top: 20px; font-weight: 300;">Wizone Field Engineer</h2>
-        <p style="margin-top: 10px; opacity: 0.8;">Loading...</p>
+      <div class="fallback-loading">
+        <h1>Wizone Field Engineer</h1>
+        <p>Loading React App...</p>
+        <script>
+          // Debug script that runs immediately
+          console.log('🔥 HTML loaded, React should mount soon');
+          console.log('🔥 Current URL:', window.location.href);
+          console.log('🔥 User Agent:', navigator.userAgent);
+          
+          // Show alert after 3 seconds if React doesn't mount
+          setTimeout(function() {
+            console.log('🚨 React has not mounted after 3 seconds');
+            var rootElement = document.getElementById('root');
+            if (rootElement && rootElement.innerHTML.includes('Loading React App')) {
+              alert('React did not load. Check console for errors.');
+            }
+          }, 3000);
+        </script>
       </div>
     </div>
   </body>
