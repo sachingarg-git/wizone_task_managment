@@ -80,8 +80,8 @@ class MainActivity : AppCompatActivity() {
                 userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
             }
             
-            // Load the web portal
-            loadUrl("http://194.238.19.19:5000")
+            // Load the local Capacitor app
+            loadUrl("file:///android_asset/public/index.html")
         }
     }
     
@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
         }
         
-        webView.loadUrl("http://194.238.19.19:5000")
+        webView.loadUrl("file:///android_asset/public/index.html")
         setContentView(webView)
     }
     
