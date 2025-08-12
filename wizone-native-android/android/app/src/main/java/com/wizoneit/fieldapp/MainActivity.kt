@@ -51,7 +51,8 @@ class MainActivity : AppCompatActivity() {
                 override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
                     super.onReceivedError(view, errorCode, description, failingUrl)
                     binding.progressBar.visibility = android.view.View.GONE
-                    loadUrl("data:text/html,<html><body><h2>Connection Error</h2><p>Unable to connect to Wizone server. Please check your internet connection.</p></body></html>")
+                    // Don't show hardcoded error - let React app handle errors
+                    android.util.Log.d("WebView", "Error loading: $description for URL: $failingUrl")
                 }
                 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -80,8 +81,8 @@ class MainActivity : AppCompatActivity() {
                 userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
             }
             
-            // Load the local Capacitor app - use proper Capacitor setup
-            loadUrl("https://localhost/index.html")
+            // Load the local Capacitor app - use file:// scheme for local assets
+            loadUrl("file:///android_asset/public/index.html")
         }
     }
     
@@ -110,7 +111,7 @@ class MainActivity : AppCompatActivity() {
             userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
         }
         
-        webView.loadUrl("https://localhost/index.html")
+        webView.loadUrl("file:///android_asset/public/index.html")
         setContentView(webView)
     }
     
