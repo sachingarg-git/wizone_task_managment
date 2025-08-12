@@ -28,15 +28,33 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupWebView() {
         binding.webView.apply {
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    // Page loaded successfully
+                }
+                
+                override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                    // Try fallback URL or show error message
+                    loadUrl("data:text/html,<html><body><h2>Loading Wizone Portal...</h2><p>Connecting to server...</p></body></html>")
+                }
+            }
+            
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 allowContentAccess = true
                 allowFileAccess = true
+                allowUniversalAccessFromFileURLs = true
+                allowFileAccessFromFileURLs = true
                 setSupportZoom(true)
                 builtInZoomControls = true
                 displayZoomControls = false
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
             }
             
             // Load the web portal
@@ -46,9 +64,22 @@ class MainActivity : AppCompatActivity() {
     
     private fun createSimpleWebView() {
         val webView = WebView(this)
-        webView.webViewClient = WebViewClient()
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // Page loaded successfully
+            }
+        }
+        
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowContentAccess = true
+            allowFileAccess = true
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 WizoneFieldApp/1.0"
+        }
+        
         webView.loadUrl("http://194.238.19.19:5000")
         setContentView(webView)
     }
