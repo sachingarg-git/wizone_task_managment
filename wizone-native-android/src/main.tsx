@@ -1,7 +1,5 @@
-import React from 'react'
-import { createRoot } from 'react-dom/client'
-
-console.log('🔥 MOBILE WEBVIEW: Starting mobile app...')
+// DISABLED: Using pure HTML instead of React for WebView compatibility
+console.log('🚫 React disabled - using pure HTML mobile app')
 
 // Simple App component inline to avoid import issues
 function MobileApp() {

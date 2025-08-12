@@ -7,62 +7,258 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
     <style>
-      html, body {
+      * {
         margin: 0;
         padding: 0;
-        font-family: system-ui, sans-serif;
-        background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
-        height: 100vh;
-        color: white;
+        box-sizing: border-box;
       }
       
-      #root {
-        width: 100%;
+      html, body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         height: 100vh;
+        overflow: hidden;
       }
       
-      /* Simple fallback if React doesn't load */
-      .fallback-loading {
+      .container {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 100vh;
-        flex-direction: column;
+        min-height: 100vh;
+        padding: 20px;
       }
       
-      .fallback-loading h1 {
-        margin: 0 0 20px 0;
-        font-size: 24px;
+      .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px 30px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
       }
       
-      .fallback-loading p {
-        margin: 0;
-        opacity: 0.8;
+      .logo {
+        font-size: 32px;
+        font-weight: bold;
+        color: #4a5568;
+        margin-bottom: 10px;
+      }
+      
+      .subtitle {
+        color: #718096;
+        margin-bottom: 30px;
+        font-size: 16px;
+      }
+      
+      .success-badge {
+        background: linear-gradient(45deg, #48bb78, #38a169);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 25px;
+        margin-bottom: 30px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+      }
+      
+      .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      
+      .form-label {
+        display: block;
+        color: #4a5568;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      
+      .form-input {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: white;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+      
+      .login-btn {
+        width: 100%;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 18px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+      }
+      
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+      
+      .status-message {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: 500;
+      }
+      
+      .status-error {
+        background: #fed7d7;
+        color: #c53030;
+        border: 1px solid #feb2b2;
+      }
+      
+      .status-success {
+        background: #c6f6d5;
+        color: #2f855a;
+        border: 1px solid #9ae6b4;
+      }
+      
+      .status-loading {
+        background: #bee3f8;
+        color: #2b6cb0;
+        border: 1px solid #90cdf4;
+      }
+      
+      .version-info {
+        margin-top: 30px;
+        padding: 15px;
+        background: #f7fafc;
+        border-radius: 10px;
+        color: #4a5568;
+        font-size: 14px;
       }
     </style>
   </head>
   <body>
-    <div id="root">
-      <div class="fallback-loading">
-        <h1>Wizone Field Engineer</h1>
-        <p>Loading React App...</p>
-        <script>
-          // Debug script that runs immediately
-          console.log('🔥 HTML loaded, React should mount soon');
-          console.log('🔥 Current URL:', window.location.href);
-          console.log('🔥 User Agent:', navigator.userAgent);
+    <div class="container">
+      <div class="login-card">
+        <div class="logo">🚀 Wizone</div>
+        <div class="subtitle">Field Engineer Mobile</div>
+        
+        <div class="success-badge">
+          ✅ PURE HTML Mobile App (NO REACT!)
+        </div>
+        
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="username">Username</label>
+            <input type="text" id="username" class="form-input" placeholder="Enter username" required>
+          </div>
           
-          // Show alert after 3 seconds if React doesn't mount
-          setTimeout(function() {
-            console.log('🚨 React has not mounted after 3 seconds');
-            var rootElement = document.getElementById('root');
-            if (rootElement && rootElement.innerHTML.includes('Loading React App')) {
-              alert('React did not load. Check console for errors.');
-            }
-          }, 3000);
-        </script>
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter password" required>
+          </div>
+          
+          <button type="submit" class="login-btn" id="loginBtn">
+            Login to Wizone
+          </button>
+        </form>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <div class="version-info">
+          <strong>App Type:</strong> ✅ Pure HTML (React-Free)<br>
+          <strong>Server:</strong> http://194.238.19.19:5000<br>
+          <strong>Updated:</strong> <span id="buildTime"></span>
+        </div>
       </div>
     </div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      console.log('🚀 PURE HTML MOBILE APP: Started successfully - NO REACT!');
+      
+      // Set build time
+      document.getElementById('buildTime').textContent = new Date().toLocaleString();
+      
+      // Login form handler
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const statusDiv = document.getElementById('statusMessage');
+        const loginBtn = document.getElementById('loginBtn');
+        
+        // Show loading state
+        loginBtn.textContent = 'Logging in...';
+        loginBtn.disabled = true;
+        statusDiv.className = 'status-message status-loading';
+        statusDiv.textContent = 'Connecting to server...';
+        statusDiv.style.display = 'block';
+        
+        try {
+          console.log('🔐 Attempting login with:', username);
+          
+          const response = await fetch('http://194.238.19.19:5000/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
+          });
+          
+          const result = await response.json();
+          console.log('📡 Server response:', result);
+          
+          if (response.ok) {
+            statusDiv.className = 'status-message status-success';
+            statusDiv.textContent = '✅ Login successful! Welcome ' + username;
+            loginBtn.textContent = '✅ Logged In';
+            
+            // Show success for 2 seconds then redirect
+            setTimeout(() => {
+              alert('Login successful! Redirecting to dashboard...');
+              window.location.href = 'http://194.238.19.19:5000/dashboard';
+            }, 2000);
+            
+          } else {
+            statusDiv.className = 'status-message status-error';
+            statusDiv.textContent = '❌ ' + (result.message || 'Login failed');
+            loginBtn.textContent = 'Try Again';
+            loginBtn.disabled = false;
+          }
+          
+        } catch (error) {
+          console.error('🚨 Login error:', error);
+          statusDiv.className = 'status-message status-error';
+          statusDiv.textContent = '❌ Network error. Check your connection.';
+          loginBtn.textContent = 'Try Again';
+          loginBtn.disabled = false;
+        }
+      });
+      
+      // Test server connection on load
+      setTimeout(async () => {
+        try {
+          const response = await fetch('http://194.238.19.19:5000/api/health', {
+            method: 'GET',
+            mode: 'cors'
+          });
+          console.log('🏥 Server health check:', response.status === 200 ? 'OK' : 'Failed');
+        } catch (error) {
+          console.log('🏥 Server health check failed:', error.message);
+        }
+      }, 1000);
+      
+      console.log('✅ PURE HTML MOBILE APP: All scripts loaded successfully - 100% React-free!');
+    </script>
   </body>
 </html>
