@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { apiService } from '../services/apiService'
 
 interface User {
@@ -28,6 +28,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   console.log('🚀 DIRECT AUTH: Context created with loading=false, user=null')
+
+  // Check for existing user session on app start
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log('🔍 AUTH: Checking existing authentication...')
+        const user = await apiService.getCurrentUser()
+        console.log('✅ AUTH: User found:', user)
+        setUser(user)
+        setError(null)
+      } catch (err: any) {
+        console.log('❌ AUTH: No existing session:', err.message)
+        // Only show connection error for actual network issues, not 401 responses
+        if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+          setError('Unable to connect to Wizone server. Please check your internet connection.')
+        } else if (err.message?.includes('401')) {
+          // 401 means server responded but user not logged in - this is normal
+          console.log('📱 AUTH: User not logged in (401) - showing login screen')
+          setError(null)
+        } else {
+          setError(null) // Don't show error for normal "not logged in" state
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
 
   const login = async (username: string, password: string) => {
     console.log('🔐 DIRECT AUTH: Login attempt for:', username)
