@@ -47,14 +47,14 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "your-session-secret-here",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Enable for mobile WebView
     cookie: {
       httpOnly: false, // Allow JS access for mobile WebView
-      secure: false, // Set to true in production with HTTPS
+      secure: false, // Must be false for HTTP
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: 'none', // Required for cross-origin mobile apps
+      sameSite: 'lax', // Changed from 'none' to 'lax' for HTTP compatibility
     },
-    name: 'wizone.session', // Custom session name
+    name: 'connect.sid', // Standard session name for better compatibility
   };
 
   app.set("trust proxy", 1);
@@ -62,16 +62,19 @@ export function setupAuth(app: Express) {
   // Add CORS headers for mobile APK
   app.use((req, res, next) => {
     const userAgent = req.get('User-Agent') || '';
-    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') || 
+    const isMobileApp = userAgent.includes('WizoneFieldApp') || 
+                       userAgent.includes('WizoneFieldEngineerApp') || 
                        req.get('X-Mobile-App') === 'true' ||
-                       req.get('X-Requested-With') === 'mobile';
+                       req.get('X-Requested-With') === 'mobile' ||
+                       req.path.includes('/mobile/');
     
     if (isMobileApp) {
-      console.log('📱 Mobile APK request detected:', req.method, req.path);
-      res.header('Access-Control-Allow-Origin', '*');
+      console.log('📱 Mobile APK request:', req.method, req.path, '- UA:', userAgent.substring(0, 50) + '...');
+      res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Mobile-App');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Mobile-App, Cookie');
+      res.header('Access-Control-Expose-Headers', 'Set-Cookie');
     }
     
     if (req.method === 'OPTIONS') {
@@ -150,7 +153,11 @@ export function setupAuth(app: Express) {
     // Check if this is a mobile request
     const origin = req.get('Origin');
     const userAgent = req.get('User-Agent') || '';
-    const isMobileAPK = !origin || origin.includes('file://') || userAgent.includes('Mobile') || userAgent.includes('WebView');
+    const isMobileAPK = !origin || origin.includes('file://') || 
+                      userAgent.includes('WizoneFieldApp') || 
+                      userAgent.includes('Mobile') || 
+                      userAgent.includes('WebView') ||
+                      userAgent.includes('Android');
     
     if (isMobileAPK) {
       console.log('📱 MOBILE REQUEST DETECTED - Using direct storage authentication');

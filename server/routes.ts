@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Session destroy error:', err);
           return res.status(500).json({ message: 'Logout failed' });
         }
-        res.clearCookie('wizone.session');
+        res.clearCookie('connect.sid');
         res.json({ message: 'Logged out successfully' });
       });
     });
@@ -417,7 +417,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const userAgent = req.get('User-Agent') || '';
-    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') || 
+    const isMobileApp = userAgent.includes('WizoneFieldApp') ||
+                       userAgent.includes('WizoneFieldEngineerApp') || 
                        req.get('X-Mobile-App') === 'true' ||
                        req.get('X-Requested-With') === 'mobile';
     
