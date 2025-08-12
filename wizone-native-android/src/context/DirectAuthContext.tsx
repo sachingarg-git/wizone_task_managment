@@ -40,16 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
       } catch (err: any) {
         console.log('❌ AUTH: No existing session:', err.message)
-        // Only show connection error for actual network issues, not 401 responses
-        if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-          setError('Unable to connect to Wizone server. Please check your internet connection.')
-        } else if (err.message?.includes('401')) {
-          // 401 means server responded but user not logged in - this is normal
-          console.log('📱 AUTH: User not logged in (401) - showing login screen')
-          setError(null)
-        } else {
-          setError(null) // Don't show error for normal "not logged in" state
-        }
+        // Server is responding with 401 - this is normal for not logged in users
+        console.log('📱 AUTH: User not logged in - showing login screen')
+        setError(null) // Never show error for authentication check
       } finally {
         setLoading(false)
       }
