@@ -11,8 +11,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
-    <!-- Camera permissions -->
-    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Camera permissions removed - using file picker instead -->
     
     <!-- Storage permissions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />

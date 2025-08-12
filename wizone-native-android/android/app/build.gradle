@@ -41,12 +41,7 @@ android {
         dataBinding true
     }
     
-    packagingOptions {
-        // 16 KB page size alignment - remove problematic libraries
-        excludes += [
-            '**/libimage_processing_util_jni.so'
-        ]
-    }
+    // No packaging exclusions needed since we removed camera libraries
 }
 
 dependencies {

@@ -3,66 +3,45 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
+    android:background="@color/primary_color">
 
-    <!-- Camera Preview -->
-    <androidx.camera.view.PreviewView
+    <!-- Hidden Preview View (for compatibility) -->
+    <View
         android:id="@+id/previewView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <!-- Main Content -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Top Controls -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <Button
-            android:id="@+id/btnClose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="✕"
-            android:textSize="18sp"
-            android:background="@drawable/bg_camera_button"
-            android:textColor="@color/white"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_weight="0" />
-
-        <View 
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <Button
-            android:id="@+id/btnFlash"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Flash: OFF"
-            android:textSize="12sp"
-            android:background="@drawable/bg_camera_button"
-            android:textColor="@color/white"
-            android:padding="8dp"
-            android:layout_weight="0" />
-
-    </LinearLayout>
-
-    <!-- Bottom Controls -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="32dp"
+        android:orientation="vertical"
         android:gravity="center"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:padding="32dp">
 
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select Image"
+            android:textSize="24sp"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Description -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Choose an image from your gallery"
+            android:textSize="16sp"
+            android:textColor="@color/white"
+            android:alpha="0.8"
+            android:layout_marginBottom="32dp"
+            android:gravity="center" />
+
+        <!-- File Pick Button -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btnCapture"
             android:layout_width="wrap_content"
@@ -70,8 +49,21 @@
             android:src="@drawable/ic_camera"
             app:fabSize="normal"
             app:backgroundTint="@color/white"
-            app:tint="@color/black"
-            android:contentDescription="Capture Photo" />
+            app:tint="@color/primary_color"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="Select Image" />
+
+        <!-- Close Button -->
+        <Button
+            android:id="@+id/btnClose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/white"
+            android:background="@android:color/transparent"
+            android:padding="12dp" />
+
+    </LinearLayout>
 
     </LinearLayout>
 
