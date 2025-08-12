@@ -1,34 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import './index.css'
 
-// Capacitor imports
-import { Capacitor } from '@capacitor/core'
-
-console.log('🔥 main.tsx loaded - starting React app')
-console.log('🔥 Running on platform:', Capacitor.getPlatform())
+console.log('🚀 ULTRA-SIMPLE: Starting ultra-simple Wizone mobile app')
 
 try {
   const rootElement = document.getElementById('root')
-  console.log('🔥 Root element:', rootElement)
   
   if (rootElement) {
-    console.log('🔥 Creating React root...')
+    console.log('✅ ULTRA-SIMPLE: Root element found, creating React app...')
     const root = ReactDOM.createRoot(rootElement)
     
-    console.log('🔥 Rendering App component...')
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    )
-    console.log('🔥 React app rendered successfully!')
+    root.render(<App />)
+    console.log('✅ ULTRA-SIMPLE: React app started successfully!')
   } else {
-    console.error('🚨 Root element not found!')
-    alert('Root element not found - cannot start React app')
+    console.error('❌ ULTRA-SIMPLE: Root element not found!')
   }
 } catch (error) {
-  console.error('🚨 Error starting React app:', error)
-  alert('Error starting React: ' + error)
+  console.error('❌ ULTRA-SIMPLE: Error starting app:', error)
 }
