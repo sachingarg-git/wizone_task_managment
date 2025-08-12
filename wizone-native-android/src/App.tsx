@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 
-// Ultra-simple mobile app - just basic login form
+// FRESH START - Complete new mobile app
 function App() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  console.log('🚀 ULTRA-SIMPLE: App starting')
+  console.log('🆕 FRESH START: New mobile app starting')
+  console.log('🆕 Current time:', new Date().toISOString())
+  console.log('🆕 This should show new interface!')
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -71,8 +73,20 @@ function App() {
           marginBottom: '30px',
           fontSize: '24px'
         }}>
-          Wizone Field Engineer
+          🆕 NEW Wizone Mobile App
         </h1>
+        
+        <div style={{
+          background: '#e3f2fd',
+          padding: '10px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          textAlign: 'center',
+          color: '#1976d2',
+          fontSize: '14px'
+        }}>
+          ✅ Fresh Build: {new Date().toLocaleTimeString()}
+        </div>
 
         <div style={{ marginBottom: '20px' }}>
           <input
