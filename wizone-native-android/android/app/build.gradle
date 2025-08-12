@@ -42,34 +42,10 @@ android {
     }
     
     packagingOptions {
-        // 16 KB page size alignment for Android 15+
-        jniLibs {
-            useLegacyPackaging = false
-        }
-        // Remove ALL problematic libraries causing 16KB alignment issues
+        // 16 KB page size alignment - remove problematic libraries
         excludes += [
-            'lib/x86_64/libimage_processing_util_jni.so',
-            'lib/arm64-v8a/libimage_processing_util_jni.so',
-            'lib/armeabi-v7a/libimage_processing_util_jni.so',
-            'lib/x86/libimage_processing_util_jni.so',
             '**/libimage_processing_util_jni.so'
         ]
-        
-        // Ensure proper alignment for all remaining native libraries
-        doNotStrip "**/*.so"
-    }
-    
-    // Additional 16 KB alignment configuration
-    bundle {
-        language {
-            enableSplit = false
-        }
-        density {
-            enableSplit = false  
-        }
-        abi {
-            enableSplit = false
-        }
     }
 }
 
