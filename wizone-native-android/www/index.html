@@ -223,11 +223,14 @@
             statusDiv.textContent = '✅ Login successful! Welcome ' + username;
             loginBtn.textContent = '✅ Logged In';
             
-            // Show success for 2 seconds then redirect
+            // Store user data and show mobile dashboard
+            localStorage.setItem('wizoneUser', JSON.stringify(result.user || {username}));
+            localStorage.setItem('wizoneToken', result.token || 'authenticated');
+            
+            // Show mobile dashboard after 1 second
             setTimeout(() => {
-              alert('Login successful! Redirecting to dashboard...');
-              window.location.href = 'http://194.238.19.19:5000/dashboard';
-            }, 2000);
+              showMobileDashboard(username);
+            }, 1000);
             
           } else {
             statusDiv.className = 'status-message status-error';
@@ -257,6 +260,359 @@
           console.log('🏥 Server health check failed:', error.message);
         }
       }, 1000);
+      
+      // Function to show mobile dashboard
+      function showMobileDashboard(username) {
+        document.body.innerHTML = `
+          <div class="mobile-dashboard">
+            <div class="dashboard-header">
+              <div class="header-content">
+                <div class="user-info">
+                  <div class="user-avatar">👨‍🔧</div>
+                  <div class="user-details">
+                    <h3>Welcome, ${username}</h3>
+                    <p>Field Engineer</p>
+                  </div>
+                </div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+              </div>
+            </div>
+            
+            <div class="dashboard-content">
+              <div class="stats-section">
+                <h4>Today's Overview</h4>
+                <div class="stats-grid">
+                  <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-info">
+                      <span class="stat-number" id="totalTasks">-</span>
+                      <span class="stat-label">Total Tasks</span>
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                      <span class="stat-number" id="completedTasks">-</span>
+                      <span class="stat-label">Completed</span>
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-info">
+                      <span class="stat-number" id="pendingTasks">-</span>
+                      <span class="stat-label">Pending</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="tasks-section">
+                <div class="section-header">
+                  <h4>My Assigned Tasks</h4>
+                  <button class="refresh-btn" onclick="loadTasks()">🔄</button>
+                </div>
+                <div id="tasksList" class="tasks-list">
+                  <div class="loading-tasks">Loading your tasks...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add dashboard styles
+        addDashboardStyles();
+        
+        // Load tasks for this engineer
+        loadTasks();
+      }
+      
+      // Function to add dashboard styles
+      function addDashboardStyles() {
+        const style = document.createElement('style');
+        style.textContent = \`
+          .mobile-dashboard {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+          }
+          
+          .dashboard-header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+          }
+          
+          .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+          
+          .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+          }
+          
+          .user-details h3 {
+            margin: 0;
+            color: white;
+            font-size: 18px;
+          }
+          
+          .user-details p {
+            margin: 0;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+          }
+          
+          .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+          }
+          
+          .dashboard-content {
+            padding: 20px;
+          }
+          
+          .stats-section h4, .section-header h4 {
+            color: white;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+          }
+          
+          .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+          }
+          
+          .stat-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+          }
+          
+          .stat-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+          }
+          
+          .stat-number {
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+          }
+          
+          .stat-label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+          }
+          
+          .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+          }
+          
+          .refresh-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+          }
+          
+          .tasks-list {
+            max-height: 400px;
+            overflow-y: auto;
+          }
+          
+          .task-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+          }
+          
+          .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+          }
+          
+          .task-id {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+          }
+          
+          .task-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          
+          .status-pending { background: #fef3cd; color: #856404; }
+          .status-completed { background: #d4edda; color: #155724; }
+          .status-in-progress { background: #cce5ff; color: #004085; }
+          
+          .task-customer {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+          }
+          
+          .task-description {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          
+          .task-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+          }
+          
+          .loading-tasks {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            font-size: 16px;
+          }
+          
+          .no-tasks {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            border: 2px dashed rgba(255,255,255,0.3);
+          }
+        \`;
+        document.head.appendChild(style);
+      }
+      
+      // Function to load tasks for the engineer
+      async function loadTasks() {
+        const user = JSON.parse(localStorage.getItem('wizoneUser') || '{}');
+        const tasksList = document.getElementById('tasksList');
+        
+        try {
+          tasksList.innerHTML = '<div class="loading-tasks">Loading your tasks...</div>';
+          
+          const response = await fetch('http://194.238.19.19:5000/api/tasks', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const tasks = await response.json();
+            console.log('📋 Tasks loaded:', tasks.length);
+            
+            // Filter tasks for this engineer (if API doesn't filter automatically)
+            const myTasks = tasks.filter(task => 
+              task.assignedTo === user.username || 
+              task.engineerName === user.username ||
+              task.engineer === user.username
+            );
+            
+            displayTasks(myTasks);
+            updateStats(myTasks);
+            
+          } else {
+            tasksList.innerHTML = '<div class="no-tasks">❌ Could not load tasks. Check your connection.</div>';
+          }
+          
+        } catch (error) {
+          console.error('❌ Error loading tasks:', error);
+          tasksList.innerHTML = '<div class="no-tasks">❌ Network error. Please refresh.</div>';
+        }
+      }
+      
+      // Function to display tasks
+      function displayTasks(tasks) {
+        const tasksList = document.getElementById('tasksList');
+        
+        if (tasks.length === 0) {
+          tasksList.innerHTML = '<div class="no-tasks">🎉 No tasks assigned right now!</div>';
+          return;
+        }
+        
+        const tasksHTML = tasks.map(task => \`
+          <div class="task-card">
+            <div class="task-header">
+              <div class="task-id">\${task.taskId || task.id || 'T-001'}</div>
+              <div class="task-status status-\${(task.status || 'pending').toLowerCase().replace(' ', '-')}">
+                \${task.status || 'Pending'}
+              </div>
+            </div>
+            <div class="task-customer">
+              👤 Customer: \${task.customerName || task.customer || 'Unknown'}
+            </div>
+            <div class="task-description">
+              \${task.description || task.taskType || 'No description available'}
+            </div>
+            <div class="task-meta">
+              <span>📅 \${task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'Today'}</span>
+              <span>⏰ \${task.priority || 'Normal'}</span>
+            </div>
+          </div>
+        \`).join('');
+        
+        tasksList.innerHTML = tasksHTML;
+      }
+      
+      // Function to update stats
+      function updateStats(tasks) {
+        const total = tasks.length;
+        const completed = tasks.filter(t => (t.status || '').toLowerCase() === 'completed').length;
+        const pending = total - completed;
+        
+        document.getElementById('totalTasks').textContent = total;
+        document.getElementById('completedTasks').textContent = completed;
+        document.getElementById('pendingTasks').textContent = pending;
+      }
+      
+      // Logout function
+      function logout() {
+        localStorage.removeItem('wizoneUser');
+        localStorage.removeItem('wizoneToken');
+        window.location.reload();
+      }
       
       console.log('✅ PURE HTML MOBILE APP: All scripts loaded successfully - 100% React-free!');
     </script>
