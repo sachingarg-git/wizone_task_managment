@@ -180,18 +180,23 @@
     <!-- Status Update Modal -->
     <div id="statusModal" class="modal">
       <div class="modal-content">
-        <h3>Update Task Status</h3>
-        <p>Task ID: <span id="modalTaskId"></span></p>
-        <p>Current Status: <span id="modalCurrentStatus"></span></p>
+        <h3>🔄 Update Task Status<br><small>कार्य स्थिति बदलें</small></h3>
+        <p><strong>Task ID:</strong> <span id="modalTaskId"></span></p>
+        <p><strong>Current Status:</strong> <span id="modalCurrentStatus"></span></p>
+        <hr style="margin: 15px 0; border: 1px solid #ddd;">
+        <p style="color: #666; font-size: 12px;">✅ Updates will be saved to task history with your username</p>
         
         <button class="status-option pending" onclick="changeTaskStatus('pending')">
-          ⏳ Pending
+          ⏳ Pending<br><small>कार्य प्रतीक्षारत</small>
         </button>
         <button class="status-option in-progress" onclick="changeTaskStatus('in_progress')">
-          🔄 In Progress
+          🔄 In Progress<br><small>कार्य प्रगति में</small>
         </button>
         <button class="status-option completed" onclick="changeTaskStatus('completed')">
-          ✅ Completed
+          ✅ Completed<br><small>कार्य पूर्ण</small>
+        </button>
+        <button class="status-option" onclick="changeTaskStatus('resolved')" style="background: linear-gradient(45deg, #9C27B0, #7B1FA2);">
+          🎯 Resolved<br><small>समस्या हल</small>
         </button>
         
         <button onclick="closeModal()" style="margin-top: 15px; background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px;">
@@ -757,7 +762,7 @@
             </div>
             <div class="task-actions">
               <button class="status-btn" onclick="event.stopPropagation(); updateTaskStatus(${task.id || index}, '${task.status || 'pending'}')">
-                🔄 Update Status
+                🔄 Update Status | स्थिति बदलें
               </button>
             </div>
           </div>
@@ -814,14 +819,16 @@
         try {
           console.log(`🔄 Updating task ${taskId} to status: ${newStatus}`);
           
-          const response = await fetch(`http://194.238.19.19:5000/api/tasks/${taskId}/status`, {
+          // Use correct server endpoint - PUT /api/tasks/:id (not /api/tasks/:id/status)
+          const response = await fetch(`http://194.238.19.19:5000/api/tasks/${taskId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
             credentials: 'include',
             body: JSON.stringify({
-              status: newStatus
+              status: newStatus,
+              notes: `Status changed to ${newStatus} via mobile app by field engineer`
             })
           });
           
@@ -835,15 +842,22 @@
             // Reload tasks to show updated status
             loadTasks();
             
-            // Show success message
-            alert(`✅ Task status updated to: ${newStatus}`);
+            // Show success message in Hindi/English
+            const statusMessages = {
+              'pending': 'Pending - कार्य प्रतीक्षारत',
+              'in_progress': 'In Progress - कार्य प्रगति में', 
+              'completed': 'Completed - कार्य पूर्ण'
+            };
+            
+            alert(`✅ Task status updated!\n${statusMessages[newStatus] || newStatus}\n\nUpdate history में record हो गया!`);
           } else {
-            console.error('❌ Failed to update task status:', response.status);
-            alert('❌ Failed to update task status. Please try again.');
+            const errorData = await response.json().catch(() => null);
+            console.error('❌ Failed to update task status:', response.status, errorData);
+            alert(`❌ Task update failed!\nStatus: ${response.status}\nकृपया दोबारा कोशिश करें।`);
           }
         } catch (error) {
           console.error('❌ Error updating task status:', error);
-          alert('❌ Network error. Please check your connection.');
+          alert('❌ Network error!\nइंटरनेट connection check करें।');
         }
       }
       
