@@ -1163,19 +1163,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tasks/my-tasks', isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
+      const username = (req.user as any)?.username;
+      
       if (!userId || userId === 'undefined' || userId === 'null' || userId === 'NaN' || userId === undefined) {
-        return res.status(400).json({ message: "Invalid user ID", debug: { userId, type: typeof userId } });
+        return res.status(400).json({ message: "Invalid user ID", debug: { userId, username, type: typeof userId } });
       }
       
       console.log("=== MY-TASKS API CALL ===");
       console.log("User ID:", userId);
+      console.log("Username:", username);
       console.log("User role:", (req.user as any)?.role);
+      console.log("Full user object:", req.user);
       
-      const userTasks = await storage.getAllTasks({ assignedTo: userId, fieldEngineerId: userId });
-      console.log("Tasks retrieved:", userTasks.length);
+      // Get ALL tasks first to debug
+      const allTasks = await storage.getAllTasks();
+      console.log(`Total tasks in database: ${allTasks.length}`);
+      
+      if (allTasks.length > 0) {
+        console.log("Sample task structure:", JSON.stringify(allTasks[0], null, 2));
+        console.log("Assignment fields in tasks:", allTasks.map(t => ({
+          id: t.id,
+          assignedTo: t.assignedTo,
+          fieldEngineerId: t.fieldEngineerId,
+          assignedUser: t.assignedUser,
+          engineer: t.engineer,
+          engineerName: t.engineerName
+        })));
+      }
+      
+      // Filter tasks by multiple possible assignment fields
+      const userTasks = allTasks.filter(task => {
+        const matches = [
+          task.assignedTo === userId,
+          task.assignedTo === username,
+          task.fieldEngineerId === userId,
+          task.fieldEngineerId === username,
+          task.assignedUser === userId,
+          task.assignedUser === username,
+          task.engineer === userId,
+          task.engineer === username,
+          task.engineerName === username
+        ];
+        
+        const isMatch = matches.some(match => match);
+        if (isMatch) {
+          console.log(`✅ Task ${task.id} matched for user ${username}:`, {
+            assignedTo: task.assignedTo,
+            fieldEngineerId: task.fieldEngineerId,
+            assignedUser: task.assignedUser,
+            engineer: task.engineer,
+            engineerName: task.engineerName
+          });
+        }
+        return isMatch;
+      });
+      
+      console.log(`Tasks filtered for user ${username}: ${userTasks.length} out of ${allTasks.length}`);
       
       if (userTasks.length > 0) {
-        console.log("First task:", JSON.stringify(userTasks[0], null, 2));
+        console.log("First filtered task:", JSON.stringify(userTasks[0], null, 2));
+      } else {
+        console.log("❌ No tasks found for this user. Check task assignments in database.");
       }
       console.log("=== MY-TASKS API END ===");
       

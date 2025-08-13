@@ -664,7 +664,8 @@
           tasksList.innerHTML = '<div class="loading-tasks">Loading your tasks...</div>';
           
           // Use the specific my-tasks endpoint that filters server-side
-          console.log(`🔍 Loading tasks for user: ${user.username}`);
+          console.log(`🔍 Loading tasks for user: ${user.username}, ID: ${user.id}`);
+          console.log(`🔍 Full user object:`, user);
           
           const response = await fetch('http://194.238.19.19:5000/api/tasks/my-tasks', {
             method: 'GET',
@@ -678,6 +679,16 @@
             const tasks = await response.json();
             console.log('📋 My tasks from server:', tasks);
             console.log(`📊 Found ${tasks.length} tasks for ${user.username}`);
+            
+            // Debug: Check if tasks are actually filtered
+            if (tasks.length > 0) {
+              console.log('🔍 First task assignment details:', {
+                assignedTo: tasks[0].assignedTo,
+                fieldEngineerId: tasks[0].fieldEngineerId,
+                userId: user.id,
+                username: user.username
+              });
+            }
             
             // No need for client-side filtering as server already filters by user ID
             displayTasks(tasks);
@@ -761,7 +772,7 @@
               <span>⏰ ${task.priority || 'Normal'}</span>
             </div>
             <div class="task-actions">
-              <button class="status-btn" onclick="event.stopPropagation(); updateTaskStatus(${task.id || index}, '${task.status || 'pending'}')">
+              <button class="status-btn" onclick="event.stopPropagation(); console.log('Button clicked for task:', ${task.id || index}); updateTaskStatus(${task.id || index}, '${task.status || 'pending'}')">
                 🔄 Update Status | स्थिति बदलें
               </button>
             </div>
@@ -796,19 +807,38 @@
       
       // Function to update task status
       function updateTaskStatus(taskId, currentStatus) {
-        console.log('Updating task status for:', taskId, 'current:', currentStatus);
+        console.log('🔄 updateTaskStatus called with:', {taskId, currentStatus});
         
-        // Show status update modal
-        const modal = document.getElementById('statusModal');
-        const modalTaskId = document.getElementById('modalTaskId');
-        const modalCurrentStatus = document.getElementById('modalCurrentStatus');
-        
-        modalTaskId.textContent = taskId;
-        modalCurrentStatus.textContent = currentStatus;
-        modal.style.display = 'block';
-        
-        // Store current task ID for update
-        window.currentTaskId = taskId;
+        try {
+          // Show status update modal
+          const modal = document.getElementById('statusModal');
+          const modalTaskId = document.getElementById('modalTaskId');
+          const modalCurrentStatus = document.getElementById('modalCurrentStatus');
+          
+          if (!modal) {
+            console.error('❌ Modal element not found!');
+            alert('Modal error - please refresh app');
+            return;
+          }
+          
+          if (!modalTaskId || !modalCurrentStatus) {
+            console.error('❌ Modal content elements not found!');
+            alert('Modal content error - please refresh app');
+            return;
+          }
+          
+          modalTaskId.textContent = taskId;
+          modalCurrentStatus.textContent = currentStatus;
+          modal.style.display = 'block';
+          
+          console.log('✅ Modal should be visible now');
+          
+          // Store current task ID for update
+          window.currentTaskId = taskId;
+        } catch (error) {
+          console.error('❌ Error in updateTaskStatus:', error);
+          alert('Error opening update modal: ' + error.message);
+        }
       }
       
       // Function to change task status
