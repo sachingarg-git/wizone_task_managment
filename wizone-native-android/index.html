@@ -549,51 +549,108 @@
         const user = JSON.parse(localStorage.getItem('wizoneUser') || '{}');
         const tasksList = document.getElementById('tasksList');
         
+        if (!user.username) {
+          console.error('❌ No user data found');
+          return;
+        }
+        
         try {
           tasksList.innerHTML = '<div class="loading-tasks">Loading your tasks...</div>';
           
-          const response = await fetch('http://194.238.19.19:5000/api/tasks', {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include'
+          // Try multiple API endpoints to get tasks
+          const endpoints = [
+            'http://194.238.19.19:5000/api/tasks',
+            'http://194.238.19.19:5000/api/user/tasks',
+            `http://194.238.19.19:5000/api/tasks/engineer/${user.username}`,
+            `http://194.238.19.19:5000/api/users/${user.username}/tasks`
+          ];
+          
+          let tasks = [];
+          let successfulEndpoint = null;
+          
+          for (const endpoint of endpoints) {
+            try {
+              console.log(`🔍 Trying endpoint: ${endpoint}`);
+              const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ Success with ${endpoint}:`, data);
+                tasks = Array.isArray(data) ? data : (data.tasks || []);
+                successfulEndpoint = endpoint;
+                break;
+              } else {
+                console.log(`❌ Failed ${endpoint}: ${response.status}`);
+              }
+            } catch (err) {
+              console.log(`❌ Error with ${endpoint}:`, err.message);
+            }
+          }
+          
+          if (tasks.length === 0 && successfulEndpoint) {
+            console.log('📋 No tasks returned from any endpoint');
+          }
+          
+          console.log('📋 All tasks from server:', tasks);
+          console.log('👤 Current user info:', user);
+          
+          // Enhanced filtering logic - check ALL possible field combinations
+          const myTasks = tasks.filter(task => {
+            // Get all field values and convert to strings for comparison
+            const assignedFields = [
+              task.assignedTo,
+              task.engineerName, 
+              task.engineer,
+              task['Assigned To'],
+              task.assigned_to,
+              task.assignedUser,
+              task.assignee,
+              task.fieldEngineer,
+              task.technician,
+              task.user,
+              task.responsiblePerson
+            ].filter(Boolean).map(field => String(field).toLowerCase());
+            
+            const username = user.username.toLowerCase();
+            const match = assignedFields.includes(username);
+            
+            if (match) {
+              console.log('✅ Task matched for user:', task);
+            }
+            
+            return match;
           });
           
-          if (response.ok) {
-            const tasks = await response.json();
-            console.log('📋 Tasks loaded:', tasks.length);
+          console.log(`📊 Found ${myTasks.length} tasks for ${user.username} from ${tasks.length} total tasks`);
+          
+          // If no tasks found, show debugging info
+          if (myTasks.length === 0 && tasks.length > 0) {
+            console.log('🔍 DEBUGGING - Sample task structure:', tasks[0]);
+            console.log('🔍 DEBUGGING - Looking for username:', user.username);
             
-            // Debug: Log all tasks and user info
-            console.log('📋 All tasks from server:', tasks);
-            console.log('👤 Current user info:', user);
-            
-            // Filter tasks for this engineer - check multiple possible field names
-            const myTasks = tasks.filter(task => {
-              const match = task.assignedTo === user.username || 
-                           task.engineerName === user.username ||
-                           task.engineer === user.username ||
-                           task['Assigned To'] === user.username ||
-                           task.assigned_to === user.username ||
-                           task.assignedUser === user.username ||
-                           (task.assignedTo && task.assignedTo.toLowerCase() === user.username.toLowerCase()) ||
-                           (task.engineerName && task.engineerName.toLowerCase() === user.username.toLowerCase());
-              
-              if (match) {
-                console.log('✅ Task matched for user:', task);
-              }
-              return match;
+            // Show available assignment fields in all tasks
+            const allFields = new Set();
+            tasks.forEach(task => {
+              Object.keys(task).forEach(key => {
+                if (key.toLowerCase().includes('assign') || 
+                    key.toLowerCase().includes('engineer') || 
+                    key.toLowerCase().includes('user') ||
+                    key.toLowerCase().includes('technician')) {
+                  allFields.add(`${key}: ${task[key]}`);
+                }
+              });
             });
-            
-            console.log(`📊 Found ${myTasks.length} tasks for ${user.username}`);
-            
-            displayTasks(myTasks);
-            updateStats(myTasks);
-            
-          } else {
-            console.error('❌ API response not OK:', response.status, response.statusText);
-            tasksList.innerHTML = '<div class="no-tasks">❌ Could not load tasks. Check your connection.</div>';
+            console.log('🔍 DEBUGGING - Available assignment fields:', Array.from(allFields));
           }
+          
+          displayTasks(myTasks);
+          updateStats(myTasks);
           
         } catch (error) {
           console.error('❌ Error loading tasks:', error);
