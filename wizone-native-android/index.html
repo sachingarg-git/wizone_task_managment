@@ -149,10 +149,10 @@
     <div class="container">
       <div class="login-card">
         <div class="logo">🚀 Wizone</div>
-        <div class="subtitle">Field Engineer Mobile</div>
+        <div class="subtitle" style="color: #667eea; font-weight: bold; font-size: 18px;">Wizone Field Engineer</div>
         
         <div class="success-badge">
-          ✅ PURE HTML Mobile App (NO REACT!)
+          🏢 WIZONE IT NETWORK INDIA PVT LIMITED
         </div>
         
         <form id="loginForm">
@@ -173,11 +173,7 @@
         
         <div id="statusMessage" class="status-message" style="display: none;"></div>
         
-        <div class="version-info">
-          <strong>App Type:</strong> ✅ Pure HTML (React-Free)<br>
-          <strong>Server:</strong> http://194.238.19.19:5000<br>
-          <strong>Updated:</strong> <span id="buildTime"></span>
-        </div>
+        <!-- Version info hidden for cleaner UI -->
       </div>
     </div>
 
@@ -324,6 +320,34 @@
         
         // Load tasks for this engineer
         loadTasks();
+        
+        // Setup real-time task updates
+        setupRealTimeUpdates();
+      }
+      
+      // Function to setup real-time updates
+      function setupRealTimeUpdates() {
+        // Auto-refresh tasks every 30 seconds
+        setInterval(() => {
+          console.log('🔄 Auto-refreshing tasks...');
+          loadTasks();
+        }, 30000);
+        
+        // Add visible indicator for real-time status
+        const realTimeIndicator = document.createElement('div');
+        realTimeIndicator.innerHTML = '🟢 Real-time updates active';
+        realTimeIndicator.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          background: rgba(0,0,0,0.7);
+          color: white;
+          padding: 5px 10px;
+          border-radius: 15px;
+          font-size: 12px;
+          z-index: 1000;
+        `;
+        document.body.appendChild(realTimeIndicator);
       }
       
       // Function to add dashboard styles
@@ -543,17 +567,34 @@
             const tasks = await response.json();
             console.log('📋 Tasks loaded:', tasks.length);
             
-            // Filter tasks for this engineer (if API doesn't filter automatically)
-            const myTasks = tasks.filter(task => 
-              task.assignedTo === user.username || 
-              task.engineerName === user.username ||
-              task.engineer === user.username
-            );
+            // Debug: Log all tasks and user info
+            console.log('📋 All tasks from server:', tasks);
+            console.log('👤 Current user info:', user);
+            
+            // Filter tasks for this engineer - check multiple possible field names
+            const myTasks = tasks.filter(task => {
+              const match = task.assignedTo === user.username || 
+                           task.engineerName === user.username ||
+                           task.engineer === user.username ||
+                           task['Assigned To'] === user.username ||
+                           task.assigned_to === user.username ||
+                           task.assignedUser === user.username ||
+                           (task.assignedTo && task.assignedTo.toLowerCase() === user.username.toLowerCase()) ||
+                           (task.engineerName && task.engineerName.toLowerCase() === user.username.toLowerCase());
+              
+              if (match) {
+                console.log('✅ Task matched for user:', task);
+              }
+              return match;
+            });
+            
+            console.log(`📊 Found ${myTasks.length} tasks for ${user.username}`);
             
             displayTasks(myTasks);
             updateStats(myTasks);
             
           } else {
+            console.error('❌ API response not OK:', response.status, response.statusText);
             tasksList.innerHTML = '<div class="no-tasks">❌ Could not load tasks. Check your connection.</div>';
           }
           
