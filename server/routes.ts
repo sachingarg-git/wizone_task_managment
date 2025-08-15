@@ -1090,7 +1090,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let tasks;
       
       if (userRole === 'field_engineer') {
-        tasks = await storage.getTasksByUser(userId);
+        // Use getAllTasks and filter since getTasksByUser doesn't exist
+        const allTasks = await storage.getAllTasks();
+        tasks = allTasks.filter((task: any) => 
+          task.assignedTo === userId || 
+          task.fieldEngineerId === userId ||
+          String(task.assignedTo) === String(userId) ||
+          String(task.fieldEngineerId) === String(userId)
+        );
       } else {
         tasks = await storage.getAllTasks();
       }
@@ -1114,7 +1121,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let tasks;
       if (search) {
-        tasks = await storage.searchTasks(search as string);
+        // Use getAllTasks and filter client-side since searchTasks doesn't exist
+        const allTasks = await storage.getAllTasks();
+        const searchQuery = (search as string).toLowerCase();
+        tasks = allTasks.filter((task: any) => 
+          (task.title && task.title.toLowerCase().includes(searchQuery)) ||
+          (task.description && task.description.toLowerCase().includes(searchQuery)) ||
+          (task.ticketNumber && task.ticketNumber.toLowerCase().includes(searchQuery)) ||
+          (task.customerName && task.customerName.toLowerCase().includes(searchQuery))
+        );
       } else {
         tasks = await storage.getAllTasks();
       }
@@ -1198,11 +1213,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           task.assignedTo === username,
           task.fieldEngineerId === userId,
           task.fieldEngineerId === username,
-          task.assignedUser === userId,
-          task.assignedUser === username,
-          task.engineer === userId,
-          task.engineer === username,
-          task.engineerName === username
+          // Also check if the assignedTo field contains the username or id as string
+          String(task.assignedTo) === String(userId),
+          String(task.assignedTo) === String(username),
+          String(task.fieldEngineerId) === String(userId),
+          String(task.fieldEngineerId) === String(username)
         ];
         
         const isMatch = matches.some(match => match);
@@ -1210,9 +1225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ Task ${task.id} matched for user ${username}:`, {
             assignedTo: task.assignedTo,
             fieldEngineerId: task.fieldEngineerId,
-            assignedUser: task.assignedUser,
-            engineer: task.engineer,
-            engineerName: task.engineerName
+            taskTitle: task.title || task.description
           });
         }
         return isMatch;
