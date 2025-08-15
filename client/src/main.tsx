@@ -59,8 +59,8 @@ try {
     <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">
       <div style="text-align: center; color: white; padding: 40px;">
         <h1>Wizone IT Support Portal</h1>
-        <p>Application Error: ${error.message}</p>
-        <pre style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; margin: 20px 0; text-align: left; font-size: 12px; max-width: 500px;">${error.stack}</pre>
+        <p>Application Error: ${(error as Error).message || 'Unknown error'}</p>
+        <pre style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; margin: 20px 0; text-align: left; font-size: 12px; max-width: 500px;">${(error as Error).stack || 'No stack trace'}</pre>
         <button onclick="window.location.reload()" style="margin-top: 16px; padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">
           Reload Application
         </button>
