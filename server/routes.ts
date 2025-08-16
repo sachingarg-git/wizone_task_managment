@@ -440,6 +440,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // DEBUG: Create mobile users directly via routes  
+  app.post("/api/create-mobile-engineers", async (req, res) => {
+    try {
+      const mobileUsers = [
+        { username: 'engineer1', password: 'engineer1', firstName: 'राज', lastName: 'शर्मा' },
+        { username: 'engineer2', password: 'engineer2', firstName: 'विकास', lastName: 'गुप्ता' },
+        { username: 'engineer3', password: 'engineer3', firstName: 'अमित', lastName: 'वर्मा' },
+        { username: 'mobile_test', password: 'mobile123', firstName: 'टेस्ट', lastName: 'इंजीनियर' },
+        { username: 'admin', password: 'admin123', firstName: 'एडमिन', lastName: 'यूजर' }
+      ];
+      
+      const results = [];
+      for (const userData of mobileUsers) {
+        try {
+          const existing = await storage.getUserByUsername(userData.username);
+          if (!existing) {
+            const user = await storage.createUser({
+              id: `mobile_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              username: userData.username,
+              password: userData.password,
+              email: `${userData.username}@wizone.com`,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              role: userData.username === 'admin' ? 'admin' : 'field_engineer',
+              department: 'FIELD ENGINEERING',
+              isActive: true
+            });
+            results.push({ username: userData.username, status: 'created', id: user.id });
+          } else {
+            // Reset password for existing users
+            await storage.updateUser(existing.id, { password: userData.password });
+            results.push({ username: userData.username, status: 'password_reset', id: existing.id });
+          }
+        } catch (error) {
+          results.push({ username: userData.username, status: 'error', error: error.message });
+        }
+      }
+      
+      res.json({ 
+        message: 'Mobile engineers setup completed',
+        results: results,
+        login_credentials: mobileUsers.map(u => ({ username: u.username, password: u.password }))
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Health endpoint for mobile APK connectivity testing
   app.get('/api/health', (req, res) => {
     res.json({

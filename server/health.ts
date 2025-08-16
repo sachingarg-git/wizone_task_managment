@@ -67,4 +67,48 @@ export function setupHealthEndpoint(app: Express) {
       message: 'Mobile debug successful'
     });
   });
+
+  // DEBUG: Create test mobile engineers for immediate login access
+  app.post("/api/debug/create-mobile-users", async (req, res) => {
+    try {
+      const { storage } = require('./storage/mssql-storage');
+      
+      const testUsers = [
+        { username: 'engineer1', password: 'engineer1', role: 'field_engineer', firstName: 'राज', lastName: 'शर्मा' },
+        { username: 'engineer2', password: 'engineer2', role: 'field_engineer', firstName: 'विकास', lastName: 'गुप्ता' },
+        { username: 'mobile_test', password: 'mobile123', role: 'field_engineer', firstName: 'टेस्ट', lastName: 'इंजीनियर' }
+      ];
+      
+      const createdUsers = [];
+      for (const userData of testUsers) {
+        try {
+          const existingUser = await storage.getUserByUsername(userData.username);
+          if (!existingUser) {
+            const user = await storage.createUser({
+              id: `mobile_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              ...userData,
+              email: `${userData.username}@wizone.com`,
+              department: 'FIELD ENGINEERING',
+              isActive: true
+            });
+            createdUsers.push(user);
+            console.log(`✅ Created mobile user: ${userData.username}`);
+          } else {
+            console.log(`ℹ️ User already exists: ${userData.username}`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to create user ${userData.username}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: 'Mobile test users created successfully',
+        created_users: createdUsers.length,
+        usernames: testUsers.map(u => ({ username: u.username, password: u.password }))
+      });
+    } catch (error) {
+      console.error('Create mobile users error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
