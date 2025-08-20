@@ -135,11 +135,11 @@ export interface IStorage {
   }>;
   
   // Analytics operations
-  getAnalyticsOverview(startDate: Date, endDate: Date): Promise<any>;
+  getAnalyticsOverview(days: number): Promise<any>;
   getPerformanceAnalytics(startDate: Date, endDate: Date, metric: string): Promise<any>;
   getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any>;
   getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any>;
-  getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any>;
+  getCustomerAnalytics(days: number): Promise<any>;
   
   // Domain operations
   getAllDomains(): Promise<Domain[]>;

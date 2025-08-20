@@ -1,6 +1,6 @@
-import { getConnection } from '../database/mssql-connection';
-import { scrypt, randomBytes } from 'crypto';
-import { promisify } from 'util';
+import { getConnection } from "../database/mssql-connection";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 
 const scryptAsync = promisify(scrypt);
 
@@ -11,7 +11,7 @@ export interface IStorage {
   createUser(user: any): Promise<any>;
   updateUser(id: string, updates: any): Promise<any>;
   getAllUsers(): Promise<any[]>;
-  
+
   // Customer operations
   getCustomer(id: number): Promise<any | undefined>;
   getCustomerByUsername(username: string): Promise<any | undefined>;
@@ -19,7 +19,7 @@ export interface IStorage {
   createCustomer(customer: any): Promise<any>;
   updateCustomer(id: number, updates: any): Promise<any>;
   deleteCustomer(id: number): Promise<boolean>;
-  
+
   // Task operations
   getTask(id: number): Promise<any | undefined>;
   getAllTasks(): Promise<any[]>;
@@ -27,95 +27,104 @@ export interface IStorage {
   createTask(task: any): Promise<any>;
   updateTask(id: number, updates: any): Promise<any>;
   deleteTask(id: number): Promise<boolean>;
-  
+
   // Task update operations
   createTaskUpdate(update: any): Promise<any>;
   getTaskUpdates(taskId: number): Promise<any[]>;
-  
-  // Task comments operations  
+
+  // Task comments operations
   getTaskComments(taskId: number): Promise<any[]>;
   createTaskComment(comment: any): Promise<any>;
-  
+
   // Performance metrics
   createPerformanceMetric(metric: any): Promise<any>;
   getPerformanceMetrics(userId: string): Promise<any[]>;
-  
+
   // Bot configurations
   getAllBotConfigurations(): Promise<any[]>;
   createBotConfiguration(config: any): Promise<any>;
   updateBotConfiguration(id: number, updates: any): Promise<any>;
   deleteBotConfiguration(id: number): Promise<boolean>;
-  
+
   // Notification logs
   createNotificationLog(log: any): Promise<any>;
   getAllNotificationLogs(): Promise<any[]>;
   getNotificationsByUser(userId: string): Promise<any[]>;
-  
+
   // Dashboard stats
   getDashboardStats(): Promise<any>;
-  
+
   // Chat operations
   getAllChatRooms(): Promise<any[]>;
   createChatRoom(room: any): Promise<any>;
   getChatMessages(roomId: number): Promise<any[]>;
   createChatMessage(message: any): Promise<any>;
-  
+
   // Analytics operations
   getAnalyticsOverview(days: number): Promise<any>;
   getEngineerPerformance(days: number): Promise<any[]>;
   getCustomerAnalytics(days: number): Promise<any>;
   getTrendAnalytics(days: number): Promise<any>;
-  
+
   // Recent tasks
   getRecentTasks(limit?: number): Promise<any[]>;
 }
 
 export class MSSQLStorage implements IStorage {
-  
   private async hashPassword(password: string): Promise<string> {
-    const salt = randomBytes(16).toString('hex');
-    const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
-    return `${derivedKey.toString('hex')}.${salt}`;
+    const salt = randomBytes(16).toString("hex");
+    const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${derivedKey.toString("hex")}.${salt}`;
   }
 
-  private async verifyPassword(password: string, hash: string): Promise<boolean> {
+  private async verifyPassword(
+    password: string,
+    hash: string,
+  ): Promise<boolean> {
     try {
-      const [derivedKey, salt] = hash.split('.');
-      const keyBuffer = await scryptAsync(password, salt, 64) as Buffer;
-      return keyBuffer.toString('hex') === derivedKey;
+      const [derivedKey, salt] = hash.split(".");
+      const keyBuffer = (await scryptAsync(password, salt, 64)) as Buffer;
+      return keyBuffer.toString("hex") === derivedKey;
     } catch {
       return false;
     }
   }
 
   // Public method for mobile app authentication
-  async verifyUserPassword(username: string, password: string): Promise<any | null> {
+  async verifyUserPassword(
+    username: string,
+    password: string,
+  ): Promise<any | null> {
     try {
       console.log(`🔍 Fetching user by username: ${username}`);
       const user = await this.getUserByUsername(username);
-      
+
       if (!user) {
         console.log(`❌ User not found: ${username}`);
         return null;
       }
-      
+
       if (!user.password) {
         console.log(`❌ No password hash for user: ${username}`);
         return null;
       }
-      
-      console.log(`🔍 User found: ID=${user.id}, Role=${user.role}, Username=${user.username}`);
-      console.log(`🔍 Password hash in database: ${user.password.substring(0, 20)}...`);
+
+      console.log(
+        `🔍 User found: ID=${user.id}, Role=${user.role}, Username=${user.username}`,
+      );
+      console.log(
+        `🔍 Password hash in database: ${user.password.substring(0, 20)}...`,
+      );
       console.log(`🔍 Input password: ${password}`);
-      
+
       // Check if password is plain text (for legacy users or new users)
       let isValid = false;
-      
+
       // First try direct password comparison (for plain text passwords)
       if (user.password === password) {
         console.log(`✅ PLAIN TEXT password match for ${username}`);
         isValid = true;
-        
+
         // Update to hashed password for security
         try {
           const hashedPassword = await this.hashPassword(password);
@@ -127,25 +136,37 @@ export class MSSQLStorage implements IStorage {
       } else {
         // Try hashed password verification
         isValid = await this.verifyPassword(password, user.password);
-        console.log(`✅ HASHED password verification result for ${username}: ${isValid}`);
+        console.log(
+          `✅ HASHED password verification result for ${username}: ${isValid}`,
+        );
       }
-      
+
       // 🚨 TEMPORARY FIX: If verification failed and user is "aaa", reset password for mobile access
-      if (!isValid && username === 'aaa' && password === 'aaa') {
-        console.log(`🔧 TEMPORARY FIX: Resetting password for user aaa to enable mobile access`);
+      if (!isValid && username === "aaa" && password === "aaa") {
+        console.log(
+          `🔧 TEMPORARY FIX: Resetting password for user aaa to enable mobile access`,
+        );
         try {
-          const newHashedPassword = await this.hashPassword('aaa');
+          const newHashedPassword = await this.hashPassword("aaa");
           await this.updateUser(user.id, { password: newHashedPassword });
-          console.log(`✅ Password reset successful for user: ${username} - new hash created`);
+          console.log(
+            `✅ Password reset successful for user: ${username} - new hash created`,
+          );
           isValid = true;
         } catch (error) {
           console.log(`❌ Failed to reset password: ${error}`);
         }
       }
-      
+
       // 🚨 ADDITIONAL MOBILE FIX: For any field_engineer, try common passwords if main verification fails
-      if (!isValid && user.role === 'field_engineer' && ['admin', 'password', '123456', username].includes(password)) {
-        console.log(`🔧 MOBILE FIX: Trying common password for field engineer: ${username}`);
+      if (
+        !isValid &&
+        user.role === "field_engineer" &&
+        ["admin", "password", "123456", username].includes(password)
+      ) {
+        console.log(
+          `🔧 MOBILE FIX: Trying common password for field engineer: ${username}`,
+        );
         try {
           const newHashedPassword = await this.hashPassword(password);
           await this.updateUser(user.id, { password: newHashedPassword });
@@ -155,19 +176,23 @@ export class MSSQLStorage implements IStorage {
           console.log(`❌ Failed to set common password: ${error}`);
         }
       }
-      
+
       if (!isValid) {
-        console.log(`❌ All password verification attempts failed for: ${username}`);
+        console.log(
+          `❌ All password verification attempts failed for: ${username}`,
+        );
         return null;
       }
-      
+
       // Don't return password in response
       const { password: _, ...userWithoutPassword } = user;
-      console.log(`🔍 User data prepared: ID=${userWithoutPassword.id}, Role=${userWithoutPassword.role}`);
-      
+      console.log(
+        `🔍 User data prepared: ID=${userWithoutPassword.id}, Role=${userWithoutPassword.role}`,
+      );
+
       return userWithoutPassword;
     } catch (error) {
-      console.error('Password verification error:', error);
+      console.error("Password verification error:", error);
       return null;
     }
   }
@@ -177,15 +202,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       const result = await request.query(`
         SELECT * FROM users WHERE id = @id
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting user:', error);
+      console.error("Error getting user:", error);
       return undefined;
     }
   }
@@ -194,15 +219,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('username', username);
-      
+      request.input("username", username);
+
       const result = await request.query(`
         SELECT * FROM users WHERE username = @username
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting user by username:', error);
+      console.error("Error getting user by username:", error);
       return undefined;
     }
   }
@@ -211,28 +236,28 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Generate ID if not provided
       const userId = userData.id || `user_${Date.now()}`;
-      
+
       // Hash password if provided
       let hashedPassword = userData.password;
-      if (userData.password && !userData.password.includes('.')) {
+      if (userData.password && !userData.password.includes(".")) {
         hashedPassword = await this.hashPassword(userData.password);
       }
-      
-      request.input('id', userId);
-      request.input('username', userData.username);
-      request.input('password', hashedPassword);
-      request.input('email', userData.email || null);
-      request.input('firstName', userData.firstName || null);
-      request.input('lastName', userData.lastName || null);
-      request.input('phone', userData.phone || null);
-      request.input('profileImageUrl', userData.profileImageUrl || null);
-      request.input('role', userData.role || 'field_engineer');
-      request.input('department', userData.department || null);
-      request.input('isActive', userData.isActive !== false);
-      
+
+      request.input("id", userId);
+      request.input("username", userData.username);
+      request.input("password", hashedPassword);
+      request.input("email", userData.email || null);
+      request.input("firstName", userData.firstName || null);
+      request.input("lastName", userData.lastName || null);
+      request.input("phone", userData.phone || null);
+      request.input("profileImageUrl", userData.profileImageUrl || null);
+      request.input("role", userData.role || "field_engineer");
+      request.input("department", userData.department || null);
+      request.input("isActive", userData.isActive !== false);
+
       await request.query(`
         INSERT INTO users (
           id, username, password, email, firstName, lastName, 
@@ -245,10 +270,10 @@ export class MSSQLStorage implements IStorage {
           GETDATE(), GETDATE()
         )
       `);
-      
+
       return await this.getUser(userId);
     } catch (error) {
-      console.error('Error creating user:', error);
+      console.error("Error creating user:", error);
       throw error;
     }
   }
@@ -257,65 +282,65 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Build dynamic update query
       const updateFields = [];
       const params = [];
-      
+
       if (updates.username !== undefined) {
-        updateFields.push('username = @username');
-        request.input('username', updates.username);
+        updateFields.push("username = @username");
+        request.input("username", updates.username);
       }
       if (updates.password !== undefined) {
         const hashedPassword = await this.hashPassword(updates.password);
-        updateFields.push('password = @password');
-        request.input('password', hashedPassword);
+        updateFields.push("password = @password");
+        request.input("password", hashedPassword);
       }
       if (updates.email !== undefined) {
-        updateFields.push('email = @email');
-        request.input('email', updates.email);
+        updateFields.push("email = @email");
+        request.input("email", updates.email);
       }
       if (updates.firstName !== undefined) {
-        updateFields.push('firstName = @firstName');
-        request.input('firstName', updates.firstName);
+        updateFields.push("firstName = @firstName");
+        request.input("firstName", updates.firstName);
       }
       if (updates.lastName !== undefined) {
-        updateFields.push('lastName = @lastName');
-        request.input('lastName', updates.lastName);
+        updateFields.push("lastName = @lastName");
+        request.input("lastName", updates.lastName);
       }
       if (updates.phone !== undefined) {
-        updateFields.push('phone = @phone');
-        request.input('phone', updates.phone);
+        updateFields.push("phone = @phone");
+        request.input("phone", updates.phone);
       }
       if (updates.role !== undefined) {
-        updateFields.push('role = @role');
-        request.input('role', updates.role);
+        updateFields.push("role = @role");
+        request.input("role", updates.role);
       }
       if (updates.department !== undefined) {
-        updateFields.push('department = @department');
-        request.input('department', updates.department);
+        updateFields.push("department = @department");
+        request.input("department", updates.department);
       }
       if (updates.isActive !== undefined) {
-        updateFields.push('isActive = @isActive');
-        request.input('isActive', updates.isActive);
+        updateFields.push("isActive = @isActive");
+        request.input("isActive", updates.isActive);
       }
-      
+
       if (updateFields.length === 0) {
         return await this.getUser(id);
       }
-      
-      updateFields.push('updatedAt = GETDATE()');
-      request.input('id', id);
-      
+
+      updateFields.push("updatedAt = GETDATE()");
+      request.input("id", id);
+
       await request.query(`
         UPDATE users 
-        SET ${updateFields.join(', ')}
+        SET ${updateFields.join(", ")}
         WHERE id = @id
       `);
-      
+
       return await this.getUser(id);
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error("Error updating user:", error);
       throw error;
     }
   }
@@ -324,14 +349,14 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const result = await request.query(`
         SELECT * FROM users ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting all users:', error);
+      console.error("Error getting all users:", error);
       return [];
     }
   }
@@ -341,15 +366,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       const result = await request.query(`
         SELECT * FROM customers WHERE id = @id
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting customer:', error);
+      console.error("Error getting customer:", error);
       return undefined;
     }
   }
@@ -358,15 +383,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('username', username);
-      
+      request.input("username", username);
+
       const result = await request.query(`
         SELECT * FROM customers WHERE username = @username AND portalAccess = 1
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting customer by username:', error);
+      console.error("Error getting customer by username:", error);
       return undefined;
     }
   }
@@ -375,20 +400,26 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      console.log('🔍 Starting simple getAllCustomers query...');
+
+      console.log("🔍 Starting simple getAllCustomers query...");
       const result = await request.query(`
         SELECT * FROM customers ORDER BY id DESC
       `);
-      console.log('✅ getAllCustomers query successful, rows:', result.recordset.length);
-      
+      console.log(
+        "✅ getAllCustomers query successful, rows:",
+        result.recordset.length,
+      );
+
       if (result.recordset.length > 0) {
-        console.log('👥 Sample customer columns:', Object.keys(result.recordset[0]));
+        console.log(
+          "👥 Sample customer columns:",
+          Object.keys(result.recordset[0]),
+        );
       }
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting all customers:', error);
+      console.error("Error getting all customers:", error);
       return [];
     }
   }
@@ -397,29 +428,36 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      console.log('🔍 Creating customer with required customerId...');
-      
+
+      console.log("🔍 Creating customer with required customerId...");
+
       // Generate customerId if not provided
-      const customerId = customerData.customerId || `CUST${Date.now().toString().slice(-6)}`;
-      
-      request.input('customerId', customerId);
-      request.input('name', customerData.name || 'New Customer');
-      request.input('email', customerData.email || '');
-      request.input('phone', customerData.phone || customerData.mobilePhone || '');
-      request.input('address', customerData.address || '');
-      request.input('serviceType', customerData.serviceType || customerData.servicePlan || '');
-      
+      const customerId =
+        customerData.customerId || `CUST${Date.now().toString().slice(-6)}`;
+
+      request.input("customerId", customerId);
+      request.input("name", customerData.name || "New Customer");
+      request.input("email", customerData.email || "");
+      request.input(
+        "phone",
+        customerData.phone || customerData.mobilePhone || "",
+      );
+      request.input("address", customerData.address || "");
+      request.input(
+        "serviceType",
+        customerData.serviceType || customerData.servicePlan || "",
+      );
+
       const result = await request.query(`
         INSERT INTO customers (customerId, name, email, phone, address, serviceType)
         OUTPUT INSERTED.id, INSERTED.customerId, INSERTED.name, INSERTED.email
         VALUES (@customerId, @name, @email, @phone, @address, @serviceType)
       `);
-      
-      console.log('✅ Customer created successfully:', result.recordset[0]);
+
+      console.log("✅ Customer created successfully:", result.recordset[0]);
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating customer:', error);
+      console.error("Error creating customer:", error);
       throw error;
     }
   }
@@ -428,55 +466,55 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Build dynamic update query
       const updateFields = [];
-      
+
       if (updates.name !== undefined) {
-        updateFields.push('name = @name');
-        request.input('name', updates.name);
+        updateFields.push("name = @name");
+        request.input("name", updates.name);
       }
       if (updates.email !== undefined) {
-        updateFields.push('email = @email');
-        request.input('email', updates.email);
+        updateFields.push("email = @email");
+        request.input("email", updates.email);
       }
       if (updates.phone !== undefined) {
-        updateFields.push('phone = @phone');
-        request.input('phone', updates.phone);
+        updateFields.push("phone = @phone");
+        request.input("phone", updates.phone);
       }
       if (updates.address !== undefined) {
-        updateFields.push('address = @address');
-        request.input('address', updates.address);
+        updateFields.push("address = @address");
+        request.input("address", updates.address);
       }
       if (updates.serviceType !== undefined) {
-        updateFields.push('serviceType = @serviceType');
-        request.input('serviceType', updates.serviceType);
+        updateFields.push("serviceType = @serviceType");
+        request.input("serviceType", updates.serviceType);
       }
       if (updates.connectionStatus !== undefined) {
-        updateFields.push('connectionStatus = @connectionStatus');
-        request.input('connectionStatus', updates.connectionStatus);
+        updateFields.push("connectionStatus = @connectionStatus");
+        request.input("connectionStatus", updates.connectionStatus);
       }
       if (updates.monthlyCharge !== undefined) {
-        updateFields.push('monthlyCharge = @monthlyCharge');
-        request.input('monthlyCharge', updates.monthlyCharge);
+        updateFields.push("monthlyCharge = @monthlyCharge");
+        request.input("monthlyCharge", updates.monthlyCharge);
       }
-      
+
       if (updateFields.length === 0) {
         return await this.getCustomer(id);
       }
-      
-      updateFields.push('updatedAt = GETDATE()');
-      request.input('id', id);
-      
+
+      updateFields.push("updatedAt = GETDATE()");
+      request.input("id", id);
+
       await request.query(`
         UPDATE customers 
-        SET ${updateFields.join(', ')}
+        SET ${updateFields.join(", ")}
         WHERE id = @id
       `);
-      
+
       return await this.getCustomer(id);
     } catch (error) {
-      console.error('Error updating customer:', error);
+      console.error("Error updating customer:", error);
       throw error;
     }
   }
@@ -485,12 +523,12 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       await request.query(`DELETE FROM customers WHERE id = @id`);
       return true;
     } catch (error) {
-      console.error('Error deleting customer:', error);
+      console.error("Error deleting customer:", error);
       return false;
     }
   }
@@ -500,8 +538,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       const result = await request.query(`
         SELECT 
           t.*, 
@@ -510,15 +548,15 @@ export class MSSQLStorage implements IStorage {
         LEFT JOIN customers c ON t.customerId = c.id
         WHERE t.id = @id
       `);
-      
+
       if (result.recordset[0]) {
         const task = result.recordset[0];
         task.customerName = task.actualCustomerName || task.customerName;
       }
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting task:', error);
+      console.error("Error getting task:", error);
       return undefined;
     }
   }
@@ -527,8 +565,10 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      console.log('🔍 Getting tasks with proper customer names and assigned users...');
+
+      console.log(
+        "🔍 Getting tasks with proper customer names and assigned users...",
+      );
       const result = await request.query(`
         SELECT 
           t.*,
@@ -541,33 +581,41 @@ export class MSSQLStorage implements IStorage {
         LEFT JOIN users u ON t.assignedTo = u.id
         ORDER BY t.id DESC
       `);
-      console.log('✅ getAllTasks with customer and user lookup successful, rows:', result.recordset.length);
-      
+      console.log(
+        "✅ getAllTasks with customer and user lookup successful, rows:",
+        result.recordset.length,
+      );
+
       // Return tasks with proper customer names and assigned user objects
       return result.recordset.map((task: any) => ({
         id: task.id,
-        title: task.title || 'Untitled Task',
-        ticketNumber: task.ticketNumber || 'No Ticket',
-        status: task.status || 'pending',
-        priority: task.priority || 'medium',
+        title: task.title || "Untitled Task",
+        ticketNumber: task.ticketNumber || "No Ticket",
+        status: task.status || "pending",
+        priority: task.priority || "medium",
         issueType: task.issueType || null,
-        customerName: task.actualCustomerName || task.customerName || 'No Customer Assigned',
+        customerName:
+          task.actualCustomerName ||
+          task.customerName ||
+          "No Customer Assigned",
         customerId: task.customerId || null,
         description: task.description,
         assignedTo: task.assignedTo,
-        assignedUser: task.assignedFirstName ? {
-          firstName: task.assignedFirstName,
-          lastName: task.assignedLastName,
-          email: task.assignedEmail
-        } : null,
+        assignedUser: task.assignedFirstName
+          ? {
+              firstName: task.assignedFirstName,
+              lastName: task.assignedLastName,
+              email: task.assignedEmail,
+            }
+          : null,
         fieldEngineerId: task.fieldEngineerId,
         backendEngineerId: task.backendEngineerId,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
-        resolvedAt: task.resolvedAt
+        resolvedAt: task.resolvedAt,
       }));
     } catch (error) {
-      console.error('Error getting all tasks:', error);
+      console.error("Error getting all tasks:", error);
       return [];
     }
   }
@@ -576,8 +624,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('customerId', customerId);
-      
+      request.input("customerId", customerId);
+
       const result = await request.query(`
         SELECT 
           t.*, 
@@ -587,13 +635,13 @@ export class MSSQLStorage implements IStorage {
         WHERE t.customerId = @customerId 
         ORDER BY t.createdAt DESC
       `);
-      
+
       return result.recordset.map((task: any) => ({
         ...task,
-        customerName: task.actualCustomerName || task.customerName
+        customerName: task.actualCustomerName || task.customerName,
       }));
     } catch (error) {
-      console.error('Error getting tasks by customer:', error);
+      console.error("Error getting tasks by customer:", error);
       return [];
     }
   }
@@ -602,29 +650,30 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      console.log('🔍 Creating task with customer relationship...');
+
+      console.log("🔍 Creating task with customer relationship...");
       // Generate ticket number if not provided
-      const ticketNumber = taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
-      
-      request.input('ticketNumber', ticketNumber);
-      request.input('title', taskData.title || 'New Task');
-      request.input('status', taskData.status || 'pending');
-      request.input('priority', taskData.priority || 'medium');
-      request.input('description', taskData.description || '');
-      request.input('customerId', taskData.customerId || null);
-      request.input('customerName', taskData.customerName || null);
-      
+      const ticketNumber =
+        taskData.ticketNumber || `TSK${Date.now().toString().slice(-6)}`;
+
+      request.input("ticketNumber", ticketNumber);
+      request.input("title", taskData.title || "New Task");
+      request.input("status", taskData.status || "pending");
+      request.input("priority", taskData.priority || "medium");
+      request.input("description", taskData.description || "");
+      request.input("customerId", taskData.customerId || null);
+      request.input("customerName", taskData.customerName || null);
+
       const result = await request.query(`
         INSERT INTO tasks (ticketNumber, title, status, priority, description, customerId, customerName)
         OUTPUT INSERTED.id, INSERTED.ticketNumber, INSERTED.title, INSERTED.status, INSERTED.priority, INSERTED.customerId, INSERTED.customerName
         VALUES (@ticketNumber, @title, @status, @priority, @description, @customerId, @customerName)
       `);
-      
-      console.log('✅ Task created with customer info:', result.recordset[0]);
+
+      console.log("✅ Task created with customer info:", result.recordset[0]);
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating task:', error);
+      console.error("Error creating task:", error);
       throw error;
     }
   }
@@ -633,91 +682,126 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Build dynamic update query
       const updateFields = [];
-      
+
       if (updates.title !== undefined) {
-        updateFields.push('title = @title');
-        request.input('title', updates.title);
+        updateFields.push("title = @title");
+        request.input("title", updates.title);
       }
       if (updates.description !== undefined) {
-        updateFields.push('description = @description');
-        request.input('description', updates.description);
+        updateFields.push("description = @description");
+        request.input("description", updates.description);
       }
       if (updates.status !== undefined) {
         // Validate and normalize status values (based on actual database constraint)
-        const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled', 'assigned_to_field', 'start_task', 'waiting_for_customer'];
-        let normalizedStatus = updates.status.toLowerCase().replace(/\s+/g, '_');
-        
+        const validStatuses = [
+          "pending",
+          "in_progress",
+          "completed",
+          "cancelled",
+          "assigned_to_field",
+          "start_task",
+          "waiting_for_customer",
+        ];
+        let normalizedStatus = updates.status
+          .toLowerCase()
+          .replace(/\s+/g, "_");
+
         // Handle common status mappings
-        if (normalizedStatus === 'inprogress' || normalizedStatus === 'in-progress') {
-          normalizedStatus = 'in_progress';
+        if (
+          normalizedStatus === "inprogress" ||
+          normalizedStatus === "in-progress"
+        ) {
+          normalizedStatus = "in_progress";
         }
         // Map resolved status to in_progress for database compatibility
-        if (normalizedStatus === 'resolved') {
-          normalizedStatus = 'in_progress';
-          console.log(`🔄 Status mapping: resolved → in_progress (for database compatibility)`);
+        if (normalizedStatus === "resolved") {
+          normalizedStatus = "in_progress";
+          console.log(
+            `🔄 Status mapping: resolved → in_progress (for database compatibility)`,
+          );
         }
         // Map start_task and other action statuses to in_progress
-        if (normalizedStatus === 'start_task' || normalizedStatus === 'start' || normalizedStatus === 'begin') {
-          normalizedStatus = 'in_progress';
+        if (
+          normalizedStatus === "start_task" ||
+          normalizedStatus === "start" ||
+          normalizedStatus === "begin"
+        ) {
+          normalizedStatus = "in_progress";
         }
         // Map assigned statuses to assigned_to_field for field engineer workflow
-        if (normalizedStatus === 'assign' || normalizedStatus === 'assigned' || normalizedStatus === 'assigned_to' || normalizedStatus === 'assignedto') {
-          normalizedStatus = 'assigned_to_field';
+        if (
+          normalizedStatus === "assign" ||
+          normalizedStatus === "assigned" ||
+          normalizedStatus === "assigned_to" ||
+          normalizedStatus === "assignedto"
+        ) {
+          normalizedStatus = "assigned_to_field";
         }
-        if (normalizedStatus === 'field' || normalizedStatus === 'field_assigned' || normalizedStatus === 'assigned_to_field') {
-          normalizedStatus = 'assigned_to_field';
+        if (
+          normalizedStatus === "field" ||
+          normalizedStatus === "field_assigned" ||
+          normalizedStatus === "assigned_to_field"
+        ) {
+          normalizedStatus = "assigned_to_field";
         }
-        
+
         if (!validStatuses.includes(normalizedStatus)) {
-          console.error(`Invalid status: ${updates.status}. Valid statuses: ${validStatuses.join(', ')}`);
-          normalizedStatus = 'pending'; // Default fallback
+          console.error(
+            `Invalid status: ${updates.status}. Valid statuses: ${validStatuses.join(", ")}`,
+          );
+          normalizedStatus = "pending"; // Default fallback
         }
-        
-        console.log(`Status normalized: ${updates.status} -> ${normalizedStatus}`);
-        updateFields.push('status = @status');
-        request.input('status', normalizedStatus);
-        
+
+        console.log(
+          `Status normalized: ${updates.status} -> ${normalizedStatus}`,
+        );
+        updateFields.push("status = @status");
+        request.input("status", normalizedStatus);
+
         // Set resolvedAt if status is completed or resolved
-        if (normalizedStatus === 'completed' || normalizedStatus === 'resolved') {
-          updateFields.push('resolvedAt = GETDATE()');
+        if (
+          normalizedStatus === "completed" ||
+          normalizedStatus === "resolved"
+        ) {
+          updateFields.push("resolvedAt = GETDATE()");
         }
       }
       if (updates.priority !== undefined) {
-        updateFields.push('priority = @priority');
-        request.input('priority', updates.priority);
+        updateFields.push("priority = @priority");
+        request.input("priority", updates.priority);
       }
       if (updates.assignedTo !== undefined) {
-        updateFields.push('assignedTo = @assignedTo');
-        request.input('assignedTo', updates.assignedTo);
+        updateFields.push("assignedTo = @assignedTo");
+        request.input("assignedTo", updates.assignedTo);
       }
       if (updates.fieldEngineerId !== undefined) {
-        updateFields.push('fieldEngineerId = @fieldEngineerId');
-        request.input('fieldEngineerId', updates.fieldEngineerId);
+        updateFields.push("fieldEngineerId = @fieldEngineerId");
+        request.input("fieldEngineerId", updates.fieldEngineerId);
       }
       if (updates.backendEngineerId !== undefined) {
-        updateFields.push('backendEngineerId = @backendEngineerId');
-        request.input('backendEngineerId', updates.backendEngineerId);
+        updateFields.push("backendEngineerId = @backendEngineerId");
+        request.input("backendEngineerId", updates.backendEngineerId);
       }
-      
+
       if (updateFields.length === 0) {
         return await this.getTask(id);
       }
-      
-      updateFields.push('updatedAt = GETDATE()');
-      request.input('id', id);
-      
+
+      updateFields.push("updatedAt = GETDATE()");
+      request.input("id", id);
+
       await request.query(`
         UPDATE tasks 
-        SET ${updateFields.join(', ')}
+        SET ${updateFields.join(", ")}
         WHERE id = @id
       `);
-      
+
       return await this.getTask(id);
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error("Error updating task:", error);
       throw error;
     }
   }
@@ -726,12 +810,12 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       await request.query(`DELETE FROM tasks WHERE id = @id`);
       return true;
     } catch (error) {
-      console.error('Error deleting task:', error);
+      console.error("Error deleting task:", error);
       return false;
     }
   }
@@ -741,34 +825,36 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Ensure valid updatedBy user ID exists in database
       let validUpdatedBy = updateData.updatedBy;
-      
+
       // Check if user exists, if not use admin
       if (validUpdatedBy) {
         const userCheckRequest = pool.request();
-        userCheckRequest.input('userId', validUpdatedBy);
+        userCheckRequest.input("userId", validUpdatedBy);
         const userExists = await userCheckRequest.query(`
           SELECT id FROM users WHERE id = @userId
         `);
-        
+
         if (userExists.recordset.length === 0) {
-          console.log(`⚠️ User ${validUpdatedBy} not found, using admin as updatedBy`);
-          validUpdatedBy = 'admin';
+          console.log(
+            `⚠️ User ${validUpdatedBy} not found, using admin as updatedBy`,
+          );
+          validUpdatedBy = "admin";
         }
       } else {
-        validUpdatedBy = 'admin';
+        validUpdatedBy = "admin";
       }
-      
-      request.input('taskId', updateData.taskId);
-      request.input('status', updateData.status || null);
-      request.input('note', updateData.note || null);
-      request.input('updatedBy', validUpdatedBy);
-      request.input('filePath', updateData.filePath || null);
-      request.input('fileName', updateData.fileName || null);
-      request.input('fileType', updateData.fileType || null);
-      
+
+      request.input("taskId", updateData.taskId);
+      request.input("status", updateData.status || null);
+      request.input("note", updateData.note || null);
+      request.input("updatedBy", validUpdatedBy);
+      request.input("filePath", updateData.filePath || null);
+      request.input("fileName", updateData.fileName || null);
+      request.input("fileType", updateData.fileType || null);
+
       const result = await request.query(`
         INSERT INTO task_updates (
           taskId, status, note, updatedBy, filePath, fileName, fileType, createdAt
@@ -778,11 +864,13 @@ export class MSSQLStorage implements IStorage {
           @taskId, @status, @note, @updatedBy, @filePath, @fileName, @fileType, GETDATE()
         )
       `);
-      
-      console.log(`✅ Task update record created for task ${updateData.taskId}`);
+
+      console.log(
+        `✅ Task update record created for task ${updateData.taskId}`,
+      );
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating task update:', error);
+      console.error("Error creating task update:", error);
       throw error;
     }
   }
@@ -791,17 +879,17 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('taskId', taskId);
-      
+      request.input("taskId", taskId);
+
       const result = await request.query(`
         SELECT * FROM task_updates 
         WHERE taskId = @taskId 
         ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting task updates:', error);
+      console.error("Error getting task updates:", error);
       return [];
     }
   }
@@ -811,17 +899,17 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('taskId', taskId);
-      
+      request.input("taskId", taskId);
+
       const result = await request.query(`
         SELECT * FROM task_comments 
         WHERE taskId = @taskId 
         ORDER BY createdAt ASC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting task comments:', error);
+      console.error("Error getting task comments:", error);
       return [];
     }
   }
@@ -830,22 +918,22 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('taskId', commentData.taskId);
-      request.input('userId', commentData.userId);
-      request.input('comment', commentData.comment);
-      request.input('commentType', commentData.commentType || 'general');
-      
+
+      request.input("taskId", commentData.taskId);
+      request.input("userId", commentData.userId);
+      request.input("comment", commentData.comment);
+      request.input("commentType", commentData.commentType || "general");
+
       const result = await request.query(`
         INSERT INTO task_comments (taskId, userId, comment, commentType, createdAt)
         OUTPUT INSERTED.id
         VALUES (@taskId, @userId, @comment, @commentType, GETDATE())
       `);
-      
+
       const newId = result.recordset[0].id;
       return await this.getTaskComment(newId);
     } catch (error) {
-      console.error('Error creating task comment:', error);
+      console.error("Error creating task comment:", error);
       throw error;
     }
   }
@@ -854,15 +942,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       const result = await request.query(`
         SELECT * FROM task_comments WHERE id = @id
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting task comment:', error);
+      console.error("Error getting task comment:", error);
       return undefined;
     }
   }
@@ -872,14 +960,20 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('userId', metricData.userId);
-      request.input('tasksCompleted', metricData.tasksCompleted || 0);
-      request.input('averageResolutionTime', metricData.averageResolutionTime || null);
-      request.input('customerSatisfactionScore', metricData.customerSatisfactionScore || null);
-      request.input('month', metricData.month);
-      request.input('year', metricData.year);
-      
+
+      request.input("userId", metricData.userId);
+      request.input("tasksCompleted", metricData.tasksCompleted || 0);
+      request.input(
+        "averageResolutionTime",
+        metricData.averageResolutionTime || null,
+      );
+      request.input(
+        "customerSatisfactionScore",
+        metricData.customerSatisfactionScore || null,
+      );
+      request.input("month", metricData.month);
+      request.input("year", metricData.year);
+
       const result = await request.query(`
         INSERT INTO performance_metrics (
           userId, tasksCompleted, averageResolutionTime, customerSatisfactionScore,
@@ -891,10 +985,10 @@ export class MSSQLStorage implements IStorage {
           @month, @year, GETDATE(), GETDATE()
         )
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating performance metric:', error);
+      console.error("Error creating performance metric:", error);
       throw error;
     }
   }
@@ -903,17 +997,17 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('userId', userId);
-      
+      request.input("userId", userId);
+
       const result = await request.query(`
         SELECT * FROM performance_metrics 
         WHERE userId = @userId 
         ORDER BY year DESC, month DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting performance metrics:', error);
+      console.error("Error getting performance metrics:", error);
       return [];
     }
   }
@@ -923,14 +1017,14 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const result = await request.query(`
         SELECT * FROM bot_configurations ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting bot configurations:', error);
+      console.error("Error getting bot configurations:", error);
       return [];
     }
   }
@@ -939,15 +1033,24 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('name', configData.name);
-      request.input('botToken', configData.botToken);
-      request.input('chatId', configData.chatId);
-      request.input('isActive', configData.isActive !== false);
-      request.input('notifyOnTaskCreate', configData.notifyOnTaskCreate !== false);
-      request.input('notifyOnTaskUpdate', configData.notifyOnTaskUpdate !== false);
-      request.input('notifyOnTaskComplete', configData.notifyOnTaskComplete !== false);
-      
+
+      request.input("name", configData.name);
+      request.input("botToken", configData.botToken);
+      request.input("chatId", configData.chatId);
+      request.input("isActive", configData.isActive !== false);
+      request.input(
+        "notifyOnTaskCreate",
+        configData.notifyOnTaskCreate !== false,
+      );
+      request.input(
+        "notifyOnTaskUpdate",
+        configData.notifyOnTaskUpdate !== false,
+      );
+      request.input(
+        "notifyOnTaskComplete",
+        configData.notifyOnTaskComplete !== false,
+      );
+
       const result = await request.query(`
         INSERT INTO bot_configurations (
           name, botToken, chatId, isActive, notifyOnTaskCreate,
@@ -959,10 +1062,10 @@ export class MSSQLStorage implements IStorage {
           @notifyOnTaskUpdate, @notifyOnTaskComplete, GETDATE(), GETDATE()
         )
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating bot configuration:', error);
+      console.error("Error creating bot configuration:", error);
       throw error;
     }
   }
@@ -971,54 +1074,54 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const updateFields = [];
-      
+
       if (updates.name !== undefined) {
-        updateFields.push('name = @name');
-        request.input('name', updates.name);
+        updateFields.push("name = @name");
+        request.input("name", updates.name);
       }
       if (updates.botToken !== undefined) {
-        updateFields.push('botToken = @botToken');
-        request.input('botToken', updates.botToken);
+        updateFields.push("botToken = @botToken");
+        request.input("botToken", updates.botToken);
       }
       if (updates.chatId !== undefined) {
-        updateFields.push('chatId = @chatId');
-        request.input('chatId', updates.chatId);
+        updateFields.push("chatId = @chatId");
+        request.input("chatId", updates.chatId);
       }
       if (updates.isActive !== undefined) {
-        updateFields.push('isActive = @isActive');
-        request.input('isActive', updates.isActive);
+        updateFields.push("isActive = @isActive");
+        request.input("isActive", updates.isActive);
       }
       if (updates.notifyOnTaskCreate !== undefined) {
-        updateFields.push('notifyOnTaskCreate = @notifyOnTaskCreate');
-        request.input('notifyOnTaskCreate', updates.notifyOnTaskCreate);
+        updateFields.push("notifyOnTaskCreate = @notifyOnTaskCreate");
+        request.input("notifyOnTaskCreate", updates.notifyOnTaskCreate);
       }
       if (updates.notifyOnTaskUpdate !== undefined) {
-        updateFields.push('notifyOnTaskUpdate = @notifyOnTaskUpdate');
-        request.input('notifyOnTaskUpdate', updates.notifyOnTaskUpdate);
+        updateFields.push("notifyOnTaskUpdate = @notifyOnTaskUpdate");
+        request.input("notifyOnTaskUpdate", updates.notifyOnTaskUpdate);
       }
       if (updates.notifyOnTaskComplete !== undefined) {
-        updateFields.push('notifyOnTaskComplete = @notifyOnTaskComplete');
-        request.input('notifyOnTaskComplete', updates.notifyOnTaskComplete);
+        updateFields.push("notifyOnTaskComplete = @notifyOnTaskComplete");
+        request.input("notifyOnTaskComplete", updates.notifyOnTaskComplete);
       }
-      
+
       if (updateFields.length === 0) {
         return { id };
       }
-      
-      updateFields.push('updatedAt = GETDATE()');
-      request.input('id', id);
-      
+
+      updateFields.push("updatedAt = GETDATE()");
+      request.input("id", id);
+
       await request.query(`
         UPDATE bot_configurations 
-        SET ${updateFields.join(', ')}
+        SET ${updateFields.join(", ")}
         WHERE id = @id
       `);
-      
+
       return { id, ...updates };
     } catch (error) {
-      console.error('Error updating bot configuration:', error);
+      console.error("Error updating bot configuration:", error);
       throw error;
     }
   }
@@ -1027,12 +1130,12 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('id', id);
-      
+      request.input("id", id);
+
       await request.query(`DELETE FROM bot_configurations WHERE id = @id`);
       return true;
     } catch (error) {
-      console.error('Error deleting bot configuration:', error);
+      console.error("Error deleting bot configuration:", error);
       return false;
     }
   }
@@ -1042,15 +1145,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('eventType', logData.eventType);
-      request.input('messageText', logData.messageText);
-      request.input('userId', logData.userId || null);
-      request.input('customerId', logData.customerId || null);
-      request.input('taskId', logData.taskId || null);
-      request.input('status', logData.status || 'pending');
-      request.input('sentAt', logData.sentAt || null);
-      
+
+      request.input("eventType", logData.eventType);
+      request.input("messageText", logData.messageText);
+      request.input("userId", logData.userId || null);
+      request.input("customerId", logData.customerId || null);
+      request.input("taskId", logData.taskId || null);
+      request.input("status", logData.status || "pending");
+      request.input("sentAt", logData.sentAt || null);
+
       const result = await request.query(`
         INSERT INTO notification_logs (
           eventType, messageText, userId, customerId, taskId, status, sentAt, createdAt
@@ -1060,10 +1163,10 @@ export class MSSQLStorage implements IStorage {
           @eventType, @messageText, @userId, @customerId, @taskId, @status, @sentAt, GETDATE()
         )
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating notification log:', error);
+      console.error("Error creating notification log:", error);
       throw error;
     }
   }
@@ -1072,23 +1175,26 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const result = await request.query(`
         SELECT * FROM notification_logs ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting notification logs:', error);
+      console.error("Error getting notification logs:", error);
       return [];
     }
   }
 
   // Customer Portal Access Management
-  async updateCustomerPortalAccess(customerId: number, portalData: any): Promise<any> {
+  async updateCustomerPortalAccess(
+    customerId: number,
+    portalData: any,
+  ): Promise<any> {
     try {
       const pool = await getConnection();
-      
+
       // First, ensure all required columns exist
       try {
         const addColumnsRequest = pool.request();
@@ -1114,20 +1220,20 @@ export class MSSQLStorage implements IStorage {
             PRINT 'Added portalAccess column'
           END
         `);
-        console.log('✅ All customer portal columns ensured');
+        console.log("✅ All customer portal columns ensured");
       } catch (columnError) {
-        console.log('⚠️ Column setup error:', (columnError as Error).message);
+        console.log("⚠️ Column setup error:", (columnError as Error).message);
       }
-      
+
       // Short delay to ensure columns are added
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const request = pool.request();
-      request.input('customerId', customerId);
-      request.input('username', portalData.username || null);
-      request.input('password', portalData.password || null);
-      request.input('portalAccess', portalData.portalAccess ? 1 : 0);
-      
+      request.input("customerId", customerId);
+      request.input("username", portalData.username || null);
+      request.input("password", portalData.password || null);
+      request.input("portalAccess", portalData.portalAccess ? 1 : 0);
+
       // Update customer with portal access details INCLUDING portalAccess column
       const result = await request.query(`
         UPDATE customers 
@@ -1136,31 +1242,36 @@ export class MSSQLStorage implements IStorage {
             portalAccess = @portalAccess
         WHERE id = @customerId
       `);
-      
-      console.log(`✅ Customer ${customerId} portal access updated successfully`);
-      
+
+      console.log(
+        `✅ Customer ${customerId} portal access updated successfully`,
+      );
+
       // Return updated customer data
       const updatedCustomer = await this.getCustomer(customerId);
       return updatedCustomer;
     } catch (error) {
-      console.error('Error updating customer portal access:', error);
+      console.error("Error updating customer portal access:", error);
       throw error;
     }
   }
 
-  async getCustomerByPortalCredentials(username: string, password: string): Promise<any> {
+  async getCustomerByPortalCredentials(
+    username: string,
+    password: string,
+  ): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('username', username);
-      request.input('password', password);
-      
+
+      request.input("username", username);
+      request.input("password", password);
+
       const result = await request.query(`
         SELECT * FROM customers 
         WHERE username = @username AND password = @password AND portalAccess = 1
       `);
-      
+
       if (result.recordset.length > 0) {
         console.log(`✅ Customer portal login successful: ${username}`);
         return result.recordset[0];
@@ -1169,106 +1280,122 @@ export class MSSQLStorage implements IStorage {
         return null;
       }
     } catch (error) {
-      console.error('Error getting customer by portal credentials:', error);
+      console.error("Error getting customer by portal credentials:", error);
       return null;
     }
   }
-
-
 
   // Delete user method for debugging
   async deleteUser(userId: string): Promise<boolean> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('userId', userId);
-      
+      request.input("userId", userId);
+
       await request.query(`DELETE FROM users WHERE id = @userId`);
       console.log(`✅ Deleted user with ID: ${userId}`);
       return true;
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error("Error deleting user:", error);
       return false;
     }
   }
 
   // Field Engineer Methods - CRITICAL FOR MOBILE APK WORKFLOW
-  async assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy?: string): Promise<any> {
+  async assignTaskToFieldEngineer(
+    taskId: number,
+    fieldEngineerId: string,
+    _assignedBy?: string,
+  ): Promise<any> {
     try {
-      console.log(`🔄 FINAL ASSIGNMENT: Task ${taskId} to engineer ${fieldEngineerId}`);
-      
+      console.log(
+        `🔄 FINAL ASSIGNMENT: Task ${taskId} to engineer ${fieldEngineerId}`,
+      );
+
       const pool = await getConnection();
-      
+
       // Simple, direct assignment update
       const updateRequest = pool.request();
-      updateRequest.input('taskId', taskId);
-      updateRequest.input('fieldEngineerId', fieldEngineerId);
-      
+      updateRequest.input("taskId", taskId);
+      updateRequest.input("fieldEngineerId", fieldEngineerId);
+
       const updateResult = await updateRequest.query(`
         UPDATE tasks 
         SET resolved_by = @fieldEngineerId
         WHERE id = @taskId
       `);
-      
+
       console.log(`✅ Assignment UPDATE executed`);
       console.log(`📊 Rows affected: ${updateResult.rowsAffected[0]}`);
-      
+
       if (updateResult.rowsAffected[0] > 0) {
-        console.log(`🎉 SUCCESS! Task ${taskId} assigned to engineer ${fieldEngineerId}`);
-        
+        console.log(
+          `🎉 SUCCESS! Task ${taskId} assigned to engineer ${fieldEngineerId}`,
+        );
+
         // Return updated task
         const updatedTask = await this.getTask(taskId);
         return updatedTask;
       } else {
         throw new Error(`No task found with ID ${taskId}`);
       }
-      
     } catch (error) {
-      console.error('❌ Assignment error:', (error as Error).message);
+      console.error("❌ Assignment error:", (error as Error).message);
       throw error;
     }
   }
 
-  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy?: string): Promise<any> {
+  async assignMultipleFieldEngineers(
+    taskId: number,
+    fieldEngineerIds: string[],
+    _assignedBy?: string,
+  ): Promise<any> {
     try {
-      console.log(`🔄 STARTING: Assigning task ${taskId} to engineers:`, fieldEngineerIds);
-      
+      console.log(
+        `🔄 STARTING: Assigning task ${taskId} to engineers:`,
+        fieldEngineerIds,
+      );
+
       // Validate inputs
       if (!taskId || !fieldEngineerIds || fieldEngineerIds.length === 0) {
-        throw new Error('Invalid input: taskId and fieldEngineerIds are required');
+        throw new Error(
+          "Invalid input: taskId and fieldEngineerIds are required",
+        );
       }
-      
+
       const results = [];
-      
+
       // Get original task
       console.log(`🔍 Fetching original task ${taskId}...`);
       const originalTask = await this.getTask(taskId);
-      
+
       if (!originalTask) {
         throw new Error(`Task ${taskId} not found`);
       }
       console.log(`✅ Original task found: ${originalTask.ticketNumber}`);
-      
+
       // Validate assignedBy user
-      const validAssignedBy = assignedBy || 'admin';
+      const validAssignedBy = _assignedBy || "admin";
       console.log(`✅ Using assignedBy: ${validAssignedBy}`);
-      
+
       // Process only first engineer for now (simpler approach)
       const firstEngineerId = fieldEngineerIds[0];
       console.log(`🔄 Assigning task to first engineer: ${firstEngineerId}`);
-      
+
       // COMPLETE FIX: Update the actual task record with field engineer assignment
-      console.log(`🎯 PROPER ASSIGNMENT: Updating task record with field engineer`);
-      
+      console.log(
+        `🎯 PROPER ASSIGNMENT: Updating task record with field engineer`,
+      );
+
       try {
         // 1. Update the task record to assign the field engineer
         const pool = await getConnection();
         const request = pool.request();
-        
-        request.input('taskId', taskId);
-        request.input('fieldEngineerId', firstEngineerId);
-        request.input('assignedTo', firstEngineerId); // This will show in "Assigned To" column
-        
+
+        request.input("taskId", taskId);
+        request.input("fieldEngineerId", firstEngineerId);
+        request.input("assignedTo", firstEngineerId); // This will show in "Assigned To" column
+
         await request.query(`
           UPDATE tasks 
           SET fieldEngineerId = @fieldEngineerId,
@@ -1276,41 +1403,47 @@ export class MSSQLStorage implements IStorage {
               updatedAt = GETDATE()
           WHERE id = @taskId
         `);
-        
+
         console.log(`✅ Task record updated with field engineer assignment`);
-        
-        // 2. Create task update record to track the assignment  
+
+        // 2. Create task update record to track the assignment
         await this.createTaskUpdate({
           taskId,
           note: `Task assigned to field engineer: ${firstEngineerId}`,
-          updatedBy: validAssignedBy
+          updatedBy: validAssignedBy,
         });
-        
+
         console.log(`✅ Assignment recorded in task_updates table`);
-        
+
         // Get the updated task
         const assignedTask = await this.getTask(taskId);
         results.push(assignedTask);
-        
-        console.log(`✅ Task ${taskId} successfully assigned to engineer ${firstEngineerId}`);
-        
+
+        console.log(
+          `✅ Task ${taskId} successfully assigned to engineer ${firstEngineerId}`,
+        );
       } catch (assignError) {
-        console.error(`❌ Assignment recording failed:`, (assignError as Error).message);
+        console.error(
+          `❌ Assignment recording failed:`,
+          (assignError as Error).message,
+        );
         throw new Error(`Assignment failed: ${(assignError as Error).message}`);
       }
-      
+
       // Return results in the expected format
       console.log(`✅ Returning ${results.length} assigned tasks`);
       return {
         success: true,
         tasks: results,
         assignedCount: results.length,
-        message: `Successfully assigned task to ${fieldEngineerIds.length} field engineer(s)`
+        message: `Successfully assigned task to ${fieldEngineerIds.length} field engineer(s)`,
       };
-      
     } catch (error) {
-      console.error('❌ COMPLETE ERROR in assignMultipleFieldEngineers:', (error as Error).message);
-      console.error('❌ ERROR STACK:', (error as Error).stack);
+      console.error(
+        "❌ COMPLETE ERROR in assignMultipleFieldEngineers:",
+        (error as Error).message,
+      );
+      console.error("❌ ERROR STACK:", (error as Error).stack);
       throw error;
     }
   }
@@ -1319,8 +1452,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('fieldEngineerId', fieldEngineerId);
-      
+      request.input("fieldEngineerId", fieldEngineerId);
+
       const result = await request.query(`
         SELECT t.*, c.name as customerName, c.address as customerAddress
         FROM tasks t
@@ -1328,24 +1461,29 @@ export class MSSQLStorage implements IStorage {
         WHERE t.fieldEngineerId = @fieldEngineerId
         ORDER BY t.createdAt DESC
       `);
-      
-      console.log(`✅ Found ${result.recordset.length} tasks for field engineer ${fieldEngineerId}`);
+
+      console.log(
+        `✅ Found ${result.recordset.length} tasks for field engineer ${fieldEngineerId}`,
+      );
       return result.recordset;
     } catch (error) {
-      console.error('Error getting field engineer tasks:', error);
+      console.error("Error getting field engineer tasks:", error);
       return [];
     }
   }
 
-  async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<any[]> {
+  async getAvailableFieldEngineers(
+    region?: string,
+    skillSet?: string,
+  ): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       let whereClause = "WHERE role = 'field_engineer' AND isActive = 1";
-      
+
       // Note: region and skillSet filters removed as columns don't exist in current schema
-      
+
       const result = await request.query(`
         SELECT id, username, firstName, lastName, email, phone, role, isActive,
                'Available' as status
@@ -1353,58 +1491,70 @@ export class MSSQLStorage implements IStorage {
         ${whereClause}
         ORDER BY firstName, lastName
       `);
-      
-      console.log(`✅ Found ${result.recordset.length} available field engineers`);
+
+      console.log(
+        `✅ Found ${result.recordset.length} available field engineers`,
+      );
       return result.recordset;
     } catch (error) {
-      console.error('Error getting available field engineers:', error);
+      console.error("Error getting available field engineers:", error);
       return [];
     }
   }
 
   // Field task status update methods
-  async updateFieldTaskStatus(taskId: number, status: string, updatedBy: string, note?: string): Promise<any> {
+  async updateFieldTaskStatus(
+    taskId: number,
+    status: string,
+    updatedBy: string,
+    note?: string,
+  ): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('taskId', taskId);
-      request.input('status', status);
-      request.input('updatedBy', updatedBy);
-      
+
+      request.input("taskId", taskId);
+      request.input("status", status);
+      request.input("updatedBy", updatedBy);
+
       // Update task status
       await request.query(`
         UPDATE tasks 
         SET status = @status, updatedAt = GETDATE()
         WHERE id = @taskId
       `);
-      
+
       // Create task update record
       if (note) {
         await this.createTaskUpdate({
           taskId,
           status,
           note,
-          updatedBy
+          updatedBy,
         });
       }
-      
+
       console.log(`✅ Field task ${taskId} status updated to ${status}`);
       return await this.getTask(taskId);
     } catch (error) {
-      console.error('Error updating field task status:', error);
+      console.error("Error updating field task status:", error);
       throw error;
     }
   }
 
-  async completeFieldTask(taskId: number, completedBy: string, completionNote: string, files?: any[]): Promise<any> {
+  async completeFieldTask(
+    taskId: number,
+    completedBy: string,
+    completionNote: string,
+    files?: any[],
+  ): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('taskId', taskId);
-      request.input('completedBy', completedBy);
-      
+
+      request.input("taskId", taskId);
+      request.input("completedBy", completedBy);
+
       // Update task to completed
       await request.query(`
         UPDATE tasks 
@@ -1413,34 +1563,32 @@ export class MSSQLStorage implements IStorage {
             updatedAt = GETDATE()
         WHERE id = @taskId
       `);
-      
+
       // Create completion update record
       await this.createTaskUpdate({
         taskId,
-        status: 'completed',
+        status: "completed",
         note: completionNote,
         updatedBy: completedBy,
         filePath: files && files.length > 0 ? files[0].path : null,
         fileName: files && files.length > 0 ? files[0].name : null,
-        fileType: files && files.length > 0 ? files[0].type : null
+        fileType: files && files.length > 0 ? files[0].type : null,
       });
-      
+
       console.log(`✅ Field task ${taskId} completed successfully`);
       return await this.getTask(taskId);
     } catch (error) {
-      console.error('Error completing field task:', error);  
+      console.error("Error completing field task:", error);
       throw error;
     }
   }
-
-
 
   async getTasksByStatus(status: string): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('status', status);
-      
+      request.input("status", status);
+
       const result = await request.query(`
         SELECT t.*, c.name as customerName, u.firstName, u.lastName
         FROM tasks t
@@ -1449,10 +1597,10 @@ export class MSSQLStorage implements IStorage {
         WHERE t.status = @status
         ORDER BY t.createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting tasks by status:', error);
+      console.error("Error getting tasks by status:", error);
       return [];
     }
   }
@@ -1462,15 +1610,15 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('email', email);
-      
+      request.input("email", email);
+
       const result = await request.query(`
         SELECT * FROM users WHERE email = @email
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error getting user by email:', error);
+      console.error("Error getting user by email:", error);
       return undefined;
     }
   }
@@ -1485,17 +1633,17 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('userId', userId);
-      
+      request.input("userId", userId);
+
       const result = await request.query(`
         SELECT TOP 50 * FROM notification_logs 
         WHERE userId = @userId 
         ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting notifications by user:', error);
+      console.error("Error getting notifications by user:", error);
       return [];
     }
   }
@@ -1504,7 +1652,7 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       // Get task counts
       const taskStats = await request.query(`
         SELECT 
@@ -1516,26 +1664,26 @@ export class MSSQLStorage implements IStorage {
           SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelledTasks
         FROM tasks
       `);
-      
+
       // Get customer count
       const customerStats = await request.query(`
         SELECT COUNT(*) as totalCustomers FROM customers
       `);
-      
+
       // Get user count
       const userStats = await request.query(`
         SELECT COUNT(*) as activeUsers FROM users WHERE isActive = 1
       `);
-      
+
       const stats = taskStats.recordset[0];
       stats.totalCustomers = customerStats.recordset[0].totalCustomers;
       stats.activeUsers = userStats.recordset[0].activeUsers;
       stats.avgPerformanceScore = 85.5; // Default value
       stats.avgResponseTime = 24.2; // Default value in hours
-      
+
       return stats;
     } catch (error) {
-      console.error('Error getting dashboard stats:', error);
+      console.error("Error getting dashboard stats:", error);
       return {
         totalTasks: 0,
         pendingTasks: 0,
@@ -1546,7 +1694,7 @@ export class MSSQLStorage implements IStorage {
         totalCustomers: 0,
         activeUsers: 0,
         avgPerformanceScore: 0,
-        avgResponseTime: 0
+        avgResponseTime: 0,
       };
     }
   }
@@ -1555,8 +1703,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('limit', limit);
-      
+      request.input("limit", limit);
+
       const result = await request.query(`
         SELECT TOP (@limit) 
           t.*,
@@ -1567,10 +1715,10 @@ export class MSSQLStorage implements IStorage {
         LEFT JOIN users u ON t.assignedTo = u.id
         ORDER BY t.createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting recent tasks:', error);
+      console.error("Error getting recent tasks:", error);
       return [];
     }
   }
@@ -1579,14 +1727,14 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const result = await request.query(`
         SELECT * FROM chat_rooms ORDER BY createdAt DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting chat rooms:', error);
+      console.error("Error getting chat rooms:", error);
       return [];
     }
   }
@@ -1595,28 +1743,28 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('name', room.name);
-      request.input('description', room.description || null);
-      request.input('isPrivate', room.isPrivate || false);
-      request.input('createdBy', room.createdBy);
-      
+
+      request.input("name", room.name);
+      request.input("description", room.description || null);
+      request.input("isPrivate", room.isPrivate || false);
+      request.input("createdBy", room.createdBy);
+
       const result = await request.query(`
         INSERT INTO chat_rooms (name, description, isPrivate, createdBy, createdAt, updatedAt)
         OUTPUT INSERTED.id
         VALUES (@name, @description, @isPrivate, @createdBy, GETDATE(), GETDATE())
       `);
-      
+
       const newId = result.recordset[0].id;
-      
+
       // Get the created room
       const roomResult = await request.query(`
         SELECT * FROM chat_rooms WHERE id = ${newId}
       `);
-      
+
       return roomResult.recordset[0];
     } catch (error) {
-      console.error('Error creating chat room:', error);
+      console.error("Error creating chat room:", error);
       throw error;
     }
   }
@@ -1625,8 +1773,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('roomId', roomId);
-      
+      request.input("roomId", roomId);
+
       const result = await request.query(`
         SELECT 
           m.*,
@@ -1637,10 +1785,10 @@ export class MSSQLStorage implements IStorage {
         WHERE m.roomId = @roomId
         ORDER BY m.createdAt ASC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting chat messages:', error);
+      console.error("Error getting chat messages:", error);
       return [];
     }
   }
@@ -1649,39 +1797,44 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('roomId', message.roomId);
-      request.input('senderId', message.senderId);
-      request.input('content', message.content);
-      
+
+      request.input("roomId", message.roomId);
+      request.input("senderId", message.senderId);
+      request.input("content", message.content);
+
       const result = await request.query(`
         INSERT INTO chat_messages (roomId, senderId, content, createdAt)
         OUTPUT INSERTED.id
         VALUES (@roomId, @senderId, @content, GETDATE())
       `);
-      
+
       const newId = result.recordset[0].id;
-      
+
       // Get the created message
       const messageResult = await request.query(`
         SELECT * FROM chat_messages WHERE id = ${newId}
       `);
-      
+
       return messageResult.recordset[0];
     } catch (error) {
-      console.error('Error creating chat message:', error);
+      console.error("Error creating chat message:", error);
       throw error;
     }
   }
 
-  async getAnalyticsOverview(startDate: Date, endDate: Date): Promise<any> {
+  async getAnalyticsOverview(days: number): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('startDate', startDate);
-      request.input('endDate', endDate);
-      
+
+      // Calculate start and end dates from days parameter
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - days);
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
       // Get basic stats
       const statsResult = await request.query(`
         SELECT 
@@ -1692,10 +1845,13 @@ export class MSSQLStorage implements IStorage {
         FROM tasks 
         WHERE createdAt BETWEEN @startDate AND @endDate
       `);
-      
+
       const stats = statsResult.recordset[0];
-      const completionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
-      
+      const completionRate =
+        stats.totalTasks > 0
+          ? (stats.completedTasks / stats.totalTasks) * 100
+          : 0;
+
       // Get engineer counts
       const engineerResult = await request.query(`
         SELECT 
@@ -1703,9 +1859,9 @@ export class MSSQLStorage implements IStorage {
           COUNT(DISTINCT CASE WHEN u.isActive = 1 THEN u.id END) as activeEngineers
         FROM users u WHERE u.role IN ('field_engineer', 'admin', 'manager')
       `);
-      
+
       const engineerStats = engineerResult.recordset[0];
-      
+
       // Get status distribution
       const statusResult = await request.query(`
         SELECT 
@@ -1715,7 +1871,7 @@ export class MSSQLStorage implements IStorage {
         WHERE createdAt BETWEEN @startDate AND @endDate
         GROUP BY status
       `);
-      
+
       // Get priority distribution
       const priorityResult = await request.query(`
         SELECT 
@@ -1725,7 +1881,7 @@ export class MSSQLStorage implements IStorage {
         WHERE createdAt BETWEEN @startDate AND @endDate
         GROUP BY priority
       `);
-      
+
       return {
         totalTasks: stats.totalTasks || 0,
         completedTasks: stats.completedTasks || 0,
@@ -1737,33 +1893,45 @@ export class MSSQLStorage implements IStorage {
         completionGrowth: 0,
         responseImprovement: 0,
         statusDistribution: statusResult.recordset.map((row: any) => ({
-          name: row.name || 'Unknown',
-          value: row.value || 0
+          name: row.name || "Unknown",
+          value: row.value || 0,
         })),
         priorityDistribution: priorityResult.recordset.map((row: any) => ({
-          name: row.name || 'Unknown', 
-          value: row.value || 0
-        }))
+          name: row.name || "Unknown",
+          value: row.value || 0,
+        })),
       };
     } catch (error) {
-      console.error('Error fetching analytics overview:', error);
+      console.error("Error fetching analytics overview:", error);
       return {
-        totalTasks: 0, completedTasks: 0, completionRate: 0,
-        avgResponseTime: 0, activeEngineers: 0, totalEngineers: 0,
-        taskGrowth: 0, completionGrowth: 0, responseImprovement: 0,
-        statusDistribution: [], priorityDistribution: []
+        totalTasks: 0,
+        completedTasks: 0,
+        completionRate: 0,
+        avgResponseTime: 0,
+        activeEngineers: 0,
+        totalEngineers: 0,
+        taskGrowth: 0,
+        completionGrowth: 0,
+        responseImprovement: 0,
+        statusDistribution: [],
+        priorityDistribution: [],
       };
     }
   }
 
-  async getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+  async getCustomerAnalytics(days: number): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('startDate', startDate);
-      request.input('endDate', endDate);
-      
+
+      // Calculate start and end dates from days parameter
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - days);
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
       const result = await request.query(`
         SELECT 
           u.id,
@@ -1786,7 +1954,7 @@ export class MSSQLStorage implements IStorage {
         GROUP BY u.id, u.firstName, u.lastName, u.email, u.isActive
         ORDER BY completedTasks DESC
       `);
-      
+
       return result.recordset.map((row: any) => ({
         id: row.id,
         firstName: row.firstName,
@@ -1796,22 +1964,23 @@ export class MSSQLStorage implements IStorage {
         totalTasks: row.totalTasks || 0,
         avgResponseTime: Math.round(row.avgResponseTime || 0),
         performanceScore: Math.round((row.performanceScore || 0) * 100) / 100,
-        isActive: row.isActive === 1
+        isActive: row.isActive === 1,
       }));
     } catch (error) {
-      console.error('Error fetching engineer analytics:', error);
+      console.error("Error fetching engineer analytics:", error);
       return [];
     }
   }
 
-  async getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+  // Remove this duplicate method - already replaced above
+  async getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('startDate', startDate);
-      request.input('endDate', endDate);
-      
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
       const result = await request.query(`
         SELECT 
           c.id,
@@ -1828,7 +1997,7 @@ export class MSSQLStorage implements IStorage {
         HAVING COUNT(t.id) > 0
         ORDER BY totalTasks DESC
       `);
-      
+
       return result.recordset.map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -1836,22 +2005,31 @@ export class MSSQLStorage implements IStorage {
         totalTasks: row.totalTasks || 0,
         completedTasks: row.completedTasks || 0,
         avgResolutionTime: Math.round(row.avgResolutionTime || 0),
-        satisfaction: row.satisfaction
+        satisfaction: row.satisfaction,
       }));
     } catch (error) {
-      console.error('Error fetching customer analytics:', error);
+      console.error("Error fetching customer analytics:", error);
       return [];
     }
+  }
+
+  // Missing interface methods - Add stubs for now  
+  async getEngineerPerformance(): Promise<any> {
+    return { message: "Engineer performance analytics not implemented" };
+  }
+
+  async getTrendAnalytics(): Promise<any> {
+    return { message: "Trend analytics not implemented" };
   }
 
   async getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('startDate', startDate);
-      request.input('endDate', endDate);
-      
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
       const result = await request.query(`
         SELECT 
           CAST(createdAt as DATE) as date,
@@ -1863,15 +2041,15 @@ export class MSSQLStorage implements IStorage {
         GROUP BY CAST(createdAt as DATE)
         ORDER BY date ASC
       `);
-      
+
       return result.recordset.map((row: any) => ({
-        date: row.date.toISOString().split('T')[0],
+        date: row.date.toISOString().split("T")[0],
         created: row.created || 0,
         completed: row.completed || 0,
-        cancelled: row.cancelled || 0
+        cancelled: row.cancelled || 0,
       }));
     } catch (error) {
-      console.error('Error fetching trends analytics:', error);
+      console.error("Error fetching trends analytics:", error);
       return [];
     }
   }
@@ -1880,8 +2058,8 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('limit', limit);
-      
+      request.input("limit", limit);
+
       const result = await request.query(`
         SELECT TOP (@limit)
           u.id,
@@ -1896,37 +2074,44 @@ export class MSSQLStorage implements IStorage {
         WHERE u.isActive = 1
         ORDER BY COALESCE(pm.tasksCompleted, 0) DESC, COALESCE(pm.customerSatisfactionScore, 85.0) DESC
       `);
-      
+
       return result.recordset;
     } catch (error) {
-      console.error('Error getting top performers:', error);
+      console.error("Error getting top performers:", error);
       return [];
     }
   }
 
-  async getPerformanceAnalytics(startDate: Date, endDate: Date, metric: string): Promise<any[]> {
+  async getPerformanceAnalytics(
+    startDate: Date,
+    endDate: Date,
+    metric: string,
+  ): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('startDate', startDate);
-      request.input('endDate', endDate);
-      
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
       // Based on metric, return time-series data for performance metrics
-      let valueField = 'COUNT(t.id)'; // default to task count
-      
-      switch(metric) {
-        case 'completion_rate':
-          valueField = 'AVG(CASE WHEN t.status = "completed" THEN 100.0 ELSE 0.0 END)';
+      let valueField = "COUNT(t.id)"; // default to task count
+
+      switch (metric) {
+        case "completion_rate":
+          valueField =
+            'AVG(CASE WHEN t.status = "completed" THEN 100.0 ELSE 0.0 END)';
           break;
-        case 'response_time':
-          valueField = 'AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)';
+        case "response_time":
+          valueField =
+            "AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)";
           break;
-        case 'resolution_time':
-          valueField = 'AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)';
+        case "resolution_time":
+          valueField =
+            "AVG(CASE WHEN t.resolvedAt IS NOT NULL THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END)";
           break;
       }
-      
+
       const result = await request.query(`
         SELECT 
           CAST(t.createdAt as DATE) as date,
@@ -1936,18 +2121,16 @@ export class MSSQLStorage implements IStorage {
         GROUP BY CAST(t.createdAt as DATE)
         ORDER BY date ASC
       `);
-      
+
       return result.recordset.map((row: any) => ({
-        date: row.date.toISOString().split('T')[0],
-        value: Math.round((row.value || 0) * 100) / 100
+        date: row.date.toISOString().split("T")[0],
+        value: Math.round((row.value || 0) * 100) / 100,
       }));
     } catch (error) {
-      console.error('Error getting performance analytics:', error);
+      console.error("Error getting performance analytics:", error);
       return [];
     }
   }
-
-
 
   // Method to get task statistics - Fixed implementation
   async getTaskStats(): Promise<any> {
@@ -1963,22 +2146,34 @@ export class MSSQLStorage implements IStorage {
           SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority
         FROM tasks
       `);
-      return result.recordset[0] || { total: 0, pending: 0, inProgress: 0, completed: 0, high_priority: 0 };
+      return (
+        result.recordset[0] || {
+          total: 0,
+          pending: 0,
+          inProgress: 0,
+          completed: 0,
+          high_priority: 0,
+        }
+      );
     } catch (error) {
-      console.error('Error getting task stats:', error);
-      return { total: 0, pending: 0, inProgress: 0, completed: 0, high_priority: 0 };
+      console.error("Error getting task stats:", error);
+      return {
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
+        high_priority: 0,
+      };
     }
   }
-
-
 
   // Performance calculation method - Fixed implementation
   async calculateUserPerformance(userId: string): Promise<any> {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('userId', userId);
-      
+      request.input("userId", userId);
+
       const result = await request.query(`
         SELECT 
           COUNT(*) as totalTasks,
@@ -1988,21 +2183,24 @@ export class MSSQLStorage implements IStorage {
         FROM tasks 
         WHERE assignedTo = @userId OR fieldEngineerId = @userId
       `);
-      
+
       const stats = result.recordset[0] || {};
       return {
         totalTasks: stats.totalTasks || 0,
         completedTasks: stats.completedTasks || 0,
-        completionRate: stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks * 100) : 0,
-        avgResolutionHours: stats.avgResolutionHours || 0
+        completionRate:
+          stats.totalTasks > 0
+            ? (stats.completedTasks / stats.totalTasks) * 100
+            : 0,
+        avgResolutionHours: stats.avgResolutionHours || 0,
       };
     } catch (error) {
-      console.error('Error calculating user performance:', error);
+      console.error("Error calculating user performance:", error);
       return {
         totalTasks: 0,
         completedTasks: 0,
         completionRate: 0,
-        avgResolutionHours: 0
+        avgResolutionHours: 0,
       };
     }
   }
@@ -2019,7 +2217,7 @@ export class MSSQLStorage implements IStorage {
       `);
       return result.recordset || [];
     } catch (error) {
-      console.error('Error getting SQL connections:', error);
+      console.error("Error getting SQL connections:", error);
       return [];
     }
   }
@@ -2029,17 +2227,17 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      request.input('customerId', customerId);
-      
+      request.input("customerId", customerId);
+
       const result = await request.query(`
         SELECT * FROM customer_system_details 
         WHERE customer_id = @customerId
         ORDER BY created_at DESC
       `);
-      
+
       return result.recordset || [];
     } catch (error) {
-      console.error('Error getting customer system details:', error);
+      console.error("Error getting customer system details:", error);
       return [];
     }
   }
@@ -2049,12 +2247,12 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
-      request.input('customerId', detailsData.customerId);
-      request.input('systemType', detailsData.systemType || null);
-      request.input('specifications', detailsData.specifications || null);
-      request.input('notes', detailsData.notes || null);
-      
+
+      request.input("customerId", detailsData.customerId);
+      request.input("systemType", detailsData.systemType || null);
+      request.input("specifications", detailsData.specifications || null);
+      request.input("notes", detailsData.notes || null);
+
       const result = await request.query(`
         INSERT INTO customer_system_details (
           customer_id, system_type, specifications, notes, created_at, updated_at
@@ -2064,10 +2262,10 @@ export class MSSQLStorage implements IStorage {
           @customerId, @systemType, @specifications, @notes, GETDATE(), GETDATE()
         )
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error creating customer system details:', error);
+      console.error("Error creating customer system details:", error);
       throw error;
     }
   }
@@ -2077,44 +2275,44 @@ export class MSSQLStorage implements IStorage {
     try {
       const pool = await getConnection();
       const request = pool.request();
-      
+
       const updateFields = [];
       if (updates.systemType !== undefined) {
-        updateFields.push('system_type = @systemType');
-        request.input('systemType', updates.systemType);
+        updateFields.push("system_type = @systemType");
+        request.input("systemType", updates.systemType);
       }
       if (updates.specifications !== undefined) {
-        updateFields.push('specifications = @specifications');
-        request.input('specifications', updates.specifications);
+        updateFields.push("specifications = @specifications");
+        request.input("specifications", updates.specifications);
       }
       if (updates.notes !== undefined) {
-        updateFields.push('notes = @notes');
-        request.input('notes', updates.notes);
+        updateFields.push("notes = @notes");
+        request.input("notes", updates.notes);
       }
-      
+
       if (updateFields.length === 0) {
         return null;
       }
-      
-      updateFields.push('updated_at = GETDATE()');
-      request.input('id', id);
-      
+
+      updateFields.push("updated_at = GETDATE()");
+      request.input("id", id);
+
       await request.query(`
         UPDATE customer_system_details 
-        SET ${updateFields.join(', ')}
+        SET ${updateFields.join(", ")}
         WHERE id = @id
       `);
-      
+
       // Return updated record
       const selectRequest = pool.request();
-      selectRequest.input('id', id);
+      selectRequest.input("id", id);
       const result = await selectRequest.query(`
         SELECT * FROM customer_system_details WHERE id = @id
       `);
-      
+
       return result.recordset[0];
     } catch (error) {
-      console.error('Error updating customer system details:', error);
+      console.error("Error updating customer system details:", error);
       throw error;
     }
   }
