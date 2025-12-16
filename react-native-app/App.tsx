@@ -15,6 +15,7 @@ import CustomersScreen from './src/screens/CustomersScreen';
 import UsersScreen from './src/screens/UsersScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WebViewScreen from './src/screens/WebViewScreen';
+import PortalScreen from './src/screens/PortalScreen';
 
 // Import contexts
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -69,8 +70,8 @@ function TabNavigator() {
             case 'Profile':
               iconName = 'person';
               break;
-            case 'WebView':
-              iconName = 'web';
+            case 'Portal':
+              iconName = 'dashboard';
               break;
           }
 
@@ -116,9 +117,9 @@ function TabNavigator() {
         options={{ title: 'Users' }}
       />
       <Tab.Screen 
-        name="WebView" 
-        component={WebViewScreen}
-        options={{ title: 'Web Portal' }}
+        name="Portal" 
+        component={PortalScreen}
+        options={{ title: 'Portal' }}
       />
       <Tab.Screen 
         name="Profile" 

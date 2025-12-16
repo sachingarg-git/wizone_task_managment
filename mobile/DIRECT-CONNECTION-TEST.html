@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobile Connection Test - Direct</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.test-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.info-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #22c55e;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 10000;
+}
+
+.direct-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    margin-top: 40px;
+}
+
+.connection-log {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+}
+</style>
+</head>
+<body>
+<div class="test-container">
+    <div class="info-banner">
+        ✅ DIRECT CONNECTION TEST - http://103.122.85.61:4000
+    </div>
+    
+    <iframe 
+        class="direct-iframe"
+        src="http://103.122.85.61:4000"
+        allow="camera; microphone; geolocation; fullscreen"
+        onload="logConnection('SUCCESS: Direct connection established')"
+        onerror="logConnection('ERROR: Connection failed')">
+    </iframe>
+    
+    <div class="connection-log" id="log">
+        <div><strong>CONNECTION LOG:</strong></div>
+        <div>🎯 Target: http://103.122.85.61:4000</div>
+        <div>📱 Method: Direct iframe connection</div>
+        <div>❌ NO detection logic</div>
+        <div>❌ NO URL testing</div>
+        <div>❌ NO localhost attempts</div>
+        <div>⏳ Connecting...</div>
+    </div>
+</div>
+
+<script>
+console.log('🎯 DIRECT CONNECTION TEST STARTED');
+console.log('Target: http://103.122.85.61:4000');
+console.log('Method: Direct iframe - NO DETECTION');
+
+function logConnection(message) {
+    const log = document.getElementById('log');
+    const time = new Date().toLocaleTimeString();
+    log.innerHTML += '<div>' + time + ': ' + message + '</div>';
+    log.scrollTop = log.scrollHeight;
+    console.log(message);
+}
+
+// Test if iframe loads successfully
+setTimeout(() => {
+    const iframe = document.querySelector('.direct-iframe');
+    try {
+        if (iframe.contentWindow) {
+            logConnection('SUCCESS: Iframe loaded successfully');
+        }
+    } catch (e) {
+        logConnection('INFO: Cross-origin iframe (expected)');
+    }
+}, 3000);
+
+logConnection('INFO: Direct connection initiated');
+logConnection('INFO: No detection logic present');
+logConnection('INFO: Should show production login page');
+</script>
+</body>
+</html>

@@ -293,19 +293,19 @@ export class MSSQLStorage implements IStorage {
       }
       if (updates.password !== undefined) {
         const hashedPassword = await this.hashPassword(updates.password);
-        updateFields.push("password = @password");
         request.input("password", hashedPassword);
+        updateFields.push("\"passwordHash\" = @password");
       }
       if (updates.email !== undefined) {
         updateFields.push("email = @email");
         request.input("email", updates.email);
       }
       if (updates.firstName !== undefined) {
-        updateFields.push("firstName = @firstName");
+        updateFields.push("\"firstName\" = @firstName");
         request.input("firstName", updates.firstName);
       }
       if (updates.lastName !== undefined) {
-        updateFields.push("lastName = @lastName");
+        updateFields.push("\"lastName\" = @lastName");
         request.input("lastName", updates.lastName);
       }
       if (updates.phone !== undefined) {
@@ -320,16 +320,16 @@ export class MSSQLStorage implements IStorage {
         updateFields.push("department = @department");
         request.input("department", updates.department);
       }
-      if (updates.isActive !== undefined) {
-        updateFields.push("isActive = @isActive");
-        request.input("isActive", updates.isActive);
+      if (updates.isActive !== undefined || updates.active !== undefined) {
+        updateFields.push("active = @active");
+        request.input("active", updates.isActive !== undefined ? updates.isActive : updates.active);
       }
 
       if (updateFields.length === 0) {
         return await this.getUser(id);
       }
 
-      updateFields.push("updatedAt = GETDATE()");
+      updateFields.push("\"updatedAt\" = GETDATE()");
       request.input("id", id);
 
       await request.query(`
@@ -341,6 +341,48 @@ export class MSSQLStorage implements IStorage {
       return await this.getUser(id);
     } catch (error) {
       console.error("Error updating user:", error);
+      throw error;
+    }
+  }
+
+  async updateUserStatus(id: number, active: boolean): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input("active", active);
+      request.input("id", id);
+
+      await request.query(`
+        UPDATE users 
+        SET active = @active, \"updatedAt\" = GETDATE()
+        WHERE id = @id
+      `);
+
+      return await this.getUser(id.toString());
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      throw error;
+    }
+  }
+
+  async updateUserRole(id: string, role: string): Promise<any> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+      
+      request.input("role", role);
+      request.input("id", id);
+
+      await request.query(`
+        UPDATE users 
+        SET role = @role, \"updatedAt\" = GETDATE()
+        WHERE id = @id
+      `);
+
+      return await this.getUser(id);
+    } catch (error) {
+      console.error("Error updating user role:", error);
       throw error;
     }
   }
@@ -1972,8 +2014,65 @@ export class MSSQLStorage implements IStorage {
     }
   }
 
-  // Remove this duplicate method - already replaced above
+  // Get engineer analytics with real data
   async getEngineerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+    try {
+      const pool = await getConnection();
+      const request = pool.request();
+
+      request.input("startDate", startDate);
+      request.input("endDate", endDate);
+
+      const result = await request.query(`
+        SELECT 
+          u.id,
+          u.username,
+          u.firstName,
+          u.lastName,
+          u.email,
+          u.role,
+          u.active as isActive,
+          COUNT(t.id) as totalTasks,
+          SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completedTasks,
+          AVG(CASE WHEN t.status = 'completed' AND t.resolvedAt IS NOT NULL AND t.createdAt IS NOT NULL 
+              THEN DATEDIFF(MINUTE, t.createdAt, t.resolvedAt) ELSE NULL END) as avgResponseTime,
+          COALESCE(AVG(pm.performanceScore), 0) as performanceScore
+        FROM users u
+        LEFT JOIN tasks t ON u.id = t.assignedTo AND t.createdAt BETWEEN @startDate AND @endDate
+        LEFT JOIN performance_metrics pm ON u.id = pm.userId
+        WHERE u.role IN ('field_engineer', 'engineer', 'backend_engineer', 'admin', 'manager')
+        GROUP BY u.id, u.username, u.firstName, u.lastName, u.email, u.role, u.active
+        ORDER BY completedTasks DESC, performanceScore DESC
+      `);
+
+      return result.recordset.map((row: any) => ({
+        id: row.id.toString(),
+        firstName: row.firstName || row.username,
+        lastName: row.lastName || '',
+        email: row.email || '',
+        role: row.role,
+        totalTasks: row.totalTasks || 0,
+        completedTasks: row.completedTasks || 0,
+        avgResponseTime: Math.round(row.avgResponseTime || 0),
+        performanceScore: Math.round((row.performanceScore || 0) * 100) / 100,
+        isActive: row.isActive || false,
+      }));
+    } catch (error) {
+      console.error("Error fetching engineer analytics:", error);
+      return [];
+    }
+  }
+
+  // Missing interface methods - Add stubs for now  
+  async getEngineerPerformance(): Promise<any> {
+    return { message: "Engineer performance analytics not implemented" };
+  }
+
+  async getTrendAnalytics(): Promise<any> {
+    return { message: "Trend analytics not implemented" };
+  }
+
+  async getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
     try {
       const pool = await getConnection();
       const request = pool.request();
@@ -2011,15 +2110,6 @@ export class MSSQLStorage implements IStorage {
       console.error("Error fetching customer analytics:", error);
       return [];
     }
-  }
-
-  // Missing interface methods - Add stubs for now  
-  async getEngineerPerformance(): Promise<any> {
-    return { message: "Engineer performance analytics not implemented" };
-  }
-
-  async getTrendAnalytics(): Promise<any> {
-    return { message: "Trend analytics not implemented" };
   }
 
   async getTrendsAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
@@ -2100,7 +2190,7 @@ export class MSSQLStorage implements IStorage {
       switch (metric) {
         case "completion_rate":
           valueField =
-            'AVG(CASE WHEN t.status = "completed" THEN 100.0 ELSE 0.0 END)';
+            "CASE WHEN COUNT(t.id) > 0 THEN (CAST(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(t.id)) * 100 ELSE 0 END";
           break;
         case "response_time":
           valueField =

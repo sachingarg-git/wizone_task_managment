@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Theme.WizoneTaskManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/wizone_primary</item>
+        <item name="colorPrimaryVariant">@color/wizone_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">@color/wizone_accent</item>
+        <item name="colorSecondaryVariant">@color/wizone_accent_dark</item>
+        <item name="colorOnSecondary">@color/black</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        
+        <!-- Window background -->
+        <item name="android:windowBackground">@color/background_light</item>
+        
+        <!-- Material Design attributes -->
+        <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
+    </style>
+
+    <!-- Enhanced Card Style -->
+    <style name="EnhancedCardStyle">
+        <item name="cardCornerRadius">12dp</item>
+        <item name="cardElevation">8dp</item>
+        <item name="cardUseCompatPadding">true</item>
+        <item name="contentPadding">16dp</item>
+        <item name="android:layout_margin">8dp</item>
+    </style>
+
+    <!-- Enhanced Button Style -->
+    <style name="EnhancedButtonStyle" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_margin">8dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="elevation">4dp</item>
+    </style>
+
+    <!-- Primary Action Button -->
+    <style name="PrimaryActionButton" parent="EnhancedButtonStyle">
+        <item name="backgroundTint">@color/wizone_primary</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <!-- Secondary Action Button -->
+    <style name="SecondaryActionButton" parent="EnhancedButtonStyle">
+        <item name="backgroundTint">@color/wizone_accent</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+
+    <!-- Success Button -->
+    <style name="SuccessButton" parent="EnhancedButtonStyle">
+        <item name="backgroundTint">@color/success_green</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <!-- Warning Button -->
+    <style name="WarningButton" parent="EnhancedButtonStyle">
+        <item name="backgroundTint">@color/warning_orange</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <!-- Navigation Drawer Style -->
+    <style name="NavigationViewStyle" parent="Widget.MaterialComponents.NavigationView">
+        <item name="itemTextAppearance">@style/NavigationDrawerTextAppearance</item>
+        <item name="itemIconTint">@color/wizone_primary</item>
+    </style>
+
+    <style name="NavigationDrawerTextAppearance" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <!-- Enhanced Text Styles -->
+    <style name="TitleTextStyle">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:layout_margin">16dp</item>
+    </style>
+
+    <style name="SubtitleTextStyle">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:layout_margin">8dp</item>
+    </style>
+
+    <style name="BodyTextStyle">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:layout_margin">4dp</item>
+    </style>
+
+    <!-- Alert Dialog Theme -->
+    <style name="AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/wizone_primary</item>
+        <item name="colorSecondary">@color/wizone_accent</item>
+        <item name="android:colorBackground">@color/white</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+    </style>
+
+    <!-- Enhanced EditText Style -->
+    <style name="EnhancedEditTextStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/wizone_primary</item>
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="android:layout_margin">8dp</item>
+    </style>
+
+    <!-- Task Status Styles -->
+    <style name="TaskStatusPending">
+        <item name="android:textColor">@color/status_pending</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="TaskStatusInProgress">
+        <item name="android:textColor">@color/status_in_progress</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="TaskStatusCompleted">
+        <item name="android:textColor">@color/status_completed</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+</resources>

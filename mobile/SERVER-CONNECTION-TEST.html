@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Connection Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: Arial, sans-serif; 
+    padding: 20px; 
+    background: #f0f0f0;
+}
+.test-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.server-test {
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 5px;
+    border: 2px solid #ddd;
+}
+.server-test.testing { border-color: #ffa500; background: #fff3cd; }
+.server-test.success { border-color: #28a745; background: #d4edda; }
+.server-test.failed { border-color: #dc3545; background: #f8d7da; }
+.server-url { font-weight: bold; font-size: 16px; }
+.test-result { margin-top: 10px; font-size: 14px; }
+iframe { 
+    width: 100%; 
+    height: 400px; 
+    border: 2px solid #007bff; 
+    border-radius: 5px; 
+    margin-top: 20px;
+}
+</style>
+</head>
+<body>
+<div class="test-container">
+    <h1>🔍 Server Connection Test</h1>
+    <p>Testing which servers are accessible from this device...</p>
+    
+    <div id="test-old" class="server-test testing">
+        <div class="server-url">❌ OLD SERVER: http://194.238.19.19:5000</div>
+        <div class="test-result">Testing connection...</div>
+    </div>
+    
+    <div id="test-current" class="server-test testing">
+        <div class="server-url">✅ CURRENT SERVER: http://103.122.85.61:4000</div>
+        <div class="test-result">Testing connection...</div>
+    </div>
+    
+    <div id="iframe-container">
+        <h3>Direct Connection Test:</h3>
+        <iframe id="test-iframe" src="http://103.122.85.61:4000"></iframe>
+    </div>
+    
+    <div id="result-summary" style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 5px;">
+        <h3>📊 Test Summary:</h3>
+        <div id="summary-text">Running tests...</div>
+    </div>
+</div>
+
+<script>
+console.log('🔍 Starting server connection tests...');
+
+// Test old server
+async function testOldServer() {
+    const testDiv = document.getElementById('test-old');
+    const resultDiv = testDiv.querySelector('.test-result');
+    
+    try {
+        const response = await fetch('http://194.238.19.19:5000/api/test', { 
+            method: 'GET',
+            mode: 'no-cors',
+            timeout: 5000 
+        });
+        
+        testDiv.className = 'server-test success';
+        resultDiv.innerHTML = '🟢 ACCESSIBLE - This may be why APK shows old data!';
+        return true;
+    } catch (error) {
+        testDiv.className = 'server-test failed';
+        resultDiv.innerHTML = '🔴 NOT ACCESSIBLE - Good, old server is offline';
+        return false;
+    }
+}
+
+// Test current server
+async function testCurrentServer() {
+    const testDiv = document.getElementById('test-current');
+    const resultDiv = testDiv.querySelector('.test-result');
+    
+    try {
+        const response = await fetch('http://103.122.85.61:4000/api/test', { 
+            method: 'GET',
+            mode: 'no-cors',
+            timeout: 5000 
+        });
+        
+        testDiv.className = 'server-test success';
+        resultDiv.innerHTML = '🟢 ACCESSIBLE - Current production server is online';
+        return true;
+    } catch (error) {
+        testDiv.className = 'server-test failed';
+        resultDiv.innerHTML = '🔴 NOT ACCESSIBLE - Check if server is running';
+        return false;
+    }
+}
+
+// Update summary
+function updateSummary(oldServerOk, currentServerOk) {
+    const summaryDiv = document.getElementById('summary-text');
+    
+    if (oldServerOk && currentServerOk) {
+        summaryDiv.innerHTML = `
+            <div style="color: #dc3545;">⚠️ PROBLEM IDENTIFIED:</div>
+            <div>Both servers are accessible. APK may be connecting to old server!</div>
+            <div><strong>Solution:</strong> APK needs to be rebuilt with correct URLs.</div>
+        `;
+    } else if (!oldServerOk && currentServerOk) {
+        summaryDiv.innerHTML = `
+            <div style="color: #28a745;">✅ CORRECT SETUP:</div>
+            <div>Old server offline, current server online.</div>
+            <div><strong>APK Issue:</strong> Must have hardcoded old URLs in binary.</div>
+        `;
+    } else if (oldServerOk && !currentServerOk) {
+        summaryDiv.innerHTML = `
+            <div style="color: #dc3545;">🚨 SERVER ISSUE:</div>
+            <div>Current server is offline, old server still running.</div>
+            <div><strong>Action:</strong> Check current server status.</div>
+        `;
+    } else {
+        summaryDiv.innerHTML = `
+            <div style="color: #6c757d;">📡 NETWORK ISSUE:</div>
+            <div>Neither server accessible from this location.</div>
+            <div><strong>Check:</strong> Network connectivity and firewall settings.</div>
+        `;
+    }
+}
+
+// Run tests
+setTimeout(async () => {
+    console.log('Testing old server...');
+    const oldOk = await testOldServer();
+    
+    console.log('Testing current server...');
+    const currentOk = await testCurrentServer();
+    
+    updateSummary(oldOk, currentOk);
+    
+    console.log('Test Results:', { oldServer: oldOk, currentServer: currentOk });
+}, 1000);
+</script>
+</body>
+</html>

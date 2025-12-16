@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base application theme -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">#2563eb</item>
-        <item name="colorPrimaryDark">#1d4ed8</item>
-        <item name="colorAccent">#3b82f6</item>
-        <item name="android:windowBackground">@color/white</item>
+        <!-- Customize your theme here -->
+        <item name="colorPrimary">#2c5aa0</item>
+        <item name="colorPrimaryDark">#1e3f73</item>
+        <item name="colorAccent">#667eea</item>
+        <item name="android:statusBarColor">#1e3f73</item>
+        <item name="android:navigationBarColor">#2c5aa0</item>
+        <item name="android:windowBackground">#FFFFFF</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <!-- Splash screen theme -->
+    <style name="SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">#2c5aa0</item>
+        <item name="android:statusBarColor">#1e3f73</item>
+        <item name="android:navigationBarColor">#2c5aa0</item>
     </style>
 </resources>

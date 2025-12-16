@@ -1,200 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wizone IT Support Portal</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding-top: 50px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #22d3ee;
-        }
-        
-        .subtitle {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        
-        .menu {
-            display: grid;
-            gap: 15px;
-        }
-        
-        .menu-item {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: white;
-            display: block;
-        }
-        
-        .menu-item:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .menu-icon {
-            font-size: 24px;
-            margin-bottom: 10px;
-            display: block;
-        }
-        
-        .menu-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .menu-desc {
-            font-size: 14px;
-            opacity: 0.8;
-        }
-        
-        .status {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 30px;
-            text-align: center;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #22d3ee;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.7;
-            margin-top: 5px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wizone Mobile</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+.mobile-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+.production-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #ffffff;
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">📱 Wizone</div>
-            <div class="subtitle">IT Support Portal</div>
-        </div>
-        
-        <div class="menu">
-            <div class="menu-item" onclick="showTasks()">
-                <span class="menu-icon">📋</span>
-                <div class="menu-title">Task Management</div>
-                <div class="menu-desc">View and manage support tasks</div>
-            </div>
-            
-            <div class="menu-item" onclick="showCustomers()">
-                <span class="menu-icon">👥</span>
-                <div class="menu-title">Customer Portal</div>
-                <div class="menu-desc">Customer information and support</div>
-            </div>
-            
-            <div class="menu-item" onclick="showAnalytics()">
-                <span class="menu-icon">📊</span>
-                <div class="menu-title">Analytics</div>
-                <div class="menu-desc">Performance metrics and reports</div>
-            </div>
-            
-            <div class="menu-item" onclick="showSettings()">
-                <span class="menu-icon">⚙️</span>
-                <div class="menu-title">Settings</div>
-                <div class="menu-desc">App configuration and preferences</div>
-            </div>
-        </div>
-        
-        <div class="status">
-            <div style="font-weight: 600;">🟢 System Status: Online</div>
-            <div style="font-size: 14px; margin-top: 5px;">All services operational</div>
-        </div>
-        
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number">24</div>
-                <div class="stat-label">Active Tasks</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">156</div>
-                <div class="stat-label">Customers</div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        function showTasks() {
-            alert('📋 Task Management\n\n• Server Maintenance - High Priority\n• Software Update - In Progress\n• Customer Support - Completed\n• Network Setup - Pending');
-        }
-        
-        function showCustomers() {
-            alert('👥 Customer Portal\n\n• ABC Corporation - Enterprise Plan\n• XYZ Business - Professional Plan\n• Tech Solutions - Basic Plan\n• Digital Services - Premium Plan');
-        }
-        
-        function showAnalytics() {
-            alert('📊 Analytics Dashboard\n\n• Task Completion Rate: 85%\n• Customer Satisfaction: 4.2/5\n• Response Time: 2.3 hours\n• Active Engineers: 12');
-        }
-        
-        function showSettings() {
-            alert('⚙️ Settings\n\n• Version: 1.0.0\n• Language: Hindi/English\n• Notifications: Enabled\n• Theme: Professional\n• Server: Connected');
-        }
-        
-        // Update stats periodically
-        setInterval(() => {
-            const taskCount = document.querySelector('.stat-number');
-            if (taskCount) {
-                const count = parseInt(taskCount.textContent);
-                taskCount.textContent = count + Math.floor(Math.random() * 3) - 1;
-            }
-        }, 5000);
-    </script>
+<div class="mobile-container">
+    <iframe 
+        class="production-iframe"
+        src="http://103.122.85.61:4000" 
+        allow="camera; microphone; geolocation; fullscreen"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation">
+    </iframe>
+</div>
+<script>
+console.log('🎯 WIZONE MOBILE APK - DIRECT CONNECTION');
+console.log('📱 Target: http://103.122.85.61:4000');
+console.log('✅ Fixed old server URLs - Now using production server');
+</script>
 </body>
 </html>

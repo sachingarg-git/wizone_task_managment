@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Wizone IT Support Portal",
-    "slug": "wizone-mobile-app",
+    "name": "Task Score Tracker Portal",
+    "slug": "taskscoretracker-portal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,29 +16,33 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wizone.taskmanager"
+      "bundleIdentifier": "com.taskscoretracker.portal"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0891b2"
       },
-      "package": "com.wizone.taskmanager",
+      "package": "com.taskscoretracker.portal",
+      "versionCode": 1,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "wizone-mobile-app"
+        "projectId": "taskscoretracker-portal"
       }
     }
+
   }
 }

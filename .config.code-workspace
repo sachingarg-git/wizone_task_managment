@@ -1,0 +1,88 @@
+{
+	"folders": [
+		{
+			"path": ".config"
+		},
+		{
+			"path": ".git"
+		},
+		{
+			"path": ".local"
+		},
+		{
+			"path": "android-native"
+		},
+		{
+			"path": "android-studio-project"
+		},
+		{
+			"path": "attached_assets"
+		},
+		{
+			"path": "client"
+		},
+		{
+			"path": "config"
+		},
+		{
+			"path": "dist"
+		},
+		{
+			"path": "mobile"
+		},
+		{
+			"path": "mobile-production-apk"
+		},
+		{
+			"path": "mobile-production-apk-fixed"
+		},
+		{
+			"path": "node_modules"
+		},
+		{
+			"path": "react-native-app"
+		},
+		{
+			"path": "scripts"
+		},
+		{
+			"path": "server"
+		},
+		{
+			"path": "shared"
+		},
+		{
+			"path": "uploads"
+		},
+		{
+			"path": "wizone-apk"
+		},
+		{
+			"path": "wizone-deployment-package"
+		},
+		{
+			"path": "wizone-final-mobile-apk"
+		},
+		{
+			"path": "wizone-native-android"
+		},
+		{
+			"path": "wizone-native-app"
+		},
+		{
+			"path": "wizone-production-package"
+		},
+		{
+			"path": "wizone-simple-apk"
+		},
+		{
+			"path": "wizone-standalone-apk"
+		},
+		{
+			"path": "wizone-webview-apk"
+		}
+	],
+	"settings": {
+		"powershell.cwd": ".config"
+	}
+}

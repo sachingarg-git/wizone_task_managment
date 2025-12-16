@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wizone IT Support Portal</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="icon" href="assets/icon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .app-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            color: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status {
+            font-size: 18px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .db-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .db-info strong {
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        #app-frame {
+            width: 100%;
+            height: 100vh;
+            border: none;
+            display: none;
+            background: white;
+        }
+        
+        .error-message {
+            background: rgba(255,255,255,0.1);
+            color: #ffcccc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px;
+            border: 1px solid rgba(255,204,204,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="loader" class="app-loader">
+        <div class="logo">W</div>
+        <div class="spinner"></div>
+        <div class="status">Connecting to Wizone Server...</div>
+        <div class="db-info">
+            <strong>🔗 Database Connected</strong><br>
+            Host: 103.122.85.61:9095<br>
+            Database: WIZONEIT_SUPPORT<br>
+            🔐 Authentication: Case-insensitive<br>
+            📱 Mobile-optimized interface
+        </div>
+    </div>
+    <iframe id="app-frame" src="about:blank"></iframe>
+    
+    <script>
+        const SERVER_URL = 'http://103.122.85.61:4000';
+        const DB_HOST = '103.122.85.61';
+        const DB_PORT = 9095;
+        const DB_NAME = 'WIZONEIT_SUPPORT';
+        
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        function updateStatus(message) {
+            const statusEl = document.querySelector('.status');
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+        }
+        
+        function showError(message) {
+            const loader = document.getElementById('loader');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = '<strong>⚠️ Connection Error</strong><br>' + message + '<br><br>Please check:<br>• Server is running at ' + SERVER_URL + '<br>• Database is accessible at ' + DB_HOST + ':' + DB_PORT + '<br>• Internet connection is available';
+            loader.appendChild(errorDiv);
+        }
+        
+        function loadApp() {
+            const frame = document.getElementById('app-frame');
+            const loader = document.getElementById('loader');
+            
+            updateStatus('Establishing connection...');
+            
+            // Test server connectivity first
+            fetch(SERVER_URL + '/api/health', { 
+                method: 'GET',
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    updateStatus('Server connected! Loading application...');
+                    frame.src = SERVER_URL;
+                    
+                    frame.onload = function() {
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                            frame.style.display = 'block';
+                        }, 1000);
+                    };
+                } else {
+                    throw new Error('Server responded with status: ' + response.status);
+                }
+            })
+            .catch(error => {
+                console.error('Connection failed:', error);
+                
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    updateStatus('Connection failed. Retrying (' + retryCount + '/' + maxRetries + ')...');
+                    setTimeout(loadApp, 3000);
+                } else {
+                    updateStatus('Unable to connect to server');
+                    showError('Failed to connect after ' + maxRetries + ' attempts');
+                }
+            });
+        }
+        
+        // Start connection after initial delay
+        setTimeout(() => {
+            updateStatus('Initializing mobile app...');
+            setTimeout(loadApp, 1000);
+        }, 2000);
+        
+        // Handle app resume/focus events
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                const frame = document.getElementById('app-frame');
+                if (frame.style.display === 'block' && frame.src) {
+                    frame.contentWindow.location.reload();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

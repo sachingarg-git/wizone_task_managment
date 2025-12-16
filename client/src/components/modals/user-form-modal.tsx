@@ -32,7 +32,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
 const userFormSchema = z.object({
-  id: z.string().min(3, "User ID must be at least 3 characters").max(50),
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
   password: z.string().min(6, "Password must be at least 6 characters").max(100),
   email: z.string().email("Please enter a valid email address"),
@@ -56,14 +55,13 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
   const form = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
-      id: "",
       username: "",
       password: "",
       email: "",
       firstName: "",
       lastName: "",
       phone: "",
-      role: "engineer",
+      role: "field_engineer",
     },
   });
 
@@ -112,8 +110,8 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
       let errorMessage = "Failed to create user";
       if (error.message.includes("DUPLICATE_EMAIL") || error.message.includes("email already exists")) {
         errorMessage = "A user with this email already exists. Please use a different email address.";
-      } else if (error.message.includes("DUPLICATE_ID") || error.message.includes("ID already exists")) {
-        errorMessage = "A user with this ID already exists. Please use a different ID.";
+      } else if (error.message.includes("DUPLICATE_USERNAME") || error.message.includes("username already exists")) {
+        errorMessage = "A user with this username already exists. Please use a different username.";
       } else if (error.message.includes("400")) {
         // Extract the actual error message from a 400 response
         try {
@@ -153,20 +151,6 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
         <div className="overflow-y-auto max-h-[calc(90vh-120px)] pr-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>User ID *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter unique user ID (e.g., user001)" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -272,10 +256,8 @@ export default function UserFormModal({ isOpen, onClose }: UserFormModalProps) {
                       <SelectContent>
                         <SelectItem value="admin">Admin - Full system access</SelectItem>
                         <SelectItem value="manager">Manager - Task oversight, analytics</SelectItem>
-                        <SelectItem value="engineer">Engineer - General engineering tasks</SelectItem>
                         <SelectItem value="backend_engineer">Backend Engineer - System backend tasks</SelectItem>
                         <SelectItem value="field_engineer">Field Engineer - Field service tasks</SelectItem>
-                        <SelectItem value="support">Support - Customer support</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

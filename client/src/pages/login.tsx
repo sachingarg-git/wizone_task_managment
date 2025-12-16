@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, LogIn, User, Lock, ListTodo } from "lucide-react";
+import { Eye, EyeOff, LogIn, User, Lock, ListTodo, Loader2 } from "lucide-react";
+import { credentialsService } from "@/lib/credentialsService";
+import { initializePushNotifications } from "@/lib/pushNotifications";
 // Remove problematic import - use direct path instead
 
 const loginSchema = z.object({
@@ -24,6 +27,8 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(true);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -33,12 +38,53 @@ export default function LoginPage() {
     },
   });
 
+  // Load saved credentials on mount
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const savedRememberMe = await credentialsService.getRememberMe();
+        setRememberMe(savedRememberMe);
+
+        if (savedRememberMe) {
+          const credentials = await credentialsService.getCredentials();
+          if (credentials) {
+            form.setValue('username', credentials.username);
+            form.setValue('password', credentials.password);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved credentials:', error);
+      } finally {
+        setIsLoadingCredentials(false);
+      }
+    };
+
+    loadSavedCredentials();
+  }, [form]);
+
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginFormData) => {
       const response = await apiRequest("POST", "/api/auth/login", credentials);
       return response.json();
     },
-    onSuccess: (user) => {
+    onSuccess: async (user) => {
+      // Save credentials if remember me is checked
+      if (rememberMe) {
+        const values = form.getValues();
+        await credentialsService.saveCredentials(values.username, values.password);
+        await credentialsService.setRememberMe(true);
+      } else {
+        await credentialsService.clearCredentials();
+        await credentialsService.setRememberMe(false);
+      }
+
+      // Initialize push notifications after successful login
+      try {
+        await initializePushNotifications();
+      } catch (error) {
+        console.error('Error initializing push notifications:', error);
+      }
+
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Welcome back!",
@@ -63,6 +109,14 @@ export default function LoginPage() {
   const onSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data);
   };
+
+  if (isLoadingCredentials) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
@@ -153,6 +207,25 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center space-x-2 py-2">
+                  <Checkbox
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    className="border-gray-300 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                  />
+                  <label
+                    htmlFor="rememberMe"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-700 cursor-pointer select-none"
+                  >
+                    Remember me
+                  </label>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    (Save login securely)
+                  </span>
+                </div>
 
                 <Button
                   type="submit"

@@ -61,11 +61,11 @@
         <div class="wizone-logo">W</div>
         <div class="loading-spinner"></div>
         <div id="status" class="status-text">Connecting to Wizone Server...</div>
-        <div id="server-url" class="server-url">http://194.238.19.19:5000</div>
+        <div id="server-url" class="server-url">http://103.122.85.61:4000</div>
         <div class="connection-info">
             <strong>📱 Mobile APK</strong><br>
             Production Server Connection<br>
-            Database: 103.122.85.61:1440
+            Database: 103.122.85.61:9095/WIZONEIT_SUPPORT
         </div>
     </div>
     
@@ -80,11 +80,11 @@
     <iframe id="webview" src="about:blank"></iframe>
 
     <script>
-        // PRODUCTION SERVER - FIXED CONFIGURATION
-        const PRODUCTION_SERVER = 'http://194.238.19.19:5000';
+        // PRODUCTION SERVER - YOUR DATABASE CONFIGURATION
+        const PRODUCTION_SERVER = 'http://103.122.85.61:4000';
         const FALLBACK_SERVERS = [
-            'http://194.238.19.19:5000',
-            'https://194.238.19.19:5000'
+            'http://103.122.85.61:4000',
+            'https://103.122.85.61:4000'
         ];
 
         let currentServer = null;
@@ -247,7 +247,7 @@
                         const mobileInfo = {
                             isMobileAPK: true,
                             serverUrl: currentServer,
-                            databaseInfo: '103.122.85.61:1440/WIZONE_TASK_MANAGER',
+                            databaseInfo: '103.122.85.61:9095/WIZONEIT_SUPPORT',
                             buildTime: new Date().toISOString(),
                             apkVersion: '1.0'
                         };
@@ -277,8 +277,8 @@
         window.onload = function() {
             console.log('📱 Wizone Mobile APK Starting...');
             console.log(`🎯 Target server: ${PRODUCTION_SERVER}`);
-            console.log(`🗄️ Database: 103.122.85.61:1440/WIZONE_TASK_MANAGER`);
-            console.log(`🔑 Login: admin/admin123`);
+            console.log(`🗄️ Database: 103.122.85.61:9095/WIZONEIT_SUPPORT`);
+            console.log(`🔑 Login: admin/admin123 or field engineers`);
             
             // Start connection immediately
             setTimeout(() => connectToServer(), 1000);

@@ -22,6 +22,16 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
   const [showNotifications, setShowNotifications] = useState(false);
   const queryClient = useQueryClient();
   
+  // Fetch current user for user info box
+  const { data: currentUser } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/user");
+      if (!response.ok) return null;
+      return response.json();
+    }
+  });
+
   // Fetch real notifications from API
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
@@ -89,13 +99,35 @@ export default function Header({ title, subtitle, children, actions }: HeaderPro
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+    <header className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border-2 border-white/50 px-8 py-5 mb-6">
       <div className="flex items-center justify-between">
         <div className="page-enter">
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-600">{subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+          <p className="text-gray-600 font-medium">{subtitle}</p>
         </div>
         <div className="flex items-center space-x-4">
+          {/* User Info Box - Shows on all pages */}
+          {currentUser && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  {(currentUser as any)?.firstName?.charAt(0)}{(currentUser as any)?.lastName?.charAt(0)}
+                </div>
+                <div className="text-sm">
+                  <div className="font-semibold text-gray-800">
+                    {(currentUser as any)?.firstName} {(currentUser as any)?.lastName}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium capitalize">
+                      {(currentUser as any)?.role}
+                    </span>
+                    <span className="text-gray-400">|</span>
+                    <span>ID: {(currentUser as any)?.id}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {actions}
           <Popover open={showNotifications} onOpenChange={setShowNotifications}>
             <PopoverTrigger asChild>

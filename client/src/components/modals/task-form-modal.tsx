@@ -43,12 +43,29 @@ import { cn } from "@/lib/utils";
 const taskFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   customerId: z.number().min(1, "Customer is required"),
-  assignedTo: z.string().min(1, "Assigned engineer is required"),
+  assignedTo: z.number().min(1, "Assigned engineer is required"),
   priority: z.enum(["high", "medium", "low"]),
   issueType: z.string().min(1, "Issue type is required"),
   description: z.string().min(1, "Description is required"),
+  dueDate: z.string().optional(),
   contactPerson: z.string().optional(),
-  visitCharges: z.union([z.string(), z.number()]).optional().transform((val) => val?.toString()),
+  visitCharges: z.union([z.string(), z.number()]).optional()
+    .refine((val) => {
+      if (!val) return true; // Optional field
+      const num = parseFloat(val.toString());
+      return !isNaN(num) && num <= 999.99;
+    }, {
+      message: "Visit charges cannot exceed ₹999.99 (database limit). Contact admin to increase."
+    })
+    .transform((val) => val?.toString()),
+  // New auto-populated fields
+  customerAddress: z.string().optional(),
+  customerCity: z.string().optional(),
+  customerPlan: z.string().optional(),
+  connectedTower: z.string().optional(),
+  wirelessIpCustomer: z.string().optional(),
+  apIpAccessPoint: z.string().optional(),
+  customerMobile: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -74,21 +91,22 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     defaultValues: {
       title: "",
       customerId: 0,
-      assignedTo: "",
-      priority: "medium",
+      assignedTo: 0,
+      priority: "medium" as const,
       description: "",
       issueType: "",
       contactPerson: "",
       visitCharges: "",
+      dueDate: new Date().toISOString().split('T')[0], // Default to today
+      customerAddress: "",
+      customerCity: "",
+      customerPlan: "",
+      connectedTower: "",
+      wirelessIpCustomer: "",
+      apIpAccessPoint: "",
+      customerMobile: "",
     },
   });
-
-  // Generate automatic ticket ID
-  const generateTicketId = () => {
-    const now = new Date();
-    const dateTime = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
-    return `WIZ-${dateTime}_1`;
-  };
 
   // Add custom issue type
   const handleAddIssueType = () => {
@@ -107,13 +125,27 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
 
   // Default issue types
   const defaultIssueTypes = [
-    "Network Connectivity",
-    "Speed Issues", 
-    "Router Problems",
-    "Configuration",
-    "Hardware Failure",
-    "Software Issue",
-    "Maintenance"
+    "NETWORK CONNECTIVITY",
+    "SPEED ISSUES", 
+    "ROUTER PROBLEMS",
+    "CONFIGURATION",
+    "HARDWARE FAILURE",
+    "SOFTWARE ISSUE",
+    "MAINTENANCE",
+    "CCTV MAINTENANCE",
+    "NEW ACTION",
+    "NEW INSTALLATION",
+    "PLAN ACTION",
+    "MATERIAL DELIVERED",
+    "MATERIAL RECEIVED",
+    "AMC CUSTOMER (SERVICES)",
+    "NON AMC (SERVICES)",
+    "TOWER MAINTENANCE",
+    "INTERCOM ISSUE",
+    "SERVER INSTALLATION",
+    "SERVER MAINTENANCE",
+    "OFFICE SUPPORT",
+    "FLAT WORK (ANY)"
   ];
 
   // Combined issue types
@@ -129,24 +161,56 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
     enabled: isOpen,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache
   });
 
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
+      // Find selected customer and assigned user for names
+      const selectedCustomer = Array.isArray(customers) ? customers.find((c: any) => c.id === data.customerId) : null;
+      const assignedUser = Array.isArray(users) ? users.find((u: any) => u.id === data.assignedTo) : null;
+      
+      // Convert visit charges to number for estimatedHours
+      let estimatedHoursValue: number | undefined = undefined;
+      if (data.visitCharges) {
+        const visitChargesStr = data.visitCharges.toString().trim();
+        if (visitChargesStr !== "") {
+          const numValue = parseFloat(visitChargesStr);
+          if (!isNaN(numValue)) {
+            estimatedHoursValue = numValue;
+          }
+        }
+      }
+      
+      // Only send fields that exist in the tasks schema
       const payload = {
-        ...data,
-        ticketNumber: generateTicketId(),
-        visitCharges: data.visitCharges && data.visitCharges.toString().trim() !== "" ? data.visitCharges.toString() : undefined,
+        title: data.title,
+        description: data.description,
         customerId: data.customerId || undefined,
+        customerName: selectedCustomer?.name || "Unknown Customer",
+        priority: data.priority,
+        category: data.issueType, // Map issueType to category
         assignedTo: data.assignedTo || undefined,
+        assignedToName: assignedUser ? `${assignedUser.firstName || ''} ${assignedUser.lastName || ''}`.trim() || assignedUser.username : "Unknown User",
+        status: "pending", // Set default status
+        estimatedHours: estimatedHoursValue, // Send as number, not string
+        dueDate: data.dueDate ? new Date(data.dueDate) : new Date(), // Convert string to Date object
       };
+      console.log('🚀 Task creation payload (schema-compliant):', payload);
       await apiRequest("POST", "/api/tasks", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      // Invalidate all task-related queries to ensure list updates
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.includes('/api/tasks');
+        }
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success",
         description: "Task created successfully",
@@ -155,6 +219,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       form.reset();
     },
     onError: (error: Error) => {
+      console.error('❌ Task creation error:', error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -168,7 +233,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       }
       toast({
         title: "Error",
-        description: "Failed to create task",
+        description: `Failed to create task: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -195,11 +260,9 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     }
   };
 
+  // Show ALL users and engineers in the assign dropdown
   const engineerUsers = Array.isArray(users) ? users.filter((user: any) => 
-    user.role === 'engineer' || 
-    user.role === 'manager' || 
-    user.role === 'backend_engineer' || 
-    user.role === 'field_engineer'
+    user.active !== false // Only filter out inactive users
   ) : [];
 
   const getRoleBadgeColor = (role: string) => {
@@ -224,13 +287,41 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     );
   }, [customers, customerSearchValue]);
 
-  // Get selected customer name for display
+  // Get selected customer name for display and auto-populate fields
   const selectedCustomer = useMemo(() => {
     const customerId = form.watch("customerId");
-    if (!customerId || !customers) return "";
+    if (!customerId || !customers || !Array.isArray(customers)) return "";
     const customer = customers.find((c: any) => c.id === customerId);
     return customer ? customer.name : "";
   }, [form.watch("customerId"), customers]);
+
+  // Auto-populate customer fields when customer is selected
+  const handleCustomerSelect = (customer: any) => {
+    form.setValue("customerId", customer.id);
+    form.setValue("contactPerson", customer.contactPerson || customer.contact_person || "");
+    form.setValue("customerAddress", customer.address || "");
+    form.setValue("customerCity", customer.city || "");
+    form.setValue("customerPlan", customer.servicePlan || customer.service_plan || customer.planType || customer.plan_type || "");
+    form.setValue("connectedTower", customer.connectedTower || customer.connected_tower || "");
+    // Fixed mapping for Wireless IP Customer End - handle null, empty, and placeholder values
+    const wirelessIp = customer.wireless_ip && 
+                      customer.wireless_ip !== "N/A" && 
+                      customer.wireless_ip !== "Data Not available in Database" && 
+                      customer.wireless_ip.trim() !== "" 
+                      ? customer.wireless_ip : "";
+    form.setValue("wirelessIpCustomer", wirelessIp);
+    
+    // Fixed mapping for AP IP Access Point End - handle null, empty, and placeholder values  
+    const apIp = customer.wireless_ap_ip && 
+                customer.wireless_ap_ip !== "N/A" && 
+                customer.wireless_ap_ip !== "Data Not available in Database" && 
+                customer.wireless_ap_ip.trim() !== "" 
+                ? customer.wireless_ap_ip : "";
+    form.setValue("apIpAccessPoint", apIp);
+    form.setValue("customerMobile", customer.mobilePhone || customer.mobile_phone || customer.phone || "");
+    setCustomerSearchOpen(false);
+    setCustomerSearchValue("");
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -247,6 +338,8 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
         <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-1">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -274,30 +367,49 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Priority Level *
-                  </label>
-                  <div className="flex space-x-3">
-                    {["high", "medium", "low"].map((priority) => (
-                      <Button
-                        key={priority}
-                        type="button"
-                        className={`px-4 py-2 font-medium transition-colors ${
-                          selectedPriority === priority 
-                            ? getPriorityColor(priority)
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                        onClick={() => {
-                          setSelectedPriority(priority);
-                          form.setValue('priority', priority as "high" | "medium" | "low");
-                        }}
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority Level *</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedPriority(value);
+                        }} 
+                        value={field.value}
                       >
-                        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="high">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <span>High</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="medium">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                              <span>Medium</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="low">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                              <span>Low</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -341,11 +453,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                                 <CommandItem
                                   key={customer.id}
                                   value={`${customer.name} ${customer.customerId} ${customer.email || ''}`}
-                                  onSelect={() => {
-                                    field.onChange(customer.id);
-                                    setCustomerSearchOpen(false);
-                                    setCustomerSearchValue("");
-                                  }}
+                                  onSelect={() => handleCustomerSelect(customer)}
                                 >
                                   <Check
                                     className={cn(
@@ -385,6 +493,172 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                   )}
                 />
               </div>
+
+              {/* Auto-populated Customer Details - ALWAYS VISIBLE FOR TESTING */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-300 mb-6 shadow-sm">
+                <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center">
+                  <span className="w-3 h-3 bg-blue-600 rounded-full mr-3 animate-pulse"></span>
+                  🔄 Auto-Populated Customer Information 
+                  <span className="ml-2 text-sm font-normal">
+                    {form.watch("customerId") ? '✅ Customer Selected' : '⚠️ No Customer Selected'}
+                  </span>
+                </h3>
+                <div className="text-xs text-blue-700 mb-3 p-2 bg-blue-100 rounded">
+                  Debug: Customers loaded: {Array.isArray(customers) ? customers.length : 0} | Loading: {customersLoading ? 'Yes' : 'No'}<br/>
+                  First customer: {Array.isArray(customers) && customers[0] ? customers[0].name : 'None'}<br/>  
+                  Selected ID: {form.watch("customerId") || 'None'}<br/>
+                  Customer fields should appear below this line...
+                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="customerAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-blue-700 font-medium">Customer Address</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              rows={2}
+                              placeholder="Auto-filled from customer database"
+                              className="bg-white border-blue-300 focus:border-blue-500"
+                              readOnly
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="customerCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-blue-700 font-medium">City</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Auto-filled from customer database"
+                              className="bg-white border-blue-300 focus:border-blue-500"
+                              readOnly
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="customerPlan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-blue-700 font-medium">Plan</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Auto-filled from customer database"
+                              className="bg-white border-blue-300 focus:border-blue-500"
+                              readOnly
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="connectedTower"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-blue-700 font-medium">Connected Tower</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Auto-filled from customer database"
+                              className="bg-white border-blue-300 focus:border-blue-500"
+                              readOnly
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="wirelessIpCustomer"
+                      render={({ field }) => {
+                        const hasValue = field.value && field.value.trim() !== "";
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-blue-700 font-medium">
+                              Wireless IP Customer End
+                              {hasValue && <span className="text-green-600 text-xs ml-2">(Auto-filled)</span>}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder={hasValue ? "Auto-filled from customer database" : "Enter customer end IP address"}
+                                className={`border-blue-300 focus:border-blue-500 ${
+                                  hasValue ? "bg-green-50" : "bg-white"
+                                }`}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="apIpAccessPoint"
+                      render={({ field }) => {
+                        const hasValue = field.value && field.value.trim() !== "";
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-blue-700 font-medium">
+                              AP IP Access Point End
+                              {hasValue && <span className="text-green-600 text-xs ml-2">(Auto-filled)</span>}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder={hasValue ? "Auto-filled from customer database" : "Enter access point IP address"}
+                                className={`border-blue-300 focus:border-blue-500 ${
+                                  hasValue ? "bg-green-50" : "bg-white"
+                                }`}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="customerMobile"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-blue-700 font-medium">Mobile Number</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Auto-filled from customer database"
+                              className="bg-white border-blue-300 focus:border-blue-500"
+                              readOnly
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
@@ -492,25 +766,42 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assign To *</FormLabel>
-                      <Select onValueChange={field.onChange} disabled={usersLoading}>
+                      <Select 
+                        onValueChange={(value) => {
+                          console.log('🔍 Selected user ID:', value);
+                          field.onChange(Number(value));
+                        }} 
+                        disabled={usersLoading}
+                        value={String(field.value || '')}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Engineer" />
+                            <SelectValue placeholder={usersLoading ? "Loading engineers..." : "Select Engineer"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {engineerUsers.map((user: any) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              <div className="flex items-center justify-between w-full">
-                                <span>{user.firstName} {user.lastName}</span>
-                                <Badge className={`ml-2 text-xs ${getRoleBadgeColor(user.role)}`}>
-                                  {user.role === 'backend_engineer' ? 'Backend Engineer' : 
-                                   user.role === 'field_engineer' ? 'Field Engineer' : 
-                                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                                </Badge>
-                              </div>
+                          {usersLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading engineers...
                             </SelectItem>
-                          ))}
+                          ) : engineerUsers.length === 0 ? (
+                            <SelectItem value="no-users" disabled>
+                              No engineers available
+                            </SelectItem>
+                          ) : (
+                            engineerUsers.map((user: any) => (
+                              <SelectItem key={user.id} value={String(user.id)}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{user.firstName} {user.lastName} ({user.username})</span>
+                                  <Badge className={`ml-2 text-xs ${getRoleBadgeColor(user.role)}`}>
+                                    {user.role === 'backend_engineer' ? 'Backend Engineer' : 
+                                     user.role === 'field_engineer' ? 'Field Engineer' : 
+                                     user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -522,14 +813,42 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
               <FormField
                 control={form.control}
                 name="visitCharges"
+                render={({ field }) => {
+                  const visitChargeValue = parseFloat(field.value || "0");
+                  const isOverLimit = visitChargeValue > 999.99;
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Visit Charges</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="0.00" 
+                          className={isOverLimit ? "border-red-500 focus:border-red-600" : ""}
+                          {...field} 
+                        />
+                      </FormControl>
+                      {isOverLimit && (
+                        <p className="text-sm text-red-600 mt-1">
+                          ⚠️ Database limit: Maximum ₹999.99. Contact admin to increase limit.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Visit Charges</FormLabel>
+                    <FormLabel>Due Date *</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="0.00" 
+                        type="date" 
                         {...field} 
                       />
                     </FormControl>

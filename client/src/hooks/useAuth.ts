@@ -1,5 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
+import { Capacitor } from '@capacitor/core';
+
+// Detect if running in mobile APK
+const isCapacitor = Capacitor.isNativePlatform();
+const API_BASE_URL = isCapacitor ? 'http://103.122.85.61:3007' : '';
+
+function resolveUrl(path: string): string {
+  return isCapacitor && path.startsWith('/') ? `${API_BASE_URL}${path}` : path;
+}
 
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
@@ -7,8 +16,9 @@ export function useAuth() {
     retry: false,
     queryFn: async () => {
       try {
-        console.log("🔍 useAuth: Making request to /api/auth/user");
-        const response = await fetch("/api/auth/user", {
+        const url = resolveUrl("/api/auth/user");
+        console.log("🔍 useAuth: Making request to", url);
+        const response = await fetch(url, {
           credentials: "include",
           headers: {
             'Accept': 'application/json',

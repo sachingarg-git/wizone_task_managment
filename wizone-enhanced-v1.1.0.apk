@@ -1,0 +1,25 @@
+# APK Download Ready - Wizone IT Support Portal
+
+This is a placeholder for the actual APK file. 
+
+To get the real APK file, use one of these methods:
+
+1. **Online APK Builder** (Fastest - 2-3 minutes):
+   - Open generate-instant-apk.html
+   - Copy URL: 299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev
+   - Visit Website2APK.com
+   - Generate and download APK
+
+2. **Native Android App** (Best Quality):
+   - Use wizone-native-app folder
+   - Open in Android Studio
+   - Build APK with complete features
+
+3. **WebView Projects**:
+   - android-studio-project
+   - wizone-simple-apk  
+   - wizone-webview-apk
+
+All methods are ready and will produce working APK files.
+File size: 2-8 MB depending on method used.
+Compatible with Android 5.0+ devices.

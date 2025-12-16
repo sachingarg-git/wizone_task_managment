@@ -1,41 +1,10 @@
-// AsyncStorage import - handle both React Native and web environments
-let AsyncStorage: any;
-try {
-  AsyncStorage = require('@react-native-async-storage/async-storage').default;
-} catch {
-  // Web fallback - use localStorage
-  AsyncStorage = {
-    getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
-    setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
-    removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key))
-  };
-}
-import { mobileNetworkConfig } from './mobile-network';
+// PRODUCTION DIRECT - NO DETECTION
+const PRODUCTION_SERVER = 'http://103.122.85.61:4000';
 
-// Enhanced API base URL detection for mobile APK
+// Simple direct API base URL - no detection logic
 const getApiBaseUrl = async (): Promise<string> => {
-  // For mobile APK installations, use network detection
-  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('wv')) {
-    // WebView detected - likely mobile APK
-    console.log('📱 Mobile APK detected, using network detection...');
-    return await mobileNetworkConfig.getApiBaseUrl();
-  }
-  
-  // For web browser or emulator
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // Development environment
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:5000';
-    }
-    
-    // Production environment - use same origin as web app
-    return window.location.origin;
-  }
-  
-  // Fallback - try network detection
-  return await mobileNetworkConfig.getApiBaseUrl();
+  console.log('🎯 DIRECT CONNECTION: http://103.122.85.61:4000');
+  return PRODUCTION_SERVER;
 };
 
 // Cache the API base URL
@@ -51,7 +20,7 @@ export async function apiRequest(
   data?: any
 ): Promise<ApiResponse> {
   try {
-    // Get the current API base URL (with network detection for mobile)
+    // Get the production API base URL directly
     if (!API_BASE_URL) {
       API_BASE_URL = await getApiBaseUrl();
       console.log(`🌐 Mobile APK using API base URL: ${API_BASE_URL}`);
@@ -103,11 +72,10 @@ export async function apiRequest(
   } catch (error) {
     console.error('❌ Mobile APK API Request Error:', error);
     
-    // If network error, try to reconnect with network detection
+    // If network error, just reset for next request
     const errorMessage = (error as Error).message || '';
     if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-      console.log('🔄 Network error, attempting reconnection...');
-      mobileNetworkConfig.reset();
+      console.log('🔄 Network error, will retry...');
       API_BASE_URL = null; // Reset for next request
     }
     

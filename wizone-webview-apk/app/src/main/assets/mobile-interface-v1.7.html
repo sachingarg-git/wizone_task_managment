@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WiZone TaskManager - Mobile v1.7</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 350px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            overflow: hidden;
+            margin: auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        
+        .login-form {
+            padding: 24px 20px;
+        }
+        
+        .status-indicator {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-indicator.success {
+            background: #f0fdf4;
+            border-color: #22c55e;
+            color: #166534;
+        }
+        
+        .status-indicator.success .status-dot {
+            background: #22c55e;
+            animation: none;
+        }
+        
+        .status-indicator.error {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+        
+        .status-indicator.error .status-dot {
+            background: #ef4444;
+            animation: none;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+            touch-action: manipulation;
+        }
+        
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.4;
+            display: none;
+        }
+        
+        .message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .message.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .message.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .debug-toggle {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #6b7280;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 12px;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        .debug-toggle:active {
+            background: #f3f4f6;
+        }
+        
+        .debug-panel {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-panel.show {
+            display: block;
+        }
+        
+        .debug-item {
+            font-size: 10px;
+            color: #6b7280;
+            background: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            border: 1px solid #e5e7eb;
+            word-break: break-all;
+            line-height: 1.3;
+        }
+        
+        .debug-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Mobile-specific optimizations */
+        @media (max-height: 600px) {
+            body {
+                padding: 5px;
+            }
+            
+            .login-container {
+                margin: 0;
+            }
+            
+            .header {
+                padding: 16px;
+            }
+            
+            .login-form {
+                padding: 16px;
+            }
+            
+            .debug-panel {
+                max-height: 120px;
+            }
+        }
+        
+        /* Very small screens */
+        @media (max-width: 320px) {
+            .login-container {
+                max-width: 100%;
+                margin: 0;
+            }
+            
+            input, .login-btn {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="header">
+            <h1>🎯 WiZone TaskManager</h1>
+            <p>Mobile Login v1.7</p>
+        </div>
+        
+        <div class="login-form">
+            <div id="statusIndicator" class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="statusText">Initializing connection...</span>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" value="ravi" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" value="password123" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="loginBtn" class="login-btn">🔐 Login to Dashboard</button>
+            </form>
+            
+            <div class="debug-toggle" onclick="toggleDebug()">
+                🔧 Debug Info
+            </div>
+            
+            <div id="debugPanel" class="debug-panel">
+                <div id="debugLog" class="debug-item">Debug log will appear here...</div>
+                <div id="requestLog" class="debug-item">Request info will appear here...</div>
+                <div id="responseLog" class="debug-item">Response info will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://103.122.85.61:3001';
+        
+        // DOM Elements
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const messageDiv = document.getElementById('message');
+        const debugPanel = document.getElementById('debugPanel');
+        const debugLog = document.getElementById('debugLog');
+        const requestLog = document.getElementById('requestLog');
+        const responseLog = document.getElementById('responseLog');
+        
+        // Utility functions
+        function timestamp() {
+            return new Date().toLocaleTimeString();
+        }
+        
+        function log(message, type = 'info') {
+            const logMsg = `[${timestamp()}] ${message}`;
+            console.log(logMsg);
+            debugLog.textContent = logMsg;
+            
+            // Show to Android if available
+            if (typeof Android !== 'undefined') {
+                Android.showToast(message);
+            }
+        }
+        
+        function showMessage(text, type = 'info') {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        function updateStatus(text, type = 'info') {
+            statusText.textContent = text;
+            statusIndicator.className = `status-indicator ${type}`;
+        }
+        
+        function toggleDebug() {
+            debugPanel.classList.toggle('show');
+        }
+        
+        // Test server connection
+        async function testConnection() {
+            log('🔄 Testing server connection...', 'info');
+            updateStatus('Testing server connection...', 'info');
+            
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-Mobile-App': 'true',
+                    'X-Requested-With': 'com.wizone.taskmanager',
+                    'User-Agent': 'WizoneTaskManager-APK/1.7 (Android)'
+                };
+                
+                log('📤 Sending connection test...', 'info');
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: headers
+                });
+                
+                if (response.ok) {
+                    updateStatus('✅ Server connected - Ready to login', 'success');
+                    log('✅ Connection successful', 'success');
+                    return true;
+                } else {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+            } catch (error) {
+                updateStatus('❌ Connection failed', 'error');
+                log(`❌ Connection failed: ${error.message}`, 'error');
+                showMessage(`Connection error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Login function
+        async function performLogin(username, password) {
+            log('🔑 Starting login...', 'info');
+            loginBtn.disabled = true;
+            loginBtn.textContent = '🔄 Signing in...';
+            updateStatus('Logging in...', 'info');
+            
+            try {
+                const loginData = { 
+                    email: username.includes('@') ? username : `${username}@example.com`,
+                    password: password 
+                };
+                
+                requestLog.textContent = `POST ${API_BASE}/api/auth/login | User: ${username}`;
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Mobile-App': 'true',
+                    'X-Requested-With': 'com.wizone.taskmanager',
+                    'User-Agent': 'WizoneTaskManager-APK/1.7 (Android)',
+                    'Origin': 'file://',
+                    'Referer': 'file:///android_asset/index.html'
+                };
+                
+                log('🌐 Sending login request...', 'info');
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify(loginData)
+                });
+                
+                responseLog.textContent = `Response: ${response.status} ${response.statusText}`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Login successful!', 'success');
+                    updateStatus('✅ Login successful!', 'success');
+                    showMessage(`Welcome back, ${data.user?.name || username}!`, 'success');
+                    
+                    if (typeof Android !== 'undefined') {
+                        Android.showToast('Login successful!');
+                    }
+                    
+                    // Could redirect or load dashboard here
+                    setTimeout(() => {
+                        showMessage('✅ Ready for app features', 'success');
+                    }, 2000);
+                    
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Login failed: ${response.status}`, 'error');
+                    updateStatus('❌ Login failed', 'error');
+                    showMessage(`Login failed: ${errorText}`, 'error');
+                    responseLog.textContent += ` | Error: ${errorText}`;
+                }
+                
+            } catch (error) {
+                log(`💥 Login error: ${error.message}`, 'error');
+                updateStatus('❌ Network error', 'error');
+                showMessage(`Network error: ${error.message}`, 'error');
+                responseLog.textContent = `Network error: ${error.message}`;
+                
+                if (error.message.includes('Failed to fetch')) {
+                    log('🔍 Possible CORS issue detected', 'error');
+                    showMessage('Network error - Please check connection', 'error');
+                }
+                
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '🔐 Login to Dashboard';
+            }
+        }
+        
+        // Event listeners
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                showMessage('Please enter both username and password', 'error');
+                return;
+            }
+            
+            await performLogin(username, password);
+        });
+        
+        // Handle Android back button if needed
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && typeof Android !== 'undefined') {
+                Android.exitApp();
+            }
+        });
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 WiZone TaskManager v1.7 initialized', 'success');
+            
+            // Test connection after a short delay
+            setTimeout(testConnection, 800);
+            
+            // Log environment info
+            log(`🌐 API: ${API_BASE}`, 'info');
+            log(`📱 Android: ${typeof Android !== 'undefined' ? 'Available' : 'Web'}`, 'info');
+            log(`📏 Screen: ${screen.width}x${screen.height}`, 'info');
+        });
+        
+        // Prevent zoom on iOS
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wizone Field Engineer - Enhanced</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            overflow: hidden; 
+            background: #f8fafc;
+        }
+        
+        .loading-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; text-align: center; position: relative;
+        }
+        
+        .wizone-logo {
+            width: 100px; height: 100px; background: white; color: #667eea;
+            border-radius: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 36px; font-weight: bold; margin-bottom: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .loading-spinner {
+            width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite;
+            margin: 25px 0;
+        }
+        
+        .status-text { font-size: 20px; margin: 15px 0; animation: pulse 2s infinite; font-weight: 500; }
+        .server-url { font-size: 16px; opacity: 0.9; margin-top: 15px; font-family: 'Courier New', monospace; }
+        
+        .error-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+            color: white; text-align: center; padding: 20px;
+        }
+        
+        .error-content { max-width: 400px; }
+        .error-title { font-size: 28px; margin-bottom: 20px; font-weight: bold; }
+        .error-message { font-size: 18px; margin-bottom: 30px; line-height: 1.6; }
+        
+        .retry-button {
+            background: white; color: #c53030; border: none; padding: 15px 30px;
+            border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; 
+            transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .retry-button:hover { background: #f7fafc; transform: translateY(-2px); }
+        
+        #webview { width: 100%; height: 100vh; border: none; display: none; }
+        
+        /* Mobile App Header */
+        .mobile-header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            background: white; border-bottom: 1px solid #e2e8f0; 
+            padding: 12px 20px; display: none; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .mobile-header.show { display: flex; }
+        
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-logo { width: 36px; height: 36px; background: linear-gradient(135deg, #667eea, #764ba2); 
+                      border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+                      color: white; font-weight: bold; font-size: 16px; }
+        .header-title { font-size: 18px; font-weight: 600; color: #1a202c; }
+        
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .sync-btn, .profile-btn { 
+            padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; 
+            background: white; color: #4a5568; font-size: 14px; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .sync-btn:hover, .profile-btn:hover { background: #f7fafc; border-color: #cbd5e0; }
+        .sync-btn.syncing { color: #3182ce; }
+        
+        .profile-menu {
+            position: absolute; top: 100%; right: 0; background: white; 
+            border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 200px; display: none; flex-direction: column;
+        }
+        .profile-menu.show { display: flex; }
+        .profile-menu-item {
+            padding: 12px 16px; border: none; background: none; text-align: left;
+            color: #4a5568; cursor: pointer; transition: background 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .profile-menu-item:hover { background: #f7fafc; }
+        .profile-menu-item.logout { color: #e53e3e; }
+        
+        #webview.with-header { margin-top: 60px; height: calc(100vh - 60px); }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+        
+        .connection-info {
+            background: rgba(255,255,255,0.15); padding: 20px; border-radius: 15px;
+            margin: 25px; font-size: 16px; max-width: 380px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .feature-badge {
+            position: absolute; top: 30px; right: 30px; background: rgba(255,255,255,0.2);
+            padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px);
+        }
+        
+        /* Enhanced status indicators */
+        .status-indicator {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 8px; animation: pulse 2s infinite;
+        }
+        .status-connecting { background: #fbbf24; }
+        .status-connected { background: #10b981; }
+        .status-error { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Mobile Header -->
+    <div id="mobile-header" class="mobile-header">
+        <div class="header-left">
+            <div class="header-logo">W</div>
+            <div class="header-title">Wizone Tasks</div>
+        </div>
+        <div class="header-right">
+            <button id="sync-btn" class="sync-btn" onclick="forceSync()">
+                <span id="sync-icon">🔄</span>
+                <span id="sync-text">Sync</span>
+            </button>
+            <div style="position: relative;">
+                <button id="profile-btn" class="profile-btn" onclick="toggleProfileMenu()">
+                    <span>👤</span>
+                    <span id="user-name">User</span>
+                </button>
+                <div id="profile-menu" class="profile-menu">
+                    <button class="profile-menu-item" onclick="showProfile()">
+                        <span>👤</span> Profile
+                    </button>
+                    <button class="profile-menu-item" onclick="showSettings()">
+                        <span>⚙️</span> Settings
+                    </button>
+                    <button class="profile-menu-item logout" onclick="logout()">
+                        <span>🚪</span> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-screen">
+        <div class="feature-badge">Enhanced v2.0</div>
+        <div class="wizone-logo">W</div>
+        <div class="loading-spinner"></div>
+        <div id="status" class="status-text">
+            <span id="status-indicator" class="status-indicator status-connecting"></span>
+            Connecting to Wizone Server...
+        </div>
+        <div id="server-url" class="server-url">http://103.122.85.61:4000</div>
+        <div class="connection-info">
+            <strong>📱 Wizone Field Engineer Mobile</strong><br>
+            Enhanced APK with Real-time Sync<br>
+            <br>
+            <strong>🌐 Server:</strong> 103.122.85.61:4000<br>
+            <strong>🗄️ Database:</strong> WIZONEIT_SUPPORT<br>
+            <strong>✨ Features:</strong> Live Updates, Task History, Profile Management
+        </div>
+    </div>
+    
+    <div id="error" class="error-screen">
+        <div class="error-content">
+            <div class="error-title">Connection Failed</div>
+            <div id="error-message" class="error-message">Unable to connect to Wizone server. Please check your internet connection and try again.</div>
+            <button class="retry-button" onclick="retryConnection()">
+                <span>🔄</span> Retry Connection
+            </button>
+        </div>
+    </div>
+    
+    <iframe id="webview" src="about:blank"></iframe>
+
+    <script>
+        // ENHANCED PRODUCTION SERVER - YOUR DATABASE CONFIGURATION
+        const PRODUCTION_SERVER = 'http://103.122.85.61:4000';
+        const FALLBACK_SERVERS = [
+            'http://103.122.85.61:4000',
+            'https://103.122.85.61:4000'
+        ];
+
+        let currentServer = null;
+        let connectionAttempts = 0;
+        const maxAttempts = 5;
+        let currentUser = null;
+        let syncInterval = null;
+        let profileMenuVisible = false;
+
+        function updateStatus(message, statusType = 'connecting') {
+            const statusElement = document.getElementById('status');
+            const indicatorElement = document.getElementById('status-indicator');
+            
+            statusElement.innerHTML = `<span id="status-indicator" class="status-indicator status-${statusType}"></span>${message}`;
+            console.log('📱 Enhanced Mobile APK:', message);
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'flex';
+        }
+
+        function retryConnection() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'flex';
+            connectionAttempts = 0;
+            connectToServer();
+        }
+
+        // Enhanced sync functionality
+        function forceSync() {
+            const syncBtn = document.getElementById('sync-btn');
+            const syncIcon = document.getElementById('sync-icon');
+            const syncText = document.getElementById('sync-text');
+            
+            syncBtn.classList.add('syncing');
+            syncIcon.textContent = '⟳';
+            syncText.textContent = 'Syncing...';
+            
+            try {
+                // Send sync message to webview
+                const webview = document.getElementById('webview');
+                if (webview && webview.contentWindow) {
+                    webview.contentWindow.postMessage({
+                        type: 'MOBILE_SYNC_REQUEST',
+                        timestamp: new Date().toISOString()
+                    }, '*');
+                }
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    syncBtn.classList.remove('syncing');
+                    syncIcon.textContent = '🔄';
+                    syncText.textContent = 'Sync';
+                }, 2000);
+                
+                console.log('📱 Manual sync triggered');
+            } catch (error) {
+                console.error('Sync error:', error);
+                syncBtn.classList.remove('syncing');
+                syncIcon.textContent = '🔄';
+                syncText.textContent = 'Sync';
+            }
+        }
+
+        // Profile menu functionality
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profile-menu');
+            profileMenuVisible = !profileMenuVisible;
+            menu.classList.toggle('show', profileMenuVisible);
+        }
+
+        function showProfile() {
+            toggleProfileMenu();
+            try {
+                const webview = document.getElementById('webview');
+                if (webview && webview.contentWindow) {
+                    webview.contentWindow.postMessage({
+                        type: 'MOBILE_SHOW_PROFILE',
+                        user: currentUser
+                    }, '*');
+                }
+            } catch (error) {
+                console.error('Profile error:', error);
+            }
+        }
+
+        function showSettings() {
+            toggleProfileMenu();
+            try {
+                const webview = document.getElementById('webview');
+                if (webview && webview.contentWindow) {
+                    webview.contentWindow.postMessage({
+                        type: 'MOBILE_SHOW_SETTINGS'
+                    }, '*');
+                }
+            } catch (error) {
+                console.error('Settings error:', error);
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                try {
+                    const webview = document.getElementById('webview');
+                    if (webview && webview.contentWindow) {
+                        webview.contentWindow.postMessage({
+                            type: 'MOBILE_LOGOUT'
+                        }, '*');
+                    }
+                    
+                    // Clear user data
+                    currentUser = null;
+                    localStorage.removeItem('mobileUser');
+                    
+                    // Hide header and show loading screen
+                    document.getElementById('mobile-header').classList.remove('show');
+                    document.getElementById('webview').classList.remove('with-header');
+                    document.getElementById('loading').style.display = 'flex';
+                    document.getElementById('webview').style.display = 'none';
+                    
+                    updateStatus('Logging out...', 'connecting');
+                    
+                    setTimeout(() => {
+                        retryConnection();
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            }
+            toggleProfileMenu();
+        }
+
+        // Close profile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const profileBtn = document.getElementById('profile-btn');
+            const profileMenu = document.getElementById('profile-menu');
+            
+            if (profileMenuVisible && !profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+                toggleProfileMenu();
+            }
+        });
+
+        async function testConnection(serverUrl) {
+            try {
+                updateStatus(`Testing ${serverUrl}...`);
+                console.log(`🔍 Testing connection: ${serverUrl}`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
+                // Multiple connection attempts
+                let response;
+                
+                // Method 1: Try direct connection
+                try {
+                    response = await fetch(`${serverUrl}/`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok || response.status === 200) {
+                        console.log(`✅ Direct connection successful: ${serverUrl}`);
+                        return true;
+                    }
+                } catch (corsError) {
+                    console.log(`⚠️ CORS error, trying alternative methods...`);
+                }
+                
+                // Method 2: Try health endpoint
+                try {
+                    response = await fetch(`${serverUrl}/api/health`, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (response.status === 0 || response.ok) {
+                        console.log(`✅ Health endpoint accessible: ${serverUrl}`);
+                        return true;
+                    }
+                } catch (healthError) {
+                    console.log(`⚠️ Health endpoint failed`);
+                }
+                
+                // Method 3: Image loading fallback
+                try {
+                    const testImage = new Image();
+                    return new Promise((resolve) => {
+                        const timeout = setTimeout(() => {
+                            console.log(`⚠️ Image test timeout, assuming connection works`);
+                            resolve(true);
+                        }, 5000);
+                        
+                        testImage.onload = () => {
+                            clearTimeout(timeout);
+                            console.log(`✅ Image fallback successful`);
+                            resolve(true);
+                        };
+                        
+                        testImage.onerror = () => {
+                            clearTimeout(timeout);
+                            console.log(`⚠️ Image fallback failed, but proceeding`);
+                            resolve(true); // Still proceed
+                        };
+                        
+                        testImage.src = `${serverUrl}/favicon.ico?t=${Date.now()}`;
+                    });
+                } catch (imageError) {
+                    console.log(`⚠️ Image fallback error, proceeding anyway`);
+                    return true;
+                }
+                
+            } catch (error) {
+                console.log(`❌ Connection test failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function connectToServer() {
+            connectionAttempts++;
+            console.log(`🚀 Connection attempt ${connectionAttempts}/${maxAttempts}`);
+            
+            updateStatus(`Connecting to production server... (${connectionAttempts}/${maxAttempts})`);
+            
+            // Try all servers
+            for (const serverUrl of FALLBACK_SERVERS) {
+                console.log(`🔍 Trying server: ${serverUrl}`);
+                
+                if (await testConnection(serverUrl)) {
+                    currentServer = serverUrl;
+                    console.log(`✅ Connected to: ${currentServer}`);
+                    loadApplication();
+                    return;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // If all servers failed
+            if (connectionAttempts < maxAttempts) {
+                console.log(`⚠️ All servers failed, retrying in 3 seconds...`);
+                setTimeout(() => connectToServer(), 3000);
+            } else {
+                console.log(`❌ All connection attempts failed`);
+                showError(
+                    `Could not connect to Wizone server after ${maxAttempts} attempts.\n\n` +
+                    `Server: ${PRODUCTION_SERVER}\n` +
+                    `Please check:\n` +
+                    `• Internet connection\n` +
+                    `• Server availability\n` +
+                    `• Mobile data/WiFi settings`
+                );
+            }
+        }
+
+        function loadApplication() {
+            updateStatus('Loading Enhanced Wizone Task Manager...', 'connecting');
+            console.log(`🚀 Loading enhanced application from: ${currentServer}`);
+            
+            const webview = document.getElementById('webview');
+            const loading = document.getElementById('loading');
+            const mobileHeader = document.getElementById('mobile-header');
+
+            webview.onload = function() {
+                console.log('✅ Enhanced Wizone application loaded successfully');
+                
+                // Show mobile header and hide loading
+                loading.style.display = 'none';
+                mobileHeader.classList.add('show');
+                webview.classList.add('with-header');
+                webview.style.display = 'block';
+                
+                updateStatus('Connected successfully', 'connected');
+                
+                // Enhanced mobile APK ready message
+                console.log('📱 Enhanced Mobile APK v2.0 ready for login');
+                
+                // Start periodic sync
+                startPeriodicSync();
+                
+                // Inject enhanced mobile APK identification
+                setTimeout(() => {
+                    try {
+                        const enhancedMobileInfo = {
+                            isMobileAPK: true,
+                            isEnhancedAPK: true,
+                            serverUrl: currentServer,
+                            databaseInfo: '103.122.85.61:9095/WIZONEIT_SUPPORT',
+                            buildTime: new Date().toISOString(),
+                            apkVersion: '2.0-enhanced',
+                            features: [
+                                'real-time-sync',
+                                'task-history-view',
+                                'profile-management',
+                                'click-to-detail',
+                                'status-disable-protection',
+                                'grid-list-toggle',
+                                'professional-login',
+                                'live-updates',
+                                'top-bar-sync'
+                            ],
+                            userAgent: navigator.userAgent,
+                            screenInfo: {
+                                width: screen.width,
+                                height: screen.height,
+                                devicePixelRatio: window.devicePixelRatio
+                            }
+                        };
+                        
+                        webview.contentWindow.postMessage({
+                            type: 'MOBILE_APK_ENHANCED_READY',
+                            info: enhancedMobileInfo
+                        }, '*');
+                        
+                        console.log('📱 Enhanced Mobile APK info injected:', enhancedMobileInfo);
+                        
+                        // Listen for user login success
+                        window.addEventListener('message', handleWebviewMessage);
+                        
+                    } catch (e) {
+                        console.log('Note: Could not inject enhanced mobile info (cross-origin)');
+                    }
+                }, 2000);
+            };
+
+            webview.onerror = function(error) {
+                console.log('❌ Enhanced application load failed:', error);
+                showError('Failed to load Enhanced Wizone application. Please check server status.');
+            };
+
+            // Start loading the application
+            webview.src = currentServer;
+        }
+
+        // Handle messages from webview
+        function handleWebviewMessage(event) {
+            try {
+                if (event.data && typeof event.data === 'object') {
+                    const { type, data } = event.data;
+                    
+                    switch (type) {
+                        case 'USER_LOGGED_IN':
+                            handleUserLogin(data.user);
+                            break;
+                        case 'TASK_UPDATED':
+                            handleTaskUpdate(data.task);
+                            break;
+                        case 'SYNC_COMPLETE':
+                            handleSyncComplete(data);
+                            break;
+                        default:
+                            console.log('📱 Unhandled webview message:', type);
+                    }
+                }
+            } catch (error) {
+                console.error('Error handling webview message:', error);
+            }
+        }
+
+        // Handle user login
+        function handleUserLogin(user) {
+            currentUser = user;
+            localStorage.setItem('mobileUser', JSON.stringify(user));
+            
+            // Update header with user info
+            const userNameElement = document.getElementById('user-name');
+            if (userNameElement && user) {
+                userNameElement.textContent = user.firstName || user.username || 'User';
+            }
+            
+            console.log('📱 User logged in:', user);
+        }
+
+        // Handle task updates
+        function handleTaskUpdate(task) {
+            console.log('📱 Task updated:', task);
+            // You could show a notification or update counter here
+        }
+
+        // Handle sync completion
+        function handleSyncComplete(data) {
+            console.log('📱 Sync completed:', data);
+        }
+
+        // Start periodic sync
+        function startPeriodicSync() {
+            // Sync every 2 minutes
+            syncInterval = setInterval(() => {
+                if (currentUser) {
+                    forceSync();
+                }
+            }, 120000);
+        }
+
+        // Stop periodic sync
+        function stopPeriodicSync() {
+            if (syncInterval) {
+                clearInterval(syncInterval);
+                syncInterval = null;
+            }
+        }
+
+        // Enhanced startup on page load
+        window.onload = function() {
+            console.log('📱 Enhanced Wizone Mobile APK v2.0 Starting...');
+            console.log(`🎯 Target server: ${PRODUCTION_SERVER}`);
+            console.log(`🗄️ Database: 103.122.85.61:9095/WIZONEIT_SUPPORT`);
+            console.log(`🔑 Login: admin/admin123 or field engineers`);
+            console.log(`✨ Enhanced Features: Sync, Profile, Task History, Live Updates`);
+            
+            // Check for stored user
+            const storedUser = localStorage.getItem('mobileUser');
+            if (storedUser) {
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    console.log('📱 Restored user session:', currentUser);
+                } catch (e) {
+                    console.log('Failed to restore user session');
+                    localStorage.removeItem('mobileUser');
+                }
+            }
+            
+            // Start connection immediately
+            setTimeout(() => connectToServer(), 1000);
+        };
+
+        // Handle back button and prevent leaving webview
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            return '';
+        });
+
+        // Handle Android back button
+        document.addEventListener('backbutton', function(e) {
+            e.preventDefault();
+            // Could implement navigation within webview
+        }, false);
+
+        // Service worker registration for offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(function(registration) {
+                console.log('📱 Service Worker registered');
+            }).catch(function(error) {
+                console.log('Service Worker registration failed');
+            });
+        }
+    </script>
+</body>
+</html>

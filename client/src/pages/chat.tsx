@@ -215,40 +215,40 @@ export default function Chat() {
   };
 
   return (
-    <div className="p-6 min-h-screen bg-slate-900 text-white">
+    <div className="p-6 min-h-screen bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Engineer Chat</h1>
-          <p className="text-slate-400">Internal communication for engineering teams</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Engineer Chat</h1>
+          <p className="text-gray-600">Internal communication for engineering teams</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
           {/* Rooms Sidebar */}
-          <Card className="lg:col-span-1 bg-slate-800/50 border-slate-700">
+          <Card className="lg:col-span-1 bg-white border-gray-200 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-white flex items-center gap-2">
+                <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
                   <MessageCircle className="h-5 w-5" />
                   Chat Rooms
                 </CardTitle>
                 <div className="flex gap-2">
                   <Dialog open={isUsersDialogOpen} onOpenChange={setIsUsersDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                      <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
                         <Users className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl">
+                    <DialogContent className="bg-white border-gray-200 max-w-2xl">
                       <DialogHeader>
-                        <DialogTitle className="text-white">All Registered Users</DialogTitle>
+                        <DialogTitle className="text-gray-900">All Registered Users</DialogTitle>
                       </DialogHeader>
                       <div className="max-h-96 overflow-y-auto">
                         {usersLoading ? (
-                          <div className="text-slate-400 text-center py-4">Loading users...</div>
+                          <div className="text-gray-600 text-center py-4">Loading users...</div>
                         ) : (
                           <div className="space-y-2">
                             {allUsers.map((user: any) => (
-                              <div key={user.id} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg">
+                              <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-8 w-8">
                                     <AvatarFallback className="bg-cyan-600 text-white text-xs">
@@ -256,27 +256,27 @@ export default function Chat() {
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
-                                    <p className="font-medium text-white">
+                                    <p className="font-medium text-gray-900">
                                       {user.firstName} {user.lastName}
                                     </p>
-                                    <p className="text-sm text-slate-400">
+                                    <p className="text-sm text-gray-600">
                                       {user.department} • {user.role}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs border-slate-500 text-slate-300">
+                                  <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
                                     {user.role}
                                   </Badge>
                                   {user.isActive && (
-                                    <Badge variant="outline" className="text-xs border-green-500 text-green-400">
+                                    <Badge variant="outline" className="text-xs border-green-500 text-green-600">
                                       Active
                                     </Badge>
                                   )}
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-xs border-cyan-600 text-cyan-400 hover:bg-cyan-600/20"
+                                    className="text-xs border-cyan-600 text-cyan-600 hover:bg-cyan-50"
                                     onClick={() => handleStartDirectChat(user)}
                                   >
                                     Chat
@@ -295,33 +295,33 @@ export default function Chat() {
                         <Plus className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-slate-800 border-slate-700">
+                    <DialogContent className="bg-white border-gray-200">
                       <DialogHeader>
-                        <DialogTitle className="text-white">Create New Room</DialogTitle>
+                        <DialogTitle className="text-gray-900">Create New Room</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleCreateRoom} className="space-y-4">
                         <div>
-                          <Label htmlFor="name" className="text-white">Room Name</Label>
+                          <Label htmlFor="name" className="text-gray-900">Room Name</Label>
                           <Input
                             id="name"
                             name="name"
                             required
-                            className="bg-slate-700 border-slate-600 text-white"
+                            className="bg-white border-gray-300 text-gray-900"
                             placeholder="Enter room name"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="description" className="text-white">Description</Label>
+                          <Label htmlFor="description" className="text-gray-900">Description</Label>
                           <Textarea
                             id="description"
                             name="description"
-                            className="bg-slate-700 border-slate-600 text-white"
+                            className="bg-white border-gray-300 text-gray-900"
                             placeholder="Optional description"
                           />
                         </div>
                         <div className="flex items-center space-x-2">
                           <Switch id="isPrivate" name="isPrivate" />
-                          <Label htmlFor="isPrivate" className="text-white">Private Room</Label>
+                          <Label htmlFor="isPrivate" className="text-gray-900">Private Room</Label>
                         </div>
                         <Button
                           type="submit"
@@ -339,9 +339,9 @@ export default function Chat() {
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
                 {roomsLoading ? (
-                  <div className="p-4 text-slate-400">Loading rooms...</div>
+                  <div className="p-4 text-gray-600">Loading rooms...</div>
                 ) : rooms.length === 0 ? (
-                  <div className="p-4 text-slate-400">No rooms available</div>
+                  <div className="p-4 text-gray-600">No rooms available</div>
                 ) : (
                   <div className="space-y-1 p-2">
                     {rooms.map((room: ChatRoom) => (
@@ -350,24 +350,24 @@ export default function Chat() {
                         onClick={() => setSelectedRoom(room)}
                         className={`p-3 rounded-md cursor-pointer transition-colors ${
                           selectedRoom?.id === room.id
-                            ? "bg-cyan-600/20 border border-cyan-600/30"
-                            : "hover:bg-slate-700/50"
+                            ? "bg-cyan-50 border border-cyan-200"
+                            : "hover:bg-gray-50 border border-transparent"
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           {room.isPrivate ? (
-                            <Lock className="h-4 w-4 text-yellow-500" />
+                            <Lock className="h-4 w-4 text-yellow-600" />
                           ) : (
-                            <Hash className="h-4 w-4 text-slate-400" />
+                            <Hash className="h-4 w-4 text-gray-500" />
                           )}
-                          <span className="font-medium text-white truncate">{room.name}</span>
+                          <span className="font-medium text-gray-900 truncate">{room.name}</span>
                         </div>
                         {room.description && (
-                          <p className="text-xs text-slate-400 truncate">{room.description}</p>
+                          <p className="text-xs text-gray-600 truncate">{room.description}</p>
                         )}
                         <div className="flex items-center gap-1 mt-2">
-                          <Users className="h-3 w-3 text-slate-400" />
-                          <span className="text-xs text-slate-400">
+                          <Users className="h-3 w-3 text-gray-500" />
+                          <span className="text-xs text-gray-600">
                             {room.participants?.length || 0} members
                           </span>
                         </div>
@@ -380,26 +380,26 @@ export default function Chat() {
           </Card>
 
           {/* Chat Area */}
-          <Card className="lg:col-span-3 bg-slate-800/50 border-slate-700 flex flex-col">
+          <Card className="lg:col-span-3 bg-white border-gray-200 shadow-sm flex flex-col">
             {selectedRoom ? (
               <>
                 {/* Chat Header */}
-                <CardHeader className="pb-3 border-b border-slate-700">
+                <CardHeader className="pb-3 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-lg text-white flex items-center gap-2">
+                      <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
                         {selectedRoom.isPrivate ? (
-                          <Lock className="h-5 w-5 text-yellow-500" />
+                          <Lock className="h-5 w-5 text-yellow-600" />
                         ) : (
-                          <Hash className="h-5 w-5 text-slate-400" />
+                          <Hash className="h-5 w-5 text-gray-500" />
                         )}
                         {selectedRoom.name}
                       </CardTitle>
                       {selectedRoom.description && (
-                        <p className="text-sm text-slate-400 mt-1">{selectedRoom.description}</p>
+                        <p className="text-sm text-gray-600 mt-1">{selectedRoom.description}</p>
                       )}
                     </div>
-                    <Badge variant="outline" className="text-slate-300 border-slate-600">
+                    <Badge variant="outline" className="text-gray-700 border-gray-300">
                       <Users className="h-3 w-3 mr-1" />
                       {selectedRoom.participants?.length || 0}
                     </Badge>
@@ -410,9 +410,9 @@ export default function Chat() {
                 <CardContent className="flex-1 p-0 overflow-hidden">
                   <ScrollArea className="h-[400px] p-4">
                     {messagesLoading ? (
-                      <div className="text-slate-400">Loading messages...</div>
+                      <div className="text-gray-600">Loading messages...</div>
                     ) : messages.length === 0 ? (
-                      <div className="text-slate-400 text-center mt-8">
+                      <div className="text-gray-600 text-center mt-8">
                         No messages yet. Start the conversation!
                       </div>
                     ) : (
@@ -426,17 +426,17 @@ export default function Chat() {
                             </Avatar>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-white">
+                                <span className="font-medium text-gray-900">
                                   {message.sender?.firstName || "Unknown"} {message.sender?.lastName || "User"}
                                 </span>
-                                <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
+                                <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">
                                   {message.sender?.role || "User"}
                                 </Badge>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-gray-500">
                                   {formatTime(message.createdAt)}
                                 </span>
                               </div>
-                              <p className="text-slate-200 text-sm leading-relaxed">
+                              <p className="text-gray-800 text-sm leading-relaxed">
                                 {message.message}
                               </p>
                             </div>
@@ -449,13 +449,13 @@ export default function Chat() {
                 </CardContent>
 
                 {/* Message Input */}
-                <div className="p-4 border-t border-slate-700">
+                <div className="p-4 border-t border-gray-200">
                   <div className="flex gap-2">
                     <Input
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       placeholder={`Message #${selectedRoom.name}`}
-                      className="flex-1 bg-slate-700 border-slate-600 text-white"
+                      className="flex-1 bg-white border-gray-300 text-gray-900"
                       onKeyPress={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -475,9 +475,9 @@ export default function Chat() {
               </>
             ) : (
               <CardContent className="flex-1 flex items-center justify-center">
-                <div className="text-center text-slate-400">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Select a chat room</h3>
+                <div className="text-center text-gray-600">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2 text-gray-900">Select a chat room</h3>
                   <p>Choose a room from the sidebar to start chatting</p>
                 </div>
               </CardContent>

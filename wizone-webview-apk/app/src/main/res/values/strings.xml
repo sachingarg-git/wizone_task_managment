@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wizone Task Manager</string>
+    <string name="server_url">http://103.122.85.61:4000/mobile</string>
+</resources>

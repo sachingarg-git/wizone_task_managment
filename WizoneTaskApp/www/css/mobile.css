@@ -1,0 +1,467 @@
+/* Mobile-specific optimizations */
+
+/* Touch-friendly interactions */
+* {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea {
+    -webkit-user-select: text;
+}
+
+/* Prevent zoom on input focus */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea,
+select {
+    font-size: 16px;
+}
+
+/* Safe area support for notched devices */
+.top-nav {
+    padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.splash-screen {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Scrollbar styling for mobile */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-light);
+}
+
+/* Mobile-specific task card improvements */
+.task-card {
+    touch-action: manipulation;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+.task-card:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Better mobile modal */
+@media (max-width: 768px) {
+    .modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+    
+    .modal-content {
+        max-width: 100%;
+        max-height: 95vh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        margin: 0;
+    }
+    
+    .modal-body {
+        max-height: calc(95vh - 80px);
+    }
+}
+
+/* Mobile navigation improvements */
+.nav-btn {
+    touch-action: manipulation;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+/* Better mobile forms */
+.form-select,
+.form-textarea,
+.form-input {
+    min-height: 44px;
+}
+
+.btn-primary,
+.btn-secondary,
+.action-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.action-btn:active {
+    transform: scale(0.98);
+}
+
+/* Mobile-optimized file upload */
+.upload-area {
+    min-height: 120px;
+    touch-action: manipulation;
+}
+
+.upload-buttons button {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Mobile toast positioning */
+@media (max-width: 640px) {
+    .toast-container {
+        position: fixed;
+        top: auto;
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+    }
+    
+    .toast {
+        animation: slideInUp 0.3s ease-out;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Pull-to-refresh indication */
+.pull-refresh {
+    position: relative;
+    overflow: hidden;
+}
+
+.pull-refresh-indicator {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    transition: var(--transition);
+    opacity: 0;
+}
+
+.pull-refresh.pulling .pull-refresh-indicator {
+    opacity: 1;
+    transform: translateX(-50%) translateY(20px);
+}
+
+/* Swipe gestures for task cards */
+.task-card {
+    position: relative;
+    transition: transform 0.2s ease-out;
+}
+
+.task-card.swiping {
+    z-index: 10;
+}
+
+.task-card.swipe-left {
+    transform: translateX(-100px);
+}
+
+.task-card.swipe-right {
+    transform: translateX(100px);
+}
+
+.task-actions {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+.task-actions.left {
+    left: 0;
+    background: var(--success-color);
+}
+
+.task-actions.right {
+    right: 0;
+    background: var(--danger-color);
+}
+
+.task-card.swiping .task-actions {
+    opacity: 1;
+}
+
+/* Haptic feedback simulation */
+.haptic-light {
+    animation: hapticLight 0.1s ease-out;
+}
+
+.haptic-medium {
+    animation: hapticMedium 0.15s ease-out;
+}
+
+.haptic-heavy {
+    animation: hapticHeavy 0.2s ease-out;
+}
+
+@keyframes hapticLight {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes hapticMedium {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes hapticHeavy {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* Better mobile tab navigation */
+.tab-navigation {
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 10;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    min-width: 25%;
+    justify-content: center;
+}
+
+/* Mobile-specific loading states */
+.loading-skeleton {
+    background: linear-gradient(90deg, 
+        var(--border-light) 25%, 
+        var(--border-color) 50%, 
+        var(--border-light) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 2s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-text.large {
+    height: 1.25rem;
+}
+
+.skeleton-text.small {
+    height: 0.75rem;
+    width: 60%;
+}
+
+/* Connection status indicator */
+.connection-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--danger-color);
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 10000;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease-out;
+}
+
+.connection-indicator.offline {
+    transform: translateY(0);
+}
+
+.connection-indicator.reconnecting {
+    background: var(--warning-color);
+}
+
+.connection-indicator.online {
+    background: var(--success-color);
+    animation: slideUp 3s ease-out forwards;
+}
+
+@keyframes slideUp {
+    0% { transform: translateY(0); }
+    90% { transform: translateY(0); }
+    100% { transform: translateY(-100%); }
+}
+
+/* Mobile camera integration */
+.camera-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: black;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+}
+
+.camera-video {
+    flex: 1;
+    object-fit: cover;
+    width: 100%;
+}
+
+.camera-controls {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.camera-btn {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    border: 4px solid white;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.camera-btn.capture {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.camera-btn:active {
+    transform: scale(0.95);
+}
+
+/* Gesture indicators */
+.gesture-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
+    text-align: center;
+    z-index: 1000;
+    animation: fadeInOut 3s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+
+/* Progressive Web App optimizations */
+@media (display-mode: standalone) {
+    .top-nav {
+        padding-top: max(1rem, env(safe-area-inset-top) + 0.5rem);
+    }
+    
+    .splash-screen {
+        padding-top: env(safe-area-inset-top);
+    }
+}
+
+/* Accessibility improvements for mobile */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .task-card {
+        border-width: 2px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        border-width: 2px;
+    }
+    
+    .nav-btn {
+        border-width: 2px;
+    }
+}
+
+/* Large text support */
+@media (prefers-color-scheme: no-preference) and (min-resolution: 2dppx) {
+    body {
+        font-size: 18px;
+    }
+    
+    .btn-primary,
+    .btn-secondary,
+    .form-select,
+    .form-input,
+    .form-textarea {
+        font-size: 18px;
+    }
+}

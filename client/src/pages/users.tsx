@@ -198,6 +198,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+  const canManageUsers = currentUser?.role === 'admin' || currentUser?.role === 'backend_engineer';
 
   const form = useForm<EditUserFormData>({
     resolver: zodResolver(editUserSchema),
@@ -207,7 +208,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
       username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
-      role: user.role || "engineer",
+      role: user.role || "field_engineer",
       department: user.department || "",
       newPassword: "",
       confirmPassword: "",
@@ -217,7 +218,7 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
   const updateUserMutation = useMutation({
     mutationFn: async (data: EditUserFormData) => {
       // If password is provided, handle password reset separately for admin users
-      if (data.newPassword && data.newPassword.length > 0 && isAdmin) {
+      if (data.newPassword && data.newPassword.length > 0 && canManageUsers) {
         await apiRequest("PUT", `/api/users/${user.id}/reset-password`, { 
           newPassword: data.newPassword 
         });
@@ -307,8 +308,8 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
             )}
           />
 
-          {/* Username Field - Admin Only and Read-Only for Security */}
-          {isAdmin && (
+          {/* Username Field - Admin/Backend Engineer Only and Read-Only for Security */}
+          {canManageUsers && (
             <FormField
               control={form.control}
               name="username"
@@ -361,10 +362,8 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
                     <SelectContent>
                       <SelectItem value="admin">Admin - Full system access</SelectItem>
                       <SelectItem value="manager">Manager - Task oversight, analytics</SelectItem>
-                      <SelectItem value="engineer">Engineer - General engineering tasks</SelectItem>
                       <SelectItem value="backend_engineer">Backend Engineer - System backend tasks</SelectItem>
                       <SelectItem value="field_engineer">Field Engineer - Field service tasks</SelectItem>
-                      <SelectItem value="support">Support - Customer support</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -387,13 +386,13 @@ function EditUserForm({ user, onClose }: EditUserFormProps) {
             />
           </div>
 
-          {/* Password Reset Section - Admin Only */}
-          {isAdmin && (
+          {/* Password Reset Section - Admin/Backend Engineer Only */}
+          {canManageUsers && (
             <div className="space-y-4 pt-6 border-t border-gray-200">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 mb-2 flex items-center">
                   <Key className="w-4 h-4 mr-2" />
-                  Reset Password (Admin Only)
+                  Reset Password (Admin/Backend Engineer Only)
                 </h4>
                 <p className="text-sm text-blue-700">
                   Leave password fields empty to keep current password unchanged.
@@ -494,11 +493,61 @@ export default function UsersPage() {
     },
   });
 
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      await apiRequest("PUT", `/api/users/${id}/status`, { active });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User status updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update user status",
+        variant: "destructive",
+      });
+    },
+  });
 
 
-  const usersArray = Array.isArray(users) ? users : [];
+
+  const usersArray = Array.isArray(users) ? users.map((u: any) => ({
+    ...u,
+    isActive: u.active !== undefined ? u.active : u.isActive
+  })) : [];
+  
+  // Admin and backend engineer users should see all users
+  const canSeeAllUsers = currentUser?.role === 'admin' || currentUser?.role === 'backend_engineer';
   
   const filteredUsers = usersArray.filter((user: any) => {
+    // If user is admin or backend engineer, they see all users (only apply search/role filters)
+    if (canSeeAllUsers) {
+      const matchesSearch = !searchQuery || 
+        `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      
+      return matchesSearch && matchesRole;
+    }
+    
+    // For other roles (field engineers, etc.), they might see limited users
+    // But for now, we'll show all users to everyone since it's a user management interface
     const matchesSearch = !searchQuery || 
       `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -557,8 +606,26 @@ export default function UsersPage() {
     setShowResetPassword(true);
   };
 
-  // Check if current user is admin
+  const handleToggleStatus = (user: any) => {
+    toggleUserStatusMutation.mutate({ 
+      id: user.id, 
+      active: !user.isActive 
+    });
+  };
+
+  // Check if current user is admin or backend engineer
   const isAdmin = currentUser?.role === 'admin';
+  const canManageUsers = currentUser?.role === 'admin' || currentUser?.role === 'backend_engineer';
+  
+  // Debug: Log user access permissions
+  console.log(`🔍 User Management Access:`, {
+    currentUser: currentUser?.username,
+    role: currentUser?.role,
+    canSeeAllUsers,
+    totalUsers: usersArray.length,
+    canManageUsers,
+    filteredUsersCount: filteredUsers.length
+  });
 
   return (
     <div className="min-h-screen">
@@ -653,8 +720,8 @@ export default function UsersPage() {
                     <SelectItem value="all">All Roles</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="engineer">Engineer</SelectItem>
-                    <SelectItem value="support">Support</SelectItem>
+                    <SelectItem value="backend_engineer">Backend Engineer</SelectItem>
+                    <SelectItem value="field_engineer">Field Engineer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -719,8 +786,9 @@ export default function UsersPage() {
                             <Select 
                               value={user.role} 
                               onValueChange={(value: string) => handleRoleChange(user.id, value)}
+                              disabled={currentUser?.role !== 'admin'}
                             >
-                              <SelectTrigger className="w-32">
+                              <SelectTrigger className="w-32" disabled={currentUser?.role !== 'admin'}>
                                 <Badge className={getRoleColor(user.role)}>
                                   {user.role === 'backend_engineer' ? 'Backend Engineer' : 
                                    user.role === 'field_engineer' ? 'Field Engineer' : 
@@ -730,10 +798,8 @@ export default function UsersPage() {
                               <SelectContent>
                                 <SelectItem value="admin">Administrator</SelectItem>
                                 <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="engineer">Engineer</SelectItem>
                                 <SelectItem value="backend_engineer">Backend Engineer</SelectItem>
                                 <SelectItem value="field_engineer">Field Engineer</SelectItem>
-                                <SelectItem value="support">Support</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -773,7 +839,7 @@ export default function UsersPage() {
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              {isAdmin && (
+                              {canManageUsers && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
@@ -787,10 +853,12 @@ export default function UsersPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="text-error hover:text-error"
-                                title="Deactivate User"
+                                className={user.isActive ? "text-error hover:text-error" : "text-success hover:text-success"}
+                                title={user.isActive ? "Deactivate User" : "Activate User"}
+                                onClick={() => handleToggleStatus(user)}
+                                disabled={toggleUserStatusMutation.isPending}
                               >
-                                <Ban className="w-4 h-4" />
+                                {user.isActive ? <Ban className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                               </Button>
                             </div>
                           </TableCell>
@@ -1014,8 +1082,8 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Password Modal - Admin Only */}
-      {isAdmin && (
+      {/* Reset Password Modal - Admin/Backend Engineer Only */}
+      {canManageUsers && (
         <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
           <DialogContent className="max-w-md">
             <DialogHeader>

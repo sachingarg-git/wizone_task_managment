@@ -9,7 +9,7 @@ import android.view.KeyEvent;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String APP_URL = "https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/";
+    private static final String APP_URL = "http://103.122.85.61:4000/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
             }
         });
         
-        webView.loadUrl(APP_URL);
+        webView.loadUrl("file:///android_asset/index.html");
     }
     
     @Override

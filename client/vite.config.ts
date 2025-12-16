@@ -32,8 +32,16 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 8082,
     host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      }
+    }
   },
   base: './', // Relative paths for mobile compatibility
 })

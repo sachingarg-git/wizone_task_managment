@@ -27,21 +27,45 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Network towers table for network monitoring
+export const networkTowers = pgTable("network_towers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  target_ip: varchar("target_ip"),
+  location: varchar("location"),
+  ssid: varchar("ssid"),
+  total_devices: integer("total_devices").default(0),
+  address: text("address"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  bandwidth: varchar("bandwidth").default('1 Gbps'),
+  expected_latency: varchar("expected_latency").default('5ms'),
+  actual_latency: varchar("actual_latency"),
+  description: text("description"),
+  status: varchar("status").default('offline'),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+  last_test_at: timestamp("last_test_at"),
+});
+
 // User storage table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
+  id: serial("id").primaryKey(),
   username: varchar("username").unique(),
-  password: varchar("password"),
+  passwordHash: varchar("password_hash"),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   phone: varchar("phone"),
-  profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("engineer"),
   department: varchar("department"),
+  profileImageUrl: text("profile_image_url"),
+  fcmToken: text("fcm_token"),
+  role: varchar("role").notNull().default("engineer"),
+  active: boolean("active").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  lastLogin: timestamp("last_login"),
 });
 
 export const customers = pgTable("customers", {
@@ -52,6 +76,7 @@ export const customers = pgTable("customers", {
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
+  country: varchar("country"),
   mobilePhone: varchar("mobile_phone"),
   email: varchar("email"),
   servicePlan: varchar("service_plan"),
@@ -59,57 +84,50 @@ export const customers = pgTable("customers", {
   wirelessIp: varchar("wireless_ip"),
   wirelessApIp: varchar("wireless_ap_ip"),
   port: varchar("port"),
-  plan: varchar("plan"),
-  installationDate: timestamp("installation_date"),
+  connectionType: varchar("connection_type"),
+  planType: varchar("plan_type"),
+  monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }),
   status: varchar("status").notNull().default("active"),
-  username: varchar("username"),
-  password: varchar("password"),
+  portalUsername: varchar("portal_username"),
+  portalPassword: varchar("portal_password"),
   portalAccess: boolean("portal_access").default(false),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
-  locationNotes: text("location_notes"),
-  locationVerified: boolean("location_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  ticketNumber: varchar("ticket_number").unique().notNull(),
+  ticketNumber: varchar("ticket_number").unique(),
   title: varchar("title").notNull(),
-  customerId: integer("customer_id").references(() => customers.id),
-  assignedTo: varchar("assigned_to").references(() => users.id),
-  fieldEngineerId: varchar("field_engineer_id").references(() => users.id),
-  createdBy: varchar("created_by").references(() => users.id),
-  priority: varchar("priority").notNull(), // High, Medium, Low
-  issueType: varchar("issue_type").notNull(),
-  status: varchar("status").notNull().default("pending"), // pending, assigned_to_field, start_task, waiting_for_customer, in_progress, resolved, completed, cancelled
   description: text("description"),
-  resolution: text("resolution"),
-  completionNote: text("completion_note"),
-  resolvedBy: varchar("resolved_by").references(() => users.id),
-  fieldStartTime: timestamp("field_start_time"),
-  fieldWaitingTime: timestamp("field_waiting_time"),
-  fieldWaitingReason: text("field_waiting_reason"),
-  startTime: timestamp("start_time"),
-  completionTime: timestamp("completion_time"),
-  estimatedTime: integer("estimated_time"), // in minutes
-  actualTime: integer("actual_time"), // in minutes
-  visitCharges: decimal("visit_charges", { precision: 10, scale: 2 }),
-  contactPerson: varchar("contact_person"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  customerId: integer("customer_id").references(() => customers.id),
+  customerName: varchar("customer_name"),
+  priority: varchar("priority").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  assignedTo: integer("assigned_to"),
+  assignedToName: varchar("assigned_to_name"),
+  fieldEngineerId: integer("field_engineer_id").references(() => users.id),
+  fieldEngineerName: varchar("field_engineer_name"),
+  createdBy: integer("created_by"),
+  createdByName: varchar("created_by_name"),
+  category: varchar("category"),
+  estimatedHours: decimal("estimated_hours", { precision: 8, scale: 2 }),
+  actualHours: decimal("actual_hours", { precision: 8, scale: 2 }),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  completionTime: timestamp("completion_time", { withTimezone: true }),
 });
 
 export const taskUpdates = pgTable("task_updates", {
   id: serial("id").primaryKey(),
   taskId: integer("task_id").references(() => tasks.id).notNull(),
-  updatedBy: varchar("updated_by").references(() => users.id).notNull(),
-  updateType: varchar("update_type").notNull(), // status_change, note_added, file_uploaded, description_updated
-  oldValue: text("old_value"),
-  newValue: text("new_value"),
-  note: text("note"),
-  attachments: text("attachments").array(), // Array of file URLs/paths
+  message: text("message").notNull(),
+  type: varchar("type").default("comment"), // comment, status_update, assignment, completion, customer_feedback, progress_update, file_upload
+  createdBy: integer("created_by").references(() => users.id),
+  createdByName: varchar("created_by_name"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -120,33 +138,55 @@ export const customerComments = pgTable("customer_comments", {
   comment: text("comment").notNull(),
   attachments: text("attachments").array(), // Array of file URLs/paths
   isInternal: boolean("is_internal").default(false), // For internal notes not visible to customer
-  respondedBy: varchar("responded_by").references(() => users.id), // Engineer who responded
+  respondedBy: integer("responded_by").references(() => users.id), // Engineer who responded
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Customer system details table - Employee system information
+// Customer system details table - Employee system information (Desktop/Laptop details)
 export const customerSystemDetails = pgTable("customer_system_details", {
   id: serial("id").primaryKey(),
-  customerId: varchar("customer_id").references(() => customers.customerId).notNull(),
-  empId: varchar("emp_id").notNull(), // Employee ID
-  systemName: varchar("system_name").notNull(),
-  systemConfiguration: text("system_configuration"), // System configuration details
-  processorName: varchar("processor_name"), // Processor name
-  ram: varchar("ram"), // RAM specification (e.g., "16GB DDR4")
-  hardDisk: varchar("hard_disk"), // Hard disk specification (e.g., "1TB SATA")
-  ssd: varchar("ssd"), // SSD specification (e.g., "256GB")
-  sharingStatus: boolean("sharing_status").default(false), // Sharing on/off
-  administratorAccount: boolean("administrator_account").default(false), // Administrator account on/off
-  antivirusAvailable: boolean("antivirus_available").default(false), // Antivirus available/not
-  upsAvailable: boolean("ups_available").default(false), // UPS available/not
-  isActive: boolean("is_active").default(true),
+  customerId: integer("customer_id").references(() => customers.id),
+  customerName: varchar("customer_name"), // Customer name for reference
+  empId: varchar("emp_id"), // Employee ID who submitted
+  empName: varchar("emp_name"), // Engineer name who collected data
+  systemName: varchar("system_name").notNull(), // Computer name
+  systemType: varchar("system_type"), // Desktop or Laptop
+  processor: varchar("processor"), // Processor/CPU name
+  processorCores: varchar("processor_cores"), // Number of cores
+  processorSpeed: varchar("processor_speed"), // Clock speed
+  ram: varchar("ram"), // Total RAM
+  ramType: varchar("ram_type"), // DDR3, DDR4, DDR5
+  ramFrequency: varchar("ram_frequency"), // RAM frequency in MHz
+  ramSlots: varchar("ram_slots"), // Used/Total slots
+  motherboard: varchar("motherboard"), // Motherboard name
+  motherboardManufacturer: varchar("motherboard_manufacturer"),
+  hardDisk: varchar("hard_disk"), // HDD details
+  hddCapacity: varchar("hdd_capacity"), // HDD capacity
+  ssd: varchar("ssd"), // SSD details
+  ssdCapacity: varchar("ssd_capacity"), // SSD capacity
+  graphicsCard: varchar("graphics_card"), // GPU name
+  graphicsMemory: varchar("graphics_memory"), // GPU memory
+  operatingSystem: varchar("operating_system"),
+  osVersion: varchar("os_version"), // OS version/build
+  osArchitecture: varchar("os_architecture"), // 32-bit or 64-bit
+  antivirus: varchar("antivirus"),
+  msOffice: varchar("ms_office"),
+  otherSoftware: text("other_software"),
+  macAddress: varchar("mac_address"), // Network MAC address
+  ipAddress: varchar("ip_address"), // IP address
+  ethernetSpeed: varchar("ethernet_speed"), // Ethernet port speed
+  serialNumber: varchar("serial_number"), // System serial number
+  biosVersion: varchar("bios_version"), // BIOS version
+  department: varchar("department"), // Department name
+  configuration: text("configuration"), // Full raw configuration
+  collectedAt: timestamp("collected_at").defaultNow(), // When data was collected
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const performanceMetrics = pgTable("performance_metrics", {
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
   totalTasks: integer("total_tasks").notNull().default(0),
@@ -168,7 +208,7 @@ export const domains = pgTable("domains", {
   customDomain: varchar("custom_domain"),
   ssl: boolean("ssl").default(false),
   status: varchar("status").notNull().default("pending"), // 'active', 'pending', 'inactive'
-  ownerId: varchar("owner_id").references(() => users.id, { onDelete: "cascade" }),
+  ownerId: integer("owner_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -186,7 +226,7 @@ export const sqlConnections = pgTable("sql_connections", {
   connectionType: varchar("connection_type").notNull().default("postgresql"), // postgresql, mysql, mssql, sqlite
   sslEnabled: boolean("ssl_enabled").default(false),
   isActive: boolean("is_active").default(true),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "cascade" }),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }),
   lastTested: timestamp("last_tested"),
   testStatus: varchar("test_status"), // success, failed, pending, never_tested
   testResult: text("test_result"), // error message or success confirmation
@@ -201,7 +241,7 @@ export const chatRooms = pgTable("chat_rooms", {
   description: text("description"),
   roomType: varchar("room_type", { length: 20 }).notNull().default("group"), // group, direct, general
   isActive: boolean("is_active").notNull().default(true),
-  createdBy: varchar("created_by", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -209,7 +249,7 @@ export const chatRooms = pgTable("chat_rooms", {
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   roomId: integer("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
-  senderId: varchar("sender_id", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  senderId: integer("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   messageType: varchar("message_type", { length: 20 }).notNull().default("text"), // text, file, image, system
   attachmentUrl: text("attachment_url"),
@@ -224,7 +264,7 @@ export const chatMessages = pgTable("chat_messages", {
 export const chatParticipants = pgTable("chat_participants", {
   id: serial("id").primaryKey(),
   roomId: integer("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
-  userId: varchar("user_id", { length: 100 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: varchar("role", { length: 20 }).notNull().default("member"), // admin, moderator, member
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
   lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
@@ -236,7 +276,7 @@ export const chatParticipants = pgTable("chat_participants", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks, { relationName: "assignedTasks" }),
-  fieldTasks: many(tasks, { relationName: "fieldTasks" }),
+  fieldEngineerTasks: many(tasks, { relationName: "fieldEngineerTasks" }),
   createdTasks: many(tasks, { relationName: "createdTasks" }),
   performanceMetrics: many(performanceMetrics),
   ownedDomains: many(domains),
@@ -264,7 +304,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   fieldEngineer: one(users, {
     fields: [tasks.fieldEngineerId],
     references: [users.id],
-    relationName: "fieldTasks",
+    relationName: "fieldEngineerTasks",
   }),
   createdByUser: one(users, {
     fields: [tasks.createdBy],
@@ -280,8 +320,8 @@ export const taskUpdatesRelations = relations(taskUpdates, ({ one }) => ({
     fields: [taskUpdates.taskId],
     references: [tasks.id],
   }),
-  updatedByUser: one(users, {
-    fields: [taskUpdates.updatedBy],
+  createdByUser: one(users, {
+    fields: [taskUpdates.createdBy],
     references: [users.id],
   }),
 }));
@@ -357,12 +397,68 @@ export const customerCommentsRelations = relations(customerComments, ({ one }) =
   }),
 }));
 
+// Customer Documents - Documents uploaded for customers by engineers
+export const customerDocuments = pgTable("customer_documents", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  documentType: varchar("document_type").notNull(), // challan, bill_copy, rack_photo, company_photo, other
+  documentName: varchar("document_name"), // custom name if type is 'other'
+  fileName: varchar("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type"),
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Engineer Documents - Personal documents uploaded by engineers
+export const engineerDocuments = pgTable("engineer_documents", {
+  id: serial("id").primaryKey(),
+  engineerId: integer("engineer_id").notNull().references(() => users.id),
+  documentName: varchar("document_name").notNull(),
+  fileName: varchar("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for document tables
+export const customerDocumentsRelations = relations(customerDocuments, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerDocuments.customerId],
+    references: [customers.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [customerDocuments.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
+export const engineerDocumentsRelations = relations(engineerDocuments, ({ one }) => ({
+  engineer: one(users, {
+    fields: [engineerDocuments.engineerId],
+    references: [users.id],
+  }),
+}));
+
 // Relations for geofencing tables (moved to after table definitions)
 
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertNetworkTowerSchema = createInsertSchema(networkTowers).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+  last_test_at: true,
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({
@@ -376,6 +472,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   ticketNumber: true, // Auto-generated by backend
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Allow dueDate to accept both Date objects and ISO date strings, then convert to Date
+  dueDate: z.union([
+    z.date(),
+    z.string().transform((val) => new Date(val))
+  ]).optional(),
 });
 
 export const insertPerformanceMetricsSchema = createInsertSchema(performanceMetrics).omit({
@@ -433,9 +535,23 @@ export const insertCustomerCommentSchema = createInsertSchema(customerComments).
   updatedAt: true,
 });
 
+export const insertCustomerDocumentSchema = createInsertSchema(customerDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEngineerDocumentSchema = createInsertSchema(engineerDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type InsertNetworkTower = z.infer<typeof insertNetworkTowerSchema>;
+export type NetworkTower = typeof networkTowers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
@@ -456,6 +572,10 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatParticipant = z.infer<typeof insertChatParticipantSchema>;
 export type ChatParticipant = typeof chatParticipants.$inferSelect;
+export type InsertCustomerDocument = z.infer<typeof insertCustomerDocumentSchema>;
+export type CustomerDocument = typeof customerDocuments.$inferSelect;
+export type InsertEngineerDocument = z.infer<typeof insertEngineerDocumentSchema>;
+export type EngineerDocument = typeof engineerDocuments.$inferSelect;
 
 // Extended types for API responses
 export type TaskWithRelations = Task & {
@@ -559,7 +679,7 @@ export const geofenceZones = pgTable("geofence_zones", {
   radius: decimal("radius", { precision: 8, scale: 2 }).notNull(), // Radius in meters
   polygonCoordinates: text("polygon_coordinates"), // JSON array of lat/lng for complex shapes
   isActive: boolean("is_active").notNull().default(true),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -567,7 +687,7 @@ export const geofenceZones = pgTable("geofence_zones", {
 // Geofence events (enter/exit tracking)
 export const geofenceEvents = pgTable("geofence_events", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   zoneId: integer("zone_id").notNull().references(() => geofenceZones.id, { onDelete: "cascade" }),
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
   eventType: varchar("event_type").notNull(), // enter, exit, dwell
@@ -583,7 +703,7 @@ export const geofenceEvents = pgTable("geofence_events", {
 // Engineer tracking history for detailed analysis
 export const engineerTrackingHistory = pgTable("engineer_tracking_history", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
   latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
   longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
@@ -601,7 +721,7 @@ export const engineerTrackingHistory = pgTable("engineer_tracking_history", {
 // Trip tracking for field engineers
 export const tripTracking = pgTable("trip_tracking", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
   tripType: varchar("trip_type").notNull(), // to_customer, to_office, service_call
   startTime: timestamp("start_time").notNull().defaultNow(),
@@ -677,7 +797,7 @@ export const botConfigurations = pgTable("bot_configurations", {
   lastTestTime: timestamp("last_test_time"),
   testMessage: text("test_message"),
   
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -689,7 +809,7 @@ export const notificationLogs = pgTable("notification_logs", {
   eventType: varchar("event_type").notNull(), // task_create, task_update, status_change, etc.
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
   customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   messageText: text("message_text"), // Database column name
   messageTemplateUsed: varchar("message_template_used"),
   status: varchar("status").notNull().default("pending"), // pending, sent, failed, retrying
@@ -702,6 +822,29 @@ export const notificationLogs = pgTable("notification_logs", {
   nextRetryAt: timestamp("next_retry_at"),
 });
 
+// Push notification queue for mobile app polling
+export const pushNotificationQueue = pgTable("push_notification_queue", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  body: text("body").notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // task_assignment, task_update, task_complete
+  taskId: integer("task_id"),
+  ticketNumber: varchar("ticket_number", { length: 50 }),
+  data: json("data"), // Additional metadata
+  isRead: boolean("is_read").notNull().default(false),
+  isShown: boolean("is_shown").notNull().default(false), // Shown as system notification
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPushNotificationQueueSchema = createInsertSchema(pushNotificationQueue).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PushNotificationQueueItem = typeof pushNotificationQueue.$inferSelect;
+export type InsertPushNotificationQueueItem = z.infer<typeof insertPushNotificationQueueSchema>;
+
 // Insert schemas for geofencing and tracking
 export const insertOfficeLocationSchema = createInsertSchema(officeLocations);
 export const insertOfficeLocationSuggestionSchema = createInsertSchema(officeLocationSuggestions);
@@ -710,6 +853,43 @@ export const insertGeofenceZoneSchema = createInsertSchema(geofenceZones);
 export const insertGeofenceEventSchema = createInsertSchema(geofenceEvents);
 export const insertEngineerTrackingHistorySchema = createInsertSchema(engineerTrackingHistory);
 export const insertTripTrackingSchema = createInsertSchema(tripTracking);
+
+// Daily reports table for field engineers
+export const dailyReports = pgTable("daily_reports", {
+  id: serial("id").primaryKey(),
+  engineerId: integer("engineer_id").references(() => users.id).notNull(),
+  engineerName: varchar("engineer_name").notNull(),
+  reportDate: timestamp("report_date").defaultNow().notNull(),
+  sitesVisited: integer("sites_visited").notNull().default(0),
+  workDone: text("work_done").notNull(),
+  sitesCompleted: integer("sites_completed").notNull().default(0),
+  completedSitesNames: text("completed_sites_names"),
+  incompleteSitesNames: text("incomplete_sites_names"),
+  reasonNotDone: text("reason_not_done"),
+  hasIssue: boolean("has_issue").default(false),
+  issueDetails: text("issue_details"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Daily reports relations
+export const dailyReportsRelations = relations(dailyReports, ({ one }) => ({
+  engineer: one(users, {
+    fields: [dailyReports.engineerId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for daily reports
+export const insertDailyReportSchema = createInsertSchema(dailyReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for daily reports
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type InsertDailyReport = z.infer<typeof insertDailyReportSchema>;
 
 // Insert schemas for bot configuration
 export const insertBotConfigurationSchema = createInsertSchema(botConfigurations).omit({
@@ -824,3 +1004,94 @@ export const tripTrackingRelations = relations(tripTracking, ({ one }) => ({
     references: [tasks.id],
   }),
 }));
+
+// Complaints table for शिकायत पत्रिका (Complaint Management)
+export const complaints = pgTable("complaints", {
+  id: serial("id").primaryKey(),
+  complaintId: varchar("complaint_id").notNull().unique(), // Format: WIZ/DDMMYY/001
+  engineerId: integer("engineer_id").references(() => users.id).notNull(),
+  engineerName: varchar("engineer_name").notNull(),
+  engineerEmail: varchar("engineer_email"),
+  subject: varchar("subject").notNull(), // Complaint subject
+  description: text("description").notNull(), // Complaint description
+  category: varchar("category"), // Technical Issue, Equipment Problem, Site Access Issue, etc.
+  status: varchar("status").notNull().default('pending'), // pending, in_progress, under_investigation, review, resolved
+  statusNote: text("status_note"), // Notes when status is changed
+  statusHistory: json("status_history").$type<Array<{
+    status: string;
+    note: string;
+    changedBy: number;
+    changedByName: string;
+    changedAt: string;
+  }>>().default([]),
+  isLocked: boolean("is_locked").default(false), // Lock after resolved
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+// Complaints relations
+export const complaintsRelations = relations(complaints, ({ one }) => ({
+  engineer: one(users, {
+    fields: [complaints.engineerId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for complaints
+export const insertComplaintSchema = createInsertSchema(complaints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+});
+
+// Types for complaints
+export type Complaint = typeof complaints.$inferSelect;
+export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
+
+// CCTV Information table for customer CCTV details
+export const cctvInformation = pgTable("cctv_information", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").references(() => customers.id).notNull(),
+  customerName: varchar("customer_name").notNull(),
+  serialNumber: varchar("serial_number"), // S.NO.
+  cameraIp: varchar("camera_ip"),
+  addedIn: varchar("added_in"), // Added in (e.g., NVR1, DVR1)
+  port: varchar("port"),
+  httpPort: varchar("http_port"),
+  modelNo: varchar("model_no"),
+  locationName: varchar("location_name"),
+  uplink: varchar("uplink"),
+  rackPhoto: text("rack_photo"), // URL/path to rack photo
+  nvrCameraPhoto: text("nvr_camera_photo"), // URL/path to NVR/Camera location photo
+  deviceSerialNo: varchar("device_serial_no"),
+  macAddress: varchar("mac_address"),
+  updatedBy: integer("updated_by"), // Customer ID who updated (no FK as customer updates from customer portal)
+  updatedByName: varchar("updated_by_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CCTV Information relations
+export const cctvInformationRelations = relations(cctvInformation, ({ one }) => ({
+  customer: one(customers, {
+    fields: [cctvInformation.customerId],
+    references: [customers.id],
+  }),
+  updatedByUser: one(users, {
+    fields: [cctvInformation.updatedBy],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for CCTV Information
+export const insertCctvInformationSchema = createInsertSchema(cctvInformation).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for CCTV Information
+export type CctvInformation = typeof cctvInformation.$inferSelect;
+export type InsertCctvInformation = z.infer<typeof insertCctvInformationSchema>;

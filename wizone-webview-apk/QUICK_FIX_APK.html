@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Mobile</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .login-form input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .login-btn { width: 100%; padding: 12px; background: #2c5aa0; color: white; border: none; border-radius: 5px; font-size: 16px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; color: #d63031; }
+        .success { background: #e6f7e6; color: #00b894; }
+        .task { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #2c5aa0; }
+        .offline-indicator { background: #ff6b6b; color: white; text-align: center; padding: 5px; }
+        .online-indicator { background: #51cf66; color: white; text-align: center; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Task Manager Mobile</h1>
+        <div id="status-bar" class="offline-indicator">🔴 Connecting to server...</div>
+        
+        <div id="login-section">
+            <div class="login-form">
+                <input type="text" id="username" placeholder="Username (e.g. arpit)" value="arpit">
+                <input type="password" id="password" placeholder="Password" value="arpit123">
+                <button class="login-btn" onclick="quickLogin()">🚀 Quick Login</button>
+            </div>
+            <div id="login-status"></div>
+        </div>
+        
+        <div id="main-app" style="display:none;">
+            <h2>Welcome! 👋</h2>
+            <button onclick="loadTasks()" style="width: 100%; padding: 10px; margin: 10px 0;">📋 Load My Tasks</button>
+            <div id="tasks-container"></div>
+        </div>
+        
+        <div id="debug-log" style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://103.122.85.61:3001';
+        let currentUser = null;
+        
+        function log(message) {
+            const debugLog = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${timestamp}] ${message}<br>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(message, isOnline = false) {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.textContent = message;
+            statusBar.className = isOnline ? 'online-indicator' : 'offline-indicator';
+        }
+        
+        async function quickLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('login-status');
+            
+            log(`🚀 Starting login for user: ${username}`);
+            updateStatus('🔄 Logging in...');
+            
+            try {
+                // Test server connectivity first
+                log('🌐 Testing server connection...');
+                const healthCheck = await fetch(`${API_BASE}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TaskManager-Mobile-App/1.0'
+                    }
+                });
+                
+                if (!healthCheck.ok) {
+                    throw new Error(`Server not reachable: ${healthCheck.status}`);
+                }
+                
+                log('✅ Server is reachable!');
+                
+                // Attempt login
+                log('🔐 Attempting login...');
+                const loginResponse = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TaskManager-Mobile-App/1.0',
+                        'X-Mobile-App': 'true'
+                    },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include'
+                });
+                
+                log(`📡 Login response status: ${loginResponse.status}`);
+                
+                if (loginResponse.ok) {
+                    const userData = await loginResponse.json();
+                    log(`✅ Login successful! User: ${JSON.stringify(userData)}`);
+                    
+                    currentUser = userData.user || userData;
+                    updateStatus('🟢 Online - Connected to server', true);
+                    statusDiv.innerHTML = '<div class="success">✅ Login successful!</div>';
+                    
+                    // Hide login form and show main app
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('main-app').style.display = 'block';
+                    
+                } else {
+                    const errorData = await loginResponse.json().catch(() => ({}));
+                    const errorMsg = errorData.message || `HTTP ${loginResponse.status}`;
+                    throw new Error(errorMsg);
+                }
+                
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`);
+                updateStatus('🔴 Connection failed');
+                statusDiv.innerHTML = `<div class="error">❌ Login failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadTasks() {
+            log('📋 Loading tasks...');
+            const tasksContainer = document.getElementById('tasks-container');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TaskManager-Mobile-App/1.0',
+                        'X-Mobile-App': 'true'
+                    },
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const tasks = await response.json();
+                    log(`📋 Loaded ${tasks.length} tasks`);
+                    
+                    tasksContainer.innerHTML = tasks.map(task => `
+                        <div class="task">
+                            <h3>Task #${task.id}</h3>
+                            <p><strong>Customer:</strong> ${task.customer_name || 'N/A'}</p>
+                            <p><strong>Status:</strong> ${task.status || 'pending'}</p>
+                            <p><strong>Priority:</strong> ${task.priority || 'normal'}</p>
+                            <button onclick="updateTaskStatus(${task.id}, 'in-progress')" style="padding: 5px 10px; margin: 2px;">Start</button>
+                            <button onclick="updateTaskStatus(${task.id}, 'completed')" style="padding: 5px 10px; margin: 2px;">Complete</button>
+                        </div>
+                    `).join('');
+                    
+                } else {
+                    throw new Error(`Failed to load tasks: ${response.status}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error loading tasks: ${error.message}`);
+                tasksContainer.innerHTML = `<div class="error">❌ Failed to load tasks: ${error.message}</div>`;
+            }
+        }
+        
+        async function updateTaskStatus(taskId, newStatus) {
+            log(`🔄 Updating task ${taskId} to status: ${newStatus}`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TaskManager-Mobile-App/1.0',
+                        'X-Mobile-App': 'true'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        status: newStatus,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    log(`✅ Task ${taskId} updated successfully!`);
+                    loadTasks(); // Reload tasks to show changes
+                } else {
+                    throw new Error(`Update failed: ${response.status}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error updating task: ${error.message}`);
+            }
+        }
+        
+        // Initialize app
+        log('📱 Quick Fix APK initialized');
+        log('🌐 Server URL: ' + API_BASE);
+    </script>
+</body>
+</html>

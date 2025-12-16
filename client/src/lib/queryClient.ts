@@ -1,4 +1,21 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { Capacitor } from '@capacitor/core';
+
+// Detect if running in Capacitor mobile app
+const isCapacitor = Capacitor.isNativePlatform();
+
+// API base URL - use production server for mobile APK
+const API_BASE_URL = isCapacitor 
+  ? 'http://103.122.85.61:3007'
+  : ''; // Use relative paths for web
+
+// Helper to resolve API URL
+function resolveApiUrl(url: string): string {
+  if (isCapacitor && url.startsWith('/')) {
+    return `${API_BASE_URL}${url}`;
+  }
+  return url;
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -12,7 +29,10 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const resolvedUrl = resolveApiUrl(url);
+  console.log(`🌐 API Request: ${method} ${resolvedUrl}`);
+  
+  const res = await fetch(resolvedUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,8 +49,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
+    const url = resolveApiUrl(queryKey[0] as string);
+    
+    const res = await fetch(url, {
+      credentials: "include"
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -44,11 +66,13 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: getQueryFn({ on401: "returnNull" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      staleTime: 30000, // Data is fresh for 30 seconds
+      gcTime: 60000, // Keep in cache for 1 minute
+      retry: 1,
+      retryDelay: 500,
     },
     mutations: {
       retry: false,

@@ -1,0 +1,836 @@
+﻿<!DOCTYPE html><!DOCTYPE html><!DOCTYPE html>
+
+<html>
+
+<head><html><html>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><head><head>
+
+    <title>Wizone Task Management</title>
+
+    <link rel="stylesheet" href="css/mobile-app.css">    <meta charset="UTF-8">    <meta charset="UTF-8">
+
+    <link rel="stylesheet" href="css/components.css">
+
+</head>    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<body>
+
+    <div id="app">    <title>Wizone Task Management</title>    <title>Wizone Task Management</title>
+
+        <!-- Loading Screen -->
+
+        <div id="loadingScreen" class="loading-container">    <link rel="stylesheet" href="css/mobile-app.css">    <link rel="stylesheet" href="css/mobile-app.css">
+
+            <div class="logo">📱 WIZONE</div>
+
+            <div class="loading-text">Mobile Task Management</div>    <link rel="stylesheet" href="css/components.css">    <link rel="stylesheet" href="css/components.css">
+
+            <div class="connection-info">
+
+                <div><span class="status-indicator"></span>Connecting to Server</div></head></head>
+
+                <div class="server-url">http://103.122.85.61:4000</div>
+
+            </div><body><body>
+
+            <div class="spinner"></div>
+
+            <div class="loading-message">Initializing mobile app...</div>    <div id="app">    <div id="app">
+
+        </div>
+
+        <!-- Loading Screen -->        <!-- Loading Screen -->
+
+        <!-- Login Screen -->
+
+        <div id="loginScreen" class="screen" style="display: none;">        <div id="loadingScreen" class="loading-container">        <div id="loadingScreen" class="loading-container">
+
+            <div class="login-container">
+
+                <div class="login-header">            <div class="logo">📱 WIZONE</div>            <div class="logo">📱 WIZONE</div>
+
+                    <div class="login-logo">📱 WIZONE</div>
+
+                    <div class="login-subtitle">Task Management Portal</div>            <div class="loading-text">Mobile Task Management</div>            <div class="loading-text">Mobile Task Management</div>
+
+                </div>
+
+                <form id="loginForm" class="login-form">            <div class="connection-info">            <div class="connection-info">
+
+                    <div class="form-group">
+
+                        <label for="username">Username</label>                <div><span class="status-indicator"></span>Connecting to Server</div>                <div><span class="status-indicator"></span>Connecting to Server</div>
+
+                        <input type="text" id="username" name="username" required>
+
+                    </div>                <div class="server-url">http://103.122.85.61:4000</div>                <div class="server-url">http://103.122.85.61:4000</div>
+
+                    <div class="form-group">
+
+                        <label for="password">Password</label>            </div>            </div>
+
+                        <input type="password" id="password" name="password" required>
+
+                    </div>            <div class="spinner"></div>            <div class="spinner"></div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+
+                        <span class="btn-text">Login</span>            <div class="loading-message">Initializing mobile app...</div>            <div class="loading-message">Initializing mobile app...</div>
+
+                        <span class="btn-spinner" style="display: none;">Logging in...</span>
+
+                    </button>        </div>        </div>
+
+                </form>
+
+                <div id="loginError" class="error-message" style="display: none;"></div>
+
+            </div>
+
+        </div>        <!-- Login Screen -->        <!-- Login Screen -->
+
+
+
+        <!-- Main App Screen -->        <div id="loginScreen" class="screen" style="display: none;">        <div id="loginScreen" class="screen" style="display: none;">
+
+        <div id="mainScreen" class="screen" style="display: none;">
+
+            <!-- Header -->            <div class="login-container">            <div class="login-container">
+
+            <div class="app-header">
+
+                <div class="header-content">                <div class="login-header">                <div class="login-header">
+
+                    <div class="header-title">
+
+                        <h1 id="welcomeTitle">Welcome, User</h1>                    <div class="login-logo">📱 WIZONE</div>                    <div class="login-logo">📱 WIZONE</div>
+
+                        <p id="userRole">Field Engineer</p>
+
+                    </div>                    <div class="login-subtitle">Task Management Portal</div>                    <div class="login-subtitle">Task Management Portal</div>
+
+                    <div class="header-actions">
+
+                        <button class="sync-btn" id="syncBtn">                </div>                </div>
+
+                            <span class="sync-icon">🔄</span>
+
+                            <span class="sync-text">Sync</span>                <form id="loginForm" class="login-form">                <form id="loginForm" class="login-form">
+
+                        </button>
+
+                        <button class="logout-btn" id="logoutBtn">                    <div class="form-group">                    <div class="form-group">
+
+                            <span>🚪</span>
+
+                        </button>                        <label for="username">Username</label>                        <label for="username">Username</label>
+
+                    </div>
+
+                </div>                        <input type="text" id="username" name="username" required>                        <input type="text" id="username" name="username" required>
+
+            </div>
+
+                    </div>                    </div>
+
+            <!-- Stats Cards -->
+
+            <div class="stats-container">                    <div class="form-group">                    <div class="form-group">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">📋</div>                        <label for="password">Password</label>                        <label for="password">Password</label>
+
+                    <div class="stat-content">
+
+                        <div class="stat-label">My Tasks</div>                        <input type="password" id="password" name="password" required>                        <input type="password" id="password" name="password" required>
+
+                        <div class="stat-value" id="totalTasks">0</div>
+
+                    </div>                    </div>                    </div>
+
+                </div>
+
+                <div class="stat-card">                    <button type="submit" class="login-btn" id="loginBtn">                    <button type="submit" class="login-btn" id="loginBtn">
+
+                    <div class="stat-icon">⏳</div>
+
+                    <div class="stat-content">                        <span class="btn-text">Login</span>                        <span class="btn-text">Login</span>
+
+                        <div class="stat-label">Pending</div>
+
+                        <div class="stat-value" id="pendingTasks">0</div>                        <span class="btn-spinner" style="display: none;">Logging in...</span>                        <span class="btn-spinner" style="display: none;">Logging in...</span>
+
+                    </div>
+
+                </div>                    </button>                    </button>
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">🔄</div>                </form>                </form>
+
+                    <div class="stat-content">
+
+                        <div class="stat-label">In Progress</div>                <div id="loginError" class="error-message" style="display: none;"></div>                <div id="loginError" class="error-message" style="display: none;"></div>
+
+                        <div class="stat-value" id="inProgressTasks">0</div>
+
+                    </div>            </div>            </div>
+
+                </div>
+
+                <div class="stat-card">        </div>        </div>
+
+                    <div class="stat-icon">✅</div>
+
+                    <div class="stat-content">
+
+                        <div class="stat-label">Completed</div>
+
+                        <div class="stat-value" id="completedTasks">0</div>        <!-- Main App Screen -->        <!-- Main App Screen -->
+
+                    </div>
+
+                </div>        <div id="mainScreen" class="screen" style="display: none;">        <div id="mainScreen" class="screen" style="display: none;">
+
+            </div>
+
+            <!-- Header -->            <!-- Header -->
+
+            <!-- Tasks List -->
+
+            <div class="tasks-container">            <div class="app-header">            <div class="app-header">
+
+                <div class="tasks-header">
+
+                    <h2>My Assigned Tasks</h2>                <div class="header-content">                <div class="header-content">
+
+                    <div class="tasks-count" id="tasksCount">0 tasks</div>
+
+                </div>                    <div class="header-title">                    <div class="header-title">
+
+                <div id="tasksList" class="tasks-list">
+
+                    <!-- Tasks will be populated here -->                        <h1 id="welcomeTitle">Welcome, User</h1>                        <h1 id="welcomeTitle">Welcome, User</h1>
+
+                </div>
+
+                <div id="noTasks" class="no-tasks" style="display: none;">                        <p id="userRole">Field Engineer</p>                        <p id="userRole">Field Engineer</p>
+
+                    <div class="no-tasks-icon">📋</div>
+
+                    <div class="no-tasks-title">No tasks assigned</div>                    </div>                    </div>
+
+                    <div class="no-tasks-text">You don't have any tasks assigned to you at the moment.</div>
+
+                    <button class="refresh-btn" onclick="loadTasks()">Check for Tasks</button>                    <div class="header-actions">                    <div class="header-actions">
+
+                </div>
+
+            </div>                        <button class="sync-btn" id="syncBtn">                        <button class="sync-btn" id="syncBtn">
+
+        </div>
+
+                            <span class="sync-icon">🔄</span>                            <span class="sync-icon">🔄</span>
+
+        <!-- Task Detail Modal -->
+
+        <div id="taskModal" class="modal" style="display: none;">                            <span class="sync-text">Sync</span>                            <span class="sync-text">Sync</span>
+
+            <div class="modal-content">
+
+                <div class="modal-header">                        </button>                        </button>
+
+                    <h3 id="modalTitle">Task Details</h3>
+
+                    <button class="modal-close" id="closeModal">×</button>                        <button class="logout-btn" id="logoutBtn">                        <button class="logout-btn" id="logoutBtn">
+
+                </div>
+
+                <div class="modal-body">                            <span>🚪</span>                            <span>🚪</span>
+
+                    <!-- Task Tabs -->
+
+                    <div class="tabs">                        </button>                        </button>
+
+                        <button class="tab-btn active" data-tab="details">Details</button>
+
+                        <button class="tab-btn" data-tab="history">History</button>                    </div>                    </div>
+
+                        <button class="tab-btn" data-tab="update">Update</button>
+
+                        <button class="tab-btn" data-tab="files">Files</button>                </div>                </div>
+
+                    </div>
+
+            </div>            </div>
+
+                    <!-- Details Tab -->
+
+                    <div id="detailsTab" class="tab-content active">
+
+                        <div id="taskDetails"></div>
+
+                    </div>            <!-- Stats Cards -->            <!-- Stats Cards -->
+
+
+
+                    <!-- History Tab -->            <div class="stats-container">            <div class="stats-container">
+
+                    <div id="historyTab" class="tab-content">
+
+                        <div id="taskHistory"></div>                <div class="stat-card">                <div class="stat-card">
+
+                    </div>
+
+                    <div class="stat-icon">📋</div>                    <div class="stat-icon">📋</div>
+
+                    <!-- Update Tab -->
+
+                    <div id="updateTab" class="tab-content">                    <div class="stat-content">                    <div class="stat-content">
+
+                        <div class="update-form">
+
+                            <div class="form-group">                        <div class="stat-label">My Tasks</div>                        <div class="stat-label">My Tasks</div>
+
+                                <label for="statusSelect">Change Status</label>
+
+                                <select id="statusSelect" class="status-select">                        <div class="stat-value" id="totalTasks">0</div>                        <div class="stat-value" id="totalTasks">0</div>
+
+                                    <option value="">Select new status</option>
+
+                                    <option value="pending">Pending</option>                    </div>                    </div>
+
+                                    <option value="in_progress">In Progress</option>
+
+                                    <option value="resolved">Resolved</option>                </div>                </div>
+
+                                    <option value="completed">Completed</option>
+
+                                    <option value="cancelled">Cancelled</option>                <div class="stat-card">                <div class="stat-card">
+
+                                </select>
+
+                            </div>                    <div class="stat-icon">⏳</div>                    <div class="stat-icon">⏳</div>
+
+                            <div class="form-group">
+
+                                <label for="updateNotes">Update Notes</label>                    <div class="stat-content">                    <div class="stat-content">
+
+                                <textarea id="updateNotes" class="update-textarea" placeholder="Add notes about this update..."></textarea>
+
+                                <div id="notesHint" class="notes-hint"></div>                        <div class="stat-label">Pending</div>                        <div class="stat-label">Pending</div>
+
+                            </div>
+
+                            <div class="form-actions">                        <div class="stat-value" id="pendingTasks">0</div>                        <div class="stat-value" id="pendingTasks">0</div>
+
+                                <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancel</button>
+
+                                <button type="button" class="btn-update" id="updateTaskBtn" onclick="updateTask()">                    </div>                    </div>
+
+                                    <span class="btn-text">Update Task</span>
+
+                                    <span class="btn-spinner" style="display: none;">Updating...</span>                </div>                </div>
+
+                                </button>
+
+                            </div>                <div class="stat-card">                <div class="stat-card">
+
+                        </div>
+
+                    </div>                    <div class="stat-icon">🔄</div>                    <div class="stat-icon">🔄</div>
+
+
+
+                    <!-- Files Tab -->                    <div class="stat-content">                    <div class="stat-content">
+
+                    <div id="filesTab" class="tab-content">
+
+                        <div class="file-upload-section">                        <div class="stat-label">In Progress</div>                        <div class="stat-label">In Progress</div>
+
+                            <div class="upload-area">
+
+                                <div class="upload-icon">📷</div>                        <div class="stat-value" id="inProgressTasks">0</div>                        <div class="stat-value" id="inProgressTasks">0</div>
+
+                                <div class="upload-text">Upload Photos/Files</div>
+
+                                <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" style="display: none;">                    </div>                    </div>
+
+                                <div class="upload-buttons">
+
+                                    <button type="button" class="upload-btn" onclick="selectFiles()">Choose Files</button>                </div>                </div>
+
+                                    <button type="button" class="camera-btn" onclick="takePhoto()">Take Photo</button>
+
+                                </div>                <div class="stat-card">                <div class="stat-card">
+
+                            </div>
+
+                            <div id="selectedFiles" class="selected-files"></div>                    <div class="stat-icon">✅</div>                    <div class="stat-icon">✅</div>
+
+                            <div class="form-group">
+
+                                <label for="fileNotes">Notes for files</label>                    <div class="stat-content">                    <div class="stat-content">
+
+                                <textarea id="fileNotes" class="update-textarea" placeholder="Add notes about the uploaded files..."></textarea>
+
+                            </div>                        <div class="stat-label">Completed</div>                        <div class="stat-label">Completed</div>
+
+                            <div class="form-actions">
+
+                                <button type="button" class="btn-cancel" onclick="clearFiles()">Clear All</button>                        <div class="stat-value" id="completedTasks">0</div>                        <div class="stat-value" id="completedTasks">0</div>
+
+                                <button type="button" class="btn-update" id="uploadFilesBtn" onclick="uploadFiles()">
+
+                                    <span class="btn-text">Upload Files</span>                    </div>                    </div>
+
+                                    <span class="btn-spinner" style="display: none;">Uploading...</span>
+
+                                </button>                </div>                </div>
+
+                            </div>
+
+                        </div>            </div>            </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>            <!-- Tasks List -->            <!-- Tasks List -->
+
+
+
+        <!-- Success/Error Messages -->            <div class="tasks-container">            <div class="tasks-container">
+
+        <div id="toast" class="toast" style="display: none;">
+
+            <div id="toastMessage"></div>                <div class="tasks-header">                <div class="tasks-header">
+
+        </div>
+
+    </div>                    <h2>My Assigned Tasks</h2>                    <h2>My Assigned Tasks</h2>
+
+
+
+    <script type="text/javascript" src="cordova.js"></script>                    <div class="tasks-count" id="tasksCount">0 tasks</div>                    <div class="tasks-count" id="tasksCount">0 tasks</div>
+
+    <script src="js/api.js"></script>
+
+    <script src="js/auth.js"></script>                </div>                </div>
+
+    <script src="js/tasks.js"></script>
+
+    <script src="js/ui.js"></script>                <div id="tasksList" class="tasks-list">                <div id="tasksList" class="tasks-list">
+
+    <script src="js/app.js"></script>
+
+</body>                    <!-- Tasks will be populated here -->                    <!-- Tasks will be populated here -->
+
+</html>
+                </div>                </div>
+
+                <div id="noTasks" class="no-tasks" style="display: none;">                <div id="noTasks" class="no-tasks" style="display: none;">
+
+                    <div class="no-tasks-icon">📋</div>                    <div class="no-tasks-icon">📋</div>
+
+                    <div class="no-tasks-title">No tasks assigned</div>                    <div class="no-tasks-title">No tasks assigned</div>
+
+                    <div class="no-tasks-text">You don't have any tasks assigned to you at the moment.</div>                    <div class="no-tasks-text">You don't have any tasks assigned to you at the moment.</div>
+
+                    <button class="refresh-btn" onclick="loadTasks()">Check for Tasks</button>                    <button class="refresh-btn" onclick="loadTasks()">Check for Tasks</button>
+
+                </div>                </div>
+
+            </div>            </div>
+
+        </div>        </div>
+
+
+
+        <!-- Task Detail Modal -->        <!-- Task Detail Modal -->
+
+        <div id="taskModal" class="modal" style="display: none;">        <div id="taskModal" class="modal" style="display: none;">
+
+            <div class="modal-content">            <div class="modal-content">
+
+                <div class="modal-header">                <div class="modal-header">
+
+                    <h3 id="modalTitle">Task Details</h3>                    <h3 id="modalTitle">Task Details</h3>
+
+                    <button class="modal-close" id="closeModal">×</button>                    <button class="modal-close" id="closeModal">×</button>
+
+                </div>                </div>
+
+                <div class="modal-body">                <div class="modal-body">
+
+                    <!-- Task Tabs -->                    <!-- Task Tabs -->
+
+                    <div class="tabs">                    <div class="tabs">
+
+                        <button class="tab-btn active" data-tab="details">Details</button>                        <button class="tab-btn active" data-tab="details">Details</button>
+
+                        <button class="tab-btn" data-tab="history">History</button>                        <button class="tab-btn" data-tab="history">History</button>
+
+                        <button class="tab-btn" data-tab="update">Update</button>                        <button class="tab-btn" data-tab="update">Update</button>
+
+                        <button class="tab-btn" data-tab="files">Files</button>                        <button class="tab-btn" data-tab="files">Files</button>
+
+                    </div>                    </div>
+
+
+
+                    <!-- Details Tab -->                    <!-- Details Tab -->
+
+                    <div id="detailsTab" class="tab-content active">                    <div id="detailsTab" class="tab-content active">
+
+                        <div id="taskDetails"></div>                        <div id="taskDetails"></div>
+
+                    </div>                    </div>
+
+
+
+                    <!-- History Tab -->                    <!-- History Tab -->
+
+                    <div id="historyTab" class="tab-content">                    <div id="historyTab" class="tab-content">
+
+                        <div id="taskHistory"></div>                        <div id="taskHistory"></div>
+
+                    </div>                    </div>
+
+
+
+                    <!-- Update Tab -->                    <!-- Update Tab -->
+
+                    <div id="updateTab" class="tab-content">                    <div id="updateTab" class="tab-content">
+
+                        <div class="update-form">                        <div class="update-form">
+
+                            <div class="form-group">                            <div class="form-group">
+
+                                <label for="statusSelect">Change Status</label>                                <label for="statusSelect">Change Status</label>
+
+                                <select id="statusSelect" class="status-select">                                <select id="statusSelect" class="status-select">
+
+                                    <option value="">Select new status</option>                                    <option value="">Select new status</option>
+
+                                    <option value="pending">Pending</option>                                    <option value="pending">Pending</option>
+
+                                    <option value="in_progress">In Progress</option>                                    <option value="in_progress">In Progress</option>
+
+                                    <option value="resolved">Resolved</option>                                    <option value="resolved">Resolved</option>
+
+                                    <option value="completed">Completed</option>                                    <option value="completed">Completed</option>
+
+                                    <option value="cancelled">Cancelled</option>                                    <option value="cancelled">Cancelled</option>
+
+                                </select>                                </select>
+
+                            </div>                            </div>
+
+                            <div class="form-group">                            <div class="form-group">
+
+                                <label for="updateNotes">Update Notes</label>                                <label for="updateNotes">Update Notes</label>
+
+                                <textarea id="updateNotes" class="update-textarea" placeholder="Add notes about this update..."></textarea>                                <textarea id="updateNotes" class="update-textarea" placeholder="Add notes about this update..."></textarea>
+
+                                <div id="notesHint" class="notes-hint"></div>                                <div id="notesHint" class="notes-hint"></div>
+
+                            </div>                            </div>
+
+                            <div class="form-actions">                            <div class="form-actions">
+
+                                <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancel</button>                                <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancel</button>
+
+                                <button type="button" class="btn-update" id="updateTaskBtn" onclick="updateTask()">                                <button type="button" class="btn-update" id="updateTaskBtn" onclick="updateTask()">
+
+                                    <span class="btn-text">Update Task</span>                                    <span class="btn-text">Update Task</span>
+
+                                    <span class="btn-spinner" style="display: none;">Updating...</span>                                    <span class="btn-spinner" style="display: none;">Updating...</span>
+
+                                </button>                                </button>
+
+                            </div>                            </div>
+
+                        </div>                        </div>
+
+                    </div>                    </div>
+
+
+
+                    <!-- Files Tab -->                    <!-- Files Tab -->
+
+                    <div id="filesTab" class="tab-content">                    <div id="filesTab" class="tab-content">
+
+                        <div class="file-upload-section">                        <div class="file-upload-section">
+
+                            <div class="upload-area">                            <div class="upload-area">
+
+                                <div class="upload-icon">📷</div>                                <div class="upload-icon">📷</div>
+
+                                <div class="upload-text">Upload Photos/Files</div>                                <div class="upload-text">Upload Photos/Files</div>
+
+                                <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" style="display: none;">                                <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" style="display: none;">
+
+                                <div class="upload-buttons">                                <div class="upload-buttons">
+
+                                    <button type="button" class="upload-btn" onclick="selectFiles()">Choose Files</button>                                    <button type="button" class="upload-btn" onclick="selectFiles()">Choose Files</button>
+
+                                    <button type="button" class="camera-btn" onclick="takePhoto()">Take Photo</button>                                    <button type="button" class="camera-btn" onclick="takePhoto()">Take Photo</button>
+
+                                </div>                                </div>
+
+                            </div>                            </div>
+
+                            <div id="selectedFiles" class="selected-files"></div>                            <div id="selectedFiles" class="selected-files"></div>
+
+                            <div class="form-group">                            <div class="form-group">
+
+                                <label for="fileNotes">Notes for files</label>                                <label for="fileNotes">Notes for files</label>
+
+                                <textarea id="fileNotes" class="update-textarea" placeholder="Add notes about the uploaded files..."></textarea>                                <textarea id="fileNotes" class="update-textarea" placeholder="Add notes about the uploaded files..."></textarea>
+
+                            </div>                            </div>
+
+                            <div class="form-actions">                            <div class="form-actions">
+
+                                <button type="button" class="btn-cancel" onclick="clearFiles()">Clear All</button>                                <button type="button" class="btn-cancel" onclick="clearFiles()">Clear All</button>
+
+                                <button type="button" class="btn-update" id="uploadFilesBtn" onclick="uploadFiles()">                                <button type="button" class="btn-update" id="uploadFilesBtn" onclick="uploadFiles()">
+
+                                    <span class="btn-text">Upload Files</span>                                    <span class="btn-text">Upload Files</span>
+
+                                    <span class="btn-spinner" style="display: none;">Uploading...</span>                                    <span class="btn-spinner" style="display: none;">Uploading...</span>
+
+                                </button>                                </button>
+
+                            </div>                            </div>
+
+                        </div>                        </div>
+
+                    </div>                    </div>
+
+                </div>                </div>
+
+            </div>            </div>
+
+        </div>        </div>
+
+
+
+        <!-- Success/Error Messages -->        <!-- Success/Error Messages -->
+
+        <div id="toast" class="toast" style="display: none;">        <div id="toast" class="toast" style="display: none;">
+
+            <div id="toastMessage"></div>            <div id="toastMessage"></div>
+
+        </div>        </div>
+
+    </div>    </div>
+
+
+
+    <script type="text/javascript" src="cordova.js"></script>    <script type="text/javascript" src="cordova.js"></script>
+
+    <script src="js/api.js"></script>    <script src="js/api.js"></script>
+
+    <script src="js/auth.js"></script>    <script src="js/auth.js"></script>
+
+    <script src="js/tasks.js"></script>    <script src="js/tasks.js"></script>
+
+    <script src="js/ui.js"></script>    <script src="js/ui.js"></script>
+
+    <script src="js/app.js"></script>    <script src="js/app.js"></script>
+
+</body></body>
+
+</html></html>
+.loading-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+.logo {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+.loading-text {
+    font-size: 18px;
+    margin-bottom: 30px;
+    opacity: 0.9;
+}
+.connection-info {
+    background: rgba(255,255,255,0.2);
+    padding: 15px 25px;
+    border-radius: 25px;
+    margin-bottom: 30px;
+    backdrop-filter: blur(10px);
+}
+.server-url {
+    font-family: monospace;
+    font-size: 14px;
+    background: rgba(0,0,0,0.2);
+    padding: 8px 12px;
+    border-radius: 15px;
+    margin: 10px 0;
+}
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.redirect-button {
+    background: rgba(255,255,255,0.2);
+    border: 2px solid white;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    margin: 10px;
+}
+.redirect-button:hover {
+    background: white;
+    color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    background: #4ade80;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<div class="loading-container">
+    <div class="logo">📱 WIZONE</div>
+    <div class="loading-text">Mobile Task Management</div>
+    
+    <div class="connection-info">
+        <div><span class="status-indicator"></span>Connected to Production Server</div>
+        <div class="server-url">http://103.122.85.61:4000</div>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 8px;">Fresh APK Build - No Old URLs</div>
+    </div>
+    
+    <div class="spinner"></div>
+    
+    <div style="margin: 20px 0; font-size: 14px; opacity: 0.9;">
+        Opening Wizone Portal...
+    </div>
+    
+    <button class="redirect-button" onclick="openProduction()">
+        🚀 Open Wizone Portal
+    </button>
+    
+    <button class="redirect-button" onclick="openInBrowser()">
+        🌐 Open in Browser
+    </button>
+</div>
+
+<script type="text/javascript" src="cordova.js"></script>
+<script>
+console.log('🚀 WIZONE MOBILE APK - FRESH BUILD');
+console.log('📡 Production Server: http://103.122.85.61:4000');
+console.log('✅ No old server URLs - Clean build');
+
+const PRODUCTION_URL = 'http://103.122.85.61:4000';
+
+// Auto-redirect after 3 seconds
+let autoRedirectTimer;
+
+function openProduction() {
+    console.log('🔗 Opening production server directly...');
+    clearTimeout(autoRedirectTimer);
+    
+    // Try to open in the same window (WebView)
+    try {
+        window.location.href = PRODUCTION_URL;
+    } catch (error) {
+        console.error('Direct navigation failed:', error);
+        openInBrowser();
+    }
+}
+
+function openInBrowser() {
+    console.log('🌐 Opening in external browser...');
+    clearTimeout(autoRedirectTimer);
+    
+    // For Cordova, use the InAppBrowser or external browser
+    if (window.cordova && window.cordova.InAppBrowser) {
+        window.cordova.InAppBrowser.open(PRODUCTION_URL, '_system');
+    } else if (window.open) {
+        window.open(PRODUCTION_URL, '_system');
+    } else {
+        // Fallback
+        window.location.href = PRODUCTION_URL;
+    }
+}
+
+// Cordova device ready
+document.addEventListener('deviceready', function() {
+    console.log('📱 Cordova device ready');
+    console.log('🔄 Auto-redirecting to production server in 3 seconds...');
+    
+    // Auto-redirect after 3 seconds
+    autoRedirectTimer = setTimeout(() => {
+        openProduction();
+    }, 3000);
+    
+}, false);
+
+// If Cordova doesn't load, still auto-redirect
+setTimeout(() => {
+    if (!window.cordova) {
+        console.log('⚠️ Cordova not detected, redirecting anyway...');
+        openProduction();
+    }
+}, 5000);
+
+// Android back button handling
+document.addEventListener('backbutton', function(e) {
+    e.preventDefault();
+    if (navigator.app && navigator.app.exitApp) {
+        navigator.app.exitApp();
+    }
+}, false);
+
+console.log('✅ Fresh APK initialization complete');
+</script>
+</body>
+</html>

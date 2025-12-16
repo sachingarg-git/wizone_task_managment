@@ -1,4 +1,5 @@
-import { db, users, customers, tasks, taskUpdates, performanceMetrics } from "./db.js";
+//import { db, users, customers, tasks, taskUpdates, performanceMetrics } from "./db.js";
+import { storage } from "./storage/mssql-storage";
 
 // Auto-run seeding when this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {

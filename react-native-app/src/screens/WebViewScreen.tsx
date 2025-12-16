@@ -10,7 +10,13 @@ import {
   Appbar,
 } from 'react-native-paper';
 
-const WEB_APP_URL = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/';
+// Local development URL - change this to your local machine's IP address when testing on device
+const LOCAL_URL = 'http://localhost:3001';
+const REMOTE_URL = 'https://window.299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/';
+
+// For device testing, you'll need to use your computer's local IP address instead of localhost
+// Example: const LOCAL_URL = 'http://192.168.1.100:3001';
+const WEB_APP_URL = LOCAL_URL;
 
 export default function WebViewScreen() {
   const [loading, setLoading] = useState(true);
@@ -23,11 +29,15 @@ export default function WebViewScreen() {
     setCanGoForward(navState.canGoForward);
   };
 
-  const handleError = () => {
+  const handleError = (error: any) => {
+    console.log('WebView Error:', error);
     Alert.alert(
       'Connection Error',
-      'Unable to load the web portal. Please check your internet connection.',
-      [{ text: 'OK' }]
+      'Unable to load the portal. Make sure the server is running on localhost:3001 or check your connection.',
+      [
+        { text: 'Retry', onPress: reload },
+        { text: 'OK' }
+      ]
     );
   };
 

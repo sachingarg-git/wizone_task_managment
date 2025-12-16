@@ -1,0 +1,2 @@
+customerId,name,contactPerson,email,mobilePhone,address,city,state,country,servicePlan,connectedTower,wirelessIp,wirelessApIp,port,connectionType,planType,monthlyFee,latitude,longitude,status
+C001,Sample Customer,John Doe,contact@example.com,9876543210,123 Main Street,Mumbai,Maharashtra,India,Premium - 100 Mbps,OSHO Tower,192.168.1.100,192.168.1.1,8080,fiber,business,2500,19.076,72.8777,active

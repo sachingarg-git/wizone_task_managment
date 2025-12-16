@@ -1,4 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Wizone IT Portal</string>
+    <string name="app_name">Wizone Task Manager - Enhanced</string>
+    
+    <!-- Enhanced UI Strings -->
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_tasks">My Tasks</string>
+    <string name="nav_reports">Reports</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_logout">Logout</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Wizone Field Engineer Login</string>
+    <string name="username_hint">Enter Username</string>
+    <string name="password_hint">Enter Password</string>
+    <string name="login_button">LOGIN</string>
+    <string name="login_error">Invalid credentials. Please try again.</string>
+    
+    <!-- Task Management -->
+    <string name="tasks_title">My Tasks</string>
+    <string name="task_status_pending">Pending</string>
+    <string name="task_status_in_progress">In Progress</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="task_complete_button">Mark Complete</string>
+    <string name="task_start_button">Start Task</string>
+    <string name="task_view_button">View Details</string>
+    <string name="task_upload_photo_button">Upload Photo</string>
+    
+    <!-- Profile Management -->
+    <string name="profile_title">Profile Information</string>
+    <string name="profile_name">Name: %1$s</string>
+    <string name="profile_email">Email: %1$s</string>
+    <string name="profile_role">Role: Field Engineer</string>
+    <string name="profile_update_button">Update Profile</string>
+    
+    <!-- Dashboard Cards -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="card_total_tasks">Total Tasks</string>
+    <string name="card_pending_tasks">Pending Tasks</string>
+    <string name="card_completed_tasks">Completed Tasks</string>
+    <string name="card_today_tasks">Today\'s Tasks</string>
+    
+    <!-- Enhanced Features -->
+    <string name="enhanced_interface_loaded">Enhanced Interface Loaded Successfully</string>
+    <string name="task_completion_restricted">Task completion restricted based on current status</string>
+    <string name="photo_upload_success">Photo uploaded successfully</string>
+    <string name="photo_upload_error">Failed to upload photo</string>
+    <string name="sync_in_progress">Syncing data...</string>
+    <string name="sync_complete">Data sync completed</string>
+    <string name="network_error">Network error. Please check connection.</string>
+    
+    <!-- Action Buttons -->
+    <string name="action_refresh">Refresh</string>
+    <string name="action_sync">Sync</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_search">Search</string>
 </resources>

@@ -15,6 +15,11 @@ export class DomainManager {
   // Default domains that are always available
   private readonly defaultDomains = [
     'localhost:5000',
+    'localhost:4000',
+    'localhost:3000',
+    'localhost',
+    '127.0.0.1:4000',
+    '127.0.0.1:5000',
     'task.wizoneit.com',
     '*.wizoneit.com',
     '*.replit.app',
@@ -139,7 +144,7 @@ export function domainValidationMiddleware(req: any, res: any, next: any) {
   const hostname = req.get('host') || req.hostname;
   
   // Skip validation for API routes and local development
-  if (req.path.startsWith('/api') || hostname === 'localhost:5000' || process.env.NODE_ENV === 'development') {
+  if (req.path.startsWith('/api') || hostname.startsWith('localhost') || hostname.startsWith('127.0.0.1') || process.env.NODE_ENV === 'development') {
     return next();
   }
 
@@ -164,31 +169,82 @@ export function setupDomainCORS(app: Express) {
     const userAgent = req.get('user-agent') || '';
     
     // ENHANCED MOBILE APP SUPPORT: Allow requests with no origin (mobile apps, APK)
-    if (!origin || userAgent.includes('WizoneFieldEngineerApp')) {
-      res.header('Access-Control-Allow-Origin', '*');
+    const isMobileApp = !origin || 
+                       origin === 'null' || 
+                       origin === 'undefined' ||
+                       userAgent.includes('WizoneFieldEngineerApp') ||
+                       userAgent.includes('wv') || // Android WebView
+                       userAgent.includes('Mobile') ||
+                       req.headers['x-mobile-app'] === 'true' ||
+                       req.headers['x-mobile-app'] === 'WizoneFieldEngineerApp';
+                       
+    if (isMobileApp) {
+      // For mobile apps (especially APKs), we need to handle CORS differently
+      // APKs don't have a proper origin, so we need to be more permissive
+      
+      console.log(`📱 Mobile request detected - Origin: ${origin}, UA: ${userAgent.substring(0, 50)}...`);
+      
+      // For APK requests without proper origin, we need to handle credentials carefully
+      if (!origin || origin === 'null' || origin === 'undefined' || origin.startsWith('file://')) {
+        // For APK with no origin, we can't use wildcard with credentials
+        // But APK needs session support, so allow specific localhost for APK
+        res.header('Access-Control-Allow-Origin', 'http://localhost:3007');
+        res.header('Access-Control-Allow-Credentials', 'true');
+      } else {
+        // For mobile apps with proper origin, allow credentials
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+      }
+      
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
-      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, User-Agent, X-Mobile-App');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Expose-Headers', 'Set-Cookie, Authorization');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, User-Agent, X-Mobile-App, x-mobile-app, x-requested-with, content-type, X-Session-Token');
+      res.header('Access-Control-Expose-Headers', 'Set-Cookie, Authorization, X-Session-Token');
+      res.header('Access-Control-Max-Age', '86400');
       res.header('X-Mobile-Supported', 'true');
       
       console.log(`📱 Mobile APK request: ${req.method} ${req.path} - UA: ${userAgent.substring(0, 30)}...`);
       
       if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-        return;
+        console.log('📱 Mobile OPTIONS preflight request handled for:', req.path);
+        console.log('📱 CORS Response Headers:', {
+          'Access-Control-Allow-Origin': res.get('Access-Control-Allow-Origin'),
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
+          'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, User-Agent, X-Mobile-App, x-mobile-app, x-requested-with, content-type, X-Session-Token',
+          'Access-Control-Allow-Credentials': res.get('Access-Control-Allow-Credentials'),
+          'Access-Control-Max-Age': '86400'
+        });
+        res.status(200).end();
+        return; // Exit early - don't continue to general CORS logic
       }
-      return next();
+      
+      // Log non-OPTIONS mobile requests for debugging
+      console.log(`📱 Mobile ${req.method} request to ${req.path} proceeding to handler`);
+      console.log(`📱 Request headers:`, {
+        'content-type': req.headers['content-type'],
+        'authorization': req.headers['authorization'] ? 'Present' : 'Missing',
+        'x-mobile-app': req.headers['x-mobile-app'],
+        'cookie': req.headers['cookie'] ? 'Present' : 'Missing'
+      });
+      console.log(`📱 Request body:`, req.body);
+      next();
+      return; // Exit early - don't continue to general CORS logic
     }
     
     // Allow all domains that are configured
-    if (origin && domainManager.isValidDomain(new URL(origin).hostname)) {
-      res.header('Access-Control-Allow-Origin', origin);
+    if (origin && origin !== 'null' && origin !== 'undefined') {
+      try {
+        const originUrl = new URL(origin);
+        if (domainManager.isValidDomain(originUrl.hostname)) {
+          res.header('Access-Control-Allow-Origin', origin);
+        }
+      } catch (error) {
+        console.log('⚠️ Invalid origin URL:', origin);
+      }
     } else if (domainManager.isValidDomain(hostname)) {
       res.header('Access-Control-Allow-Origin', `${req.protocol}://${hostname}`);
     } else {
       // Fallback: Allow localhost and development environments
-      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.0.2.2')) {
+      if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.0.2.2'))) {
         res.header('Access-Control-Allow-Origin', origin);
       }
     }

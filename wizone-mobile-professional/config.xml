@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.wizone.taskmanager" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Wizone Task Manager</name>
+    <description>
+        Professional task management application with real-time updates and file handling capabilities.
+    </description>
+    <author email="support@wizone.com" href="https://wizone.com">
+        Wizone Team
+    </author>
+    
+    <!-- Content source -->
+    <content src="index.html" />
+    
+    <!-- Global preferences -->
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="android-minSdkVersion" value="22" />
+    <preference name="android-targetSdkVersion" value="33" />
+    <preference name="BackupWebStorage" value="none" />
+    
+    <!-- Allow navigation to external URLs -->
+    <allow-navigation href="http://103.122.85.61:4000/*" />
+    <allow-navigation href="https://*/*" />
+    <allow-navigation href="http://*/*" />
+    <allow-navigation href="data:*" />
+    
+    <!-- Allow access to all domains -->
+    <access origin="*" />
+    
+    <!-- Allow intent for external applications -->
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+    
+    <!-- Platform specific configurations -->
+    <platform name="android">
+        <!-- Android specific preferences -->
+        <preference name="Fullscreen" value="false" />
+        <preference name="Orientation" value="portrait" />
+        <preference name="LoadUrlTimeoutValue" value="60000" />
+        <preference name="AndroidPersistentFileLocation" value="Compatibility" />
+        <preference name="AndroidXEnabled" value="true" />
+        
+        <!-- Permissions -->
+        <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+        <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+        <uses-permission android:name="android.permission.CAMERA" />
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+        
+        <!-- Network security config for HTTP connections -->
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <meta-data android:name="android.net.usesCleartextTraffic" android:value="true" />
+        </config-file>
+        
+        <!-- Allow HTTP traffic -->
+        <allow-intent href="market:*" />
+    </platform>
+    
+    <!-- Essential plugins only -->
+    <plugin name="cordova-plugin-whitelist" spec="^1.3.5" />
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline';
+        media-src *;
+        img-src 'self' data: content: blob:;
+        connect-src 'self' http://103.122.85.61:4000 ws://103.122.85.61:4000 wss://103.122.85.61:4000;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    " />
+</widget>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, 
@@ -37,7 +38,8 @@ import {
   CheckCircle, 
   Calendar,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
@@ -76,7 +78,9 @@ interface EngineerStats {
   lastName: string;
   email: string;
   completedTasks: number;
+  approvedTasks: number;
   totalTasks: number;
+  onTimeTasks: number;
   avgResponseTime: number;
   performanceScore: number;
   isActive: boolean;
@@ -87,7 +91,10 @@ interface CustomerStats {
   name: string;
   city: string;
   totalTasks: number;
+  pendingTasks: number;
+  inProgressTasks: number;
   completedTasks: number;
+  approvedTasks: number;
   avgResolutionTime: number;
   satisfaction: number;
 }
@@ -95,6 +102,7 @@ interface CustomerStats {
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("30");
   const [selectedMetric, setSelectedMetric] = useState("completion_rate");
+  const [customerSearch, setCustomerSearch] = useState("");
   const { toast } = useToast();
 
   // Analytics queries with proper typing
@@ -390,10 +398,10 @@ export default function Analytics() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Engineer</TableHead>
-                        <TableHead>Tasks Completed</TableHead>
                         <TableHead>Total Tasks</TableHead>
-                        <TableHead>Completion Rate</TableHead>
-                        <TableHead>Avg Response Time</TableHead>
+                        <TableHead>Completed</TableHead>
+                        <TableHead>Approved</TableHead>
+                        <TableHead>On Time</TableHead>
                         <TableHead>Performance Score</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -404,16 +412,26 @@ export default function Analytics() {
                           <TableCell className="font-medium">
                             {engineer.firstName} {engineer.lastName}
                           </TableCell>
-                          <TableCell>{engineer.completedTasks}</TableCell>
-                          <TableCell>{engineer.totalTasks}</TableCell>
                           <TableCell>
-                            {engineer.totalTasks > 0 
-                              ? Math.round((engineer.completedTasks / engineer.totalTasks) * 100)
-                              : 0
-                            }%
+                            <span className="font-semibold">{engineer.totalTasks}</span>
                           </TableCell>
-                          <TableCell>{Math.round(engineer.avgResponseTime)}m</TableCell>
-                          <TableCell>{Math.round(engineer.performanceScore)}</TableCell>
+                          <TableCell>
+                            <span className="text-blue-600 font-medium">{engineer.completedTasks}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-green-600 font-medium">{engineer.approvedTasks || 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-orange-600 font-medium">{engineer.onTimeTasks || 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`font-bold ${
+                              engineer.performanceScore >= 80 ? 'text-green-600' :
+                              engineer.performanceScore >= 50 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {Math.round(engineer.performanceScore)}%
+                            </span>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={engineer.isActive ? "default" : "secondary"}>
                               {engineer.isActive ? "Active" : "Inactive"}
@@ -435,7 +453,18 @@ export default function Analytics() {
             <TabsContent value="customers" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer Analytics</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Customer Analytics</CardTitle>
+                    <div className="relative w-80">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search by customer name..."
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -444,22 +473,43 @@ export default function Analytics() {
                         <TableHead>Customer</TableHead>
                         <TableHead>Location</TableHead>
                         <TableHead>Total Tasks</TableHead>
+                        <TableHead>Pending</TableHead>
+                        <TableHead>In Progress</TableHead>
                         <TableHead>Completed</TableHead>
+                        <TableHead>Approved</TableHead>
                         <TableHead>Completion Rate</TableHead>
                         <TableHead>Avg Resolution Time</TableHead>
                         <TableHead>Satisfaction</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {safeCustomerStats.map((customer) => (
+                      {safeCustomerStats
+                        .filter((customer) => 
+                          customerSearch === "" || 
+                          customer.name?.toLowerCase().includes(customerSearch.toLowerCase())
+                        )
+                        .map((customer) => (
                         <TableRow key={customer.id}>
                           <TableCell className="font-medium">{customer.name}</TableCell>
                           <TableCell>{customer.city}</TableCell>
-                          <TableCell>{customer.totalTasks}</TableCell>
-                          <TableCell>{customer.completedTasks}</TableCell>
+                          <TableCell>
+                            <span className="font-semibold">{customer.totalTasks}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-amber-600 font-medium">{customer.pendingTasks || 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-blue-600 font-medium">{customer.inProgressTasks || 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-green-600 font-medium">{customer.completedTasks}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-purple-600 font-medium">{customer.approvedTasks || 0}</span>
+                          </TableCell>
                           <TableCell>
                             {customer.totalTasks > 0 
-                              ? Math.round((customer.completedTasks / customer.totalTasks) * 100)
+                              ? Math.min(100, Math.round(((customer.completedTasks + (customer.approvedTasks || 0)) / customer.totalTasks) * 100))
                               : 0
                             }%
                           </TableCell>

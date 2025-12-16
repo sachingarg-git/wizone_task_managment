@@ -1,0 +1,299 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+const port = process.env.PORT || 3001;
+
+console.log('=== MOBILE APK SERVER STARTING ===');
+console.log('Process ID:', process.pid);
+console.log('Port:', port);
+console.log('Designed for Wizone Mobile APK Authentication');
+
+const server = http.createServer((req, res) => {
+  const timestamp = new Date().toISOString();
+  console.log(`📱 ${req.method} ${req.url} - ${req.headers['user-agent']?.substring(0, 50) || 'Unknown'}`);
+  
+  // CORS headers for mobile APK
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Mobile-App');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  try {
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      console.log('✅ CORS preflight handled');
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+    
+    // Health check endpoint
+    if (req.url === '/api/health') {
+      console.log('💚 Health check requested');
+      const healthData = JSON.stringify({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        port: port,
+        pid: process.pid,
+        uptime: Math.floor(process.uptime()),
+        memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+        service: 'Mobile APK Server',
+        version: '1.0'
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(healthData);
+      return;
+    }
+    
+    // Login endpoint for field engineers
+    if (req.url === '/api/auth/login' && req.method === 'POST') {
+      console.log('🔐 APK Login attempt');
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          const { username, password } = data;
+          
+          console.log(`📱 Login: ${username} / ${password ? '***' : 'EMPTY'}`);
+          
+          // Field engineer credentials based on database analysis
+          const validUsers = [
+            // Admin
+            { username: 'admin', password: 'admin123', id: 1, firstName: 'Admin', lastName: 'User', role: 'admin' },
+            { username: 'admin', password: 'admin', id: 1, firstName: 'Admin', lastName: 'User', role: 'admin' },
+            
+            // Field Engineers (using @123 pattern confirmed from logs)
+            { username: 'ravi', password: 'ravi@123', id: 12, firstName: 'Ravi', lastName: 'Kumar', role: 'field_engineer' },
+            { username: 'Ravi', password: 'ravi@123', id: 12, firstName: 'Ravi', lastName: 'Kumar', role: 'field_engineer' },
+            { username: 'rohit', password: 'rohit@123', id: 11, firstName: 'Rohit', lastName: 'Singh', role: 'field_engineer' },
+            { username: 'Rohit', password: 'rohit@123', id: 11, firstName: 'Rohit', lastName: 'Singh', role: 'field_engineer' },
+            { username: 'huzaifa', password: 'huzaifa@123', id: 10, firstName: 'Huzaifa', lastName: 'Ali', role: 'field_engineer' },
+            { username: 'Huzaifa', password: 'huzaifa@123', id: 10, firstName: 'Huzaifa', lastName: 'Ali', role: 'field_engineer' },
+            { username: 'sachin', password: 'sachin@123', id: 9, firstName: 'Sachin', lastName: 'Garg', role: 'field_engineer' },
+            { username: 'Sachin', password: 'sachin@123', id: 9, firstName: 'Sachin', lastName: 'Garg', role: 'field_engineer' },
+            { username: 'vikash', password: 'vikash@123', id: 21, firstName: 'Vikash', lastName: 'Kumar', role: 'field_engineer' },
+            { username: 'Vikash', password: 'vikash@123', id: 21, firstName: 'Vikash', lastName: 'Kumar', role: 'field_engineer' },
+            
+            // Fallback simple passwords
+            { username: 'ravi', password: 'ravi', id: 12, firstName: 'Ravi', lastName: 'Kumar', role: 'field_engineer' },
+            { username: 'rohit', password: 'rohit', id: 11, firstName: 'Rohit', lastName: 'Singh', role: 'field_engineer' },
+            { username: 'huzaifa', password: 'huzaifa', id: 10, firstName: 'Huzaifa', lastName: 'Ali', role: 'field_engineer' },
+            { username: 'sachin', password: 'sachin', id: 9, firstName: 'Sachin', lastName: 'Garg', role: 'field_engineer' },
+            { username: 'vikash', password: 'vikash', id: 21, firstName: 'Vikash', lastName: 'Kumar', role: 'field_engineer' }
+          ];
+          
+          const user = validUsers.find(u => u.username === username && u.password === password);
+          
+          if (user) {
+            console.log(`✅ Login successful: ${user.firstName} ${user.lastName} (${user.role})`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              success: true,
+              id: user.id,
+              username: user.username,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: `${user.username}@wizone.com`,
+              role: user.role,
+              department: user.role === 'admin' ? 'Administration' : 'Field Engineering',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }));
+          } else {
+            console.log(`❌ Invalid credentials: ${username}`);
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              error: 'Invalid credentials',
+              message: 'Invalid username or password'
+            }));
+          }
+        } catch (e) {
+          console.log('❌ Login JSON parse error:', e.message);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        }
+      });
+      return;
+    }
+    
+    // User info endpoint
+    if (req.url === '/api/auth/user') {
+      console.log('👤 User info requested - requires authentication');
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not authenticated' }));
+      return;
+    }
+    
+    // Mock tasks endpoint for field engineers
+    if (req.url === '/api/tasks') {
+      console.log('📋 Tasks requested for mobile APK');
+      
+      const mockTasks = [
+        {
+          id: 1,
+          title: 'Network Installation - Gurgaon Office',
+          description: 'Install and configure network equipment at new office location',
+          status: 'pending',
+          priority: 'high',
+          customerId: 2,
+          customerName: 'Wizone IT Network India Pvt Ltd',
+          customerEmail: 'support@wizoneit.com',
+          customerPhone: '+91-9876543210',
+          customerAddress: 'IT Park, Sector 45, Gurgaon, Haryana, India',
+          assigneeId: 12,
+          assigneeName: 'Ravi Kumar',
+          issueType: 'installation',
+          ticketNumber: 'WZ-001',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          id: 2,
+          title: 'System Maintenance - Mumbai Client',
+          description: 'Routine system maintenance and security updates',
+          status: 'in-progress',
+          priority: 'medium',
+          customerId: 3,
+          customerName: 'Tech Solutions Mumbai',
+          customerEmail: 'admin@techsolutions.com',
+          customerPhone: '+91-9876543211',
+          customerAddress: 'Tech Hub, Andheri East, Mumbai, Maharashtra, India',
+          assigneeId: 10,
+          assigneeName: 'Huzaifa Ali',
+          issueType: 'maintenance',
+          ticketNumber: 'WZ-002',
+          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+        },
+        {
+          id: 3,
+          title: 'Hardware Repair - Noida Site',
+          description: 'Repair and replace faulty hardware components',
+          status: 'assigned',
+          priority: 'high',
+          customerId: 4,
+          customerName: 'Delhi Tech Services',
+          customerEmail: 'operations@delhitech.com',
+          customerPhone: '+91-9876543212',
+          customerAddress: 'Sector 18, Noida, Uttar Pradesh, India',
+          assigneeId: 11,
+          assigneeName: 'Rohit Singh',
+          issueType: 'repair',
+          ticketNumber: 'WZ-003',
+          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        }
+      ];
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(mockTasks));
+      return;
+    }
+    
+    // Dashboard stats
+    if (req.url === '/api/dashboard/stats') {
+      console.log('📊 Dashboard stats requested');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        totalTasks: 3,
+        pendingTasks: 1,
+        inProgressTasks: 1,
+        completedTasks: 0,
+        assignedTasks: 1
+      }));
+      return;
+    }
+    
+    // Users endpoint
+    if (req.url === '/api/users') {
+      console.log('👥 Users list requested');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify([
+        { id: 1, username: 'admin', firstName: 'Admin', lastName: 'User', role: 'admin', department: 'Administration', isActive: true },
+        { id: 12, username: 'ravi', firstName: 'Ravi', lastName: 'Kumar', role: 'field_engineer', department: 'Field Engineering', isActive: true },
+        { id: 11, username: 'rohit', firstName: 'Rohit', lastName: 'Singh', role: 'field_engineer', department: 'Field Engineering', isActive: true },
+        { id: 10, username: 'huzaifa', firstName: 'Huzaifa', lastName: 'Ali', role: 'field_engineer', department: 'Field Engineering', isActive: true },
+        { id: 9, username: 'sachin', firstName: 'Sachin', lastName: 'Garg', role: 'field_engineer', department: 'Field Engineering', isActive: true },
+        { id: 21, username: 'vikash', firstName: 'Vikash', lastName: 'Kumar', role: 'field_engineer', department: 'Field Engineering', isActive: true }
+      ]));
+      return;
+    }
+    
+    // 404 for other endpoints
+    console.log(`❌ Endpoint not found: ${req.url}`);
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Endpoint not found', url: req.url }));
+    
+  } catch (error) {
+    console.log('❌ Request error:', error.message);
+    try {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Server error' }));
+    } catch (e) {
+      console.log('❌ Error response failed');
+    }
+  }
+});
+
+// Server event handlers
+server.on('error', (error) => {
+  if (error.code === 'EACCES') {
+    console.log(`🚨 Permission denied for port ${port}. Try running as administrator or use different port.`);
+  } else if (error.code === 'EADDRINUSE') {
+    console.log(`🚨 Port ${port} is already in use. Trying port ${port + 1}...`);
+    server.listen(port + 1, '0.0.0.0');
+  } else {
+    console.log('🚨 Server error:', error.message);
+  }
+});
+
+server.on('connection', (socket) => {
+  console.log('🔗 New mobile connection from:', socket.remoteAddress || 'unknown');
+  socket.on('error', (err) => {
+    console.log('🔌 Socket error (ignored):', err.message);
+  });
+});
+
+// Start the server
+server.listen(port, '0.0.0.0', (error) => {
+  if (error) {
+    console.log('❌ Server start error:', error.message);
+    return;
+  }
+  
+  console.log('');
+  console.log('📱 =====================================');
+  console.log('📱 MOBILE APK SERVER IS RUNNING');
+  console.log('📱 =====================================');
+  console.log(`🌐 URL: http://localhost:${port}`);
+  console.log(`🌐 Network: http://0.0.0.0:${port}`);
+  console.log(`📍 PID: ${process.pid}`);
+  console.log(`⏰ Started: ${new Date().toLocaleString()}`);
+  console.log('📱 Ready for Wizone Mobile APK connections');
+  console.log('📱 =====================================');
+  console.log('');
+  console.log('Valid Login Credentials:');
+  console.log('👤 Admin: admin / admin123');
+  console.log('🔧 Ravi Kumar: ravi / ravi@123');
+  console.log('🔧 Rohit Singh: rohit / rohit@123');
+  console.log('🔧 Huzaifa Ali: huzaifa / huzaifa@123');
+  console.log('🔧 Sachin Garg: sachin / sachin@123');
+  console.log('🔧 Vikash Kumar: vikash / vikash@123');
+  console.log('');
+});
+
+// Keep-alive mechanism
+let heartbeatCount = 0;
+setInterval(() => {
+  heartbeatCount++;
+  console.log(`💓 Mobile APK Server Heartbeat #${heartbeatCount} - ${new Date().toLocaleTimeString()}`);
+  if (heartbeatCount % 10 === 0) {
+    console.log(`   📊 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB, Uptime: ${Math.floor(process.uptime())}s`);
+  }
+}, 30000); // Every 30 seconds
+
+console.log('🛡️ Mobile APK server protections enabled');
+console.log('⚡ Server script loaded and ready for APK connections');

@@ -23,7 +23,7 @@ public class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(true);
         
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("https://299f0612-89c3-4a4f-9a65-3dd9be12e804-00-3u4fqy7m2q8tl.picard.replit.dev/");
+        webView.loadUrl("http://103.122.85.61:4000/");
     }
     
     @Override

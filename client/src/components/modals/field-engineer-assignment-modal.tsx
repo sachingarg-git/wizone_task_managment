@@ -134,33 +134,45 @@ export default function FieldEngineerAssignmentModal({
   };
 
   const getEngineerAvailabilityStatus = (engineer: User) => {
-    return engineer.isActive ? "Available" : "Busy";
+    return engineer.active ? "Available" : "Busy";
   };
 
   const getEngineerBadgeVariant = (engineer: User) => {
-    return engineer.isActive ? "default" : "secondary";
+    return engineer.active ? "default" : "secondary";
   };
 
   // Get unique regions from engineers
   const regions = Array.from(
     new Set(
       (fieldEngineers as User[])
-        .map((engineer: User) => engineer.department)
+        .map((engineer: User) => engineer.role)
         .filter(Boolean)
     )
   );
 
   // Get selected engineer names for summary
   const selectedEngineerNames = (fieldEngineers as User[])
-    .filter(engineer => selectedEngineers.includes(engineer.id))
+    .filter(engineer => selectedEngineers.includes(engineer.id.toString()))
     .map(engineer => `${engineer.firstName} ${engineer.lastName}`);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-slate-800 border-slate-700">
+      <DialogContent 
+        className="max-w-2xl max-h-[80vh] overflow-y-auto field-engineer-modal-light-theme"
+        style={{ 
+          backgroundColor: '#ffffff !important', 
+          borderColor: '#e5e7eb !important',
+          color: '#111827 !important'
+        }}
+      >
         <DialogHeader>
-          <DialogTitle className="text-white">Assign Field Engineers</DialogTitle>
-          <p className="text-sm text-gray-300">
+          <DialogTitle 
+            className="field-engineer-modal-title" 
+            style={{ color: '#111827 !important', fontWeight: '700 !important' }}
+          >
+            Assign Field Engineers
+          </DialogTitle>
+          <p className="text-sm" style={{ color: '#4b5563 !important' }}>
             Task: {taskTitle}
           </p>
         </DialogHeader>
@@ -173,7 +185,7 @@ export default function FieldEngineerAssignmentModal({
               name="region"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-300">Filter by Region</FormLabel>
+                  <FormLabel className="field-engineer-modal-label" style={{ color: '#374151 !important' }}>Filter by Region</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       const regionValue = value === "all" ? "" : value;
@@ -183,11 +195,11 @@ export default function FieldEngineerAssignmentModal({
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectTrigger className="!bg-white !border-gray-300 !text-gray-900" style={{ backgroundColor: '#ffffff !important', borderColor: '#d1d5db !important', color: '#111827 !important' }}>
                         <SelectValue placeholder="All Regions" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-slate-700 border-slate-600">
+                    <SelectContent className="!bg-white !border-gray-200" style={{ backgroundColor: '#ffffff !important', borderColor: '#e5e7eb !important' }}>
                       <SelectItem value="all">All Regions</SelectItem>
                       {regions.map((region) => (
                         <SelectItem key={region} value={region || "unknown"}>
@@ -203,48 +215,49 @@ export default function FieldEngineerAssignmentModal({
 
             {/* Field Engineers Selection */}
             <div className="space-y-4">
-              <FormLabel className="text-gray-300">Field Engineers</FormLabel>
+              <FormLabel className="field-engineer-modal-label" style={{ color: '#374151 !important' }}>Field Engineers</FormLabel>
               
               {engineersLoading ? (
-                <div className="text-center py-4 text-gray-400">
+                <div className="text-center py-4 !text-gray-500" style={{ color: '#6b7280 !important' }}>
                   Loading engineers...
                 </div>
               ) : (fieldEngineers as User[]).length === 0 ? (
-                <div className="text-center py-4 text-gray-400">
+                <div className="text-center py-4 !text-gray-500" style={{ color: '#6b7280 !important' }}>
                   No field engineers available
                 </div>
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {(fieldEngineers as User[]).map((engineer: User) => (
-                    <Card key={engineer.id} className="bg-slate-700 border-slate-600">
+                    <Card key={engineer.id} className="field-engineer-card" style={{ backgroundColor: '#ffffff !important', borderColor: '#e5e7eb !important' }}>
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-3">
                           <Checkbox
-                            id={engineer.id}
-                            checked={selectedEngineers.includes(engineer.id)}
+                            id={engineer.id.toString()}
+                            checked={selectedEngineers.includes(engineer.id.toString())}
                             onCheckedChange={(checked) =>
-                              handleEngineerSelection(engineer.id, checked as boolean)
+                              handleEngineerSelection(engineer.id.toString(), checked as boolean)
                             }
-                            className="border-slate-500 text-white"
+                            className="!border-gray-300 !text-blue-600"
                           />
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
                               <div>
                                 <label
-                                  htmlFor={engineer.id}
-                                  className="text-sm font-medium text-white cursor-pointer"
+                                  htmlFor={engineer.id.toString()}
+                                  className="text-sm font-medium !text-gray-900 cursor-pointer"
+                                  style={{ color: '#111827 !important' }}
                                 >
                                   {engineer.firstName} {engineer.lastName}
                                 </label>
-                                <p className="text-xs text-gray-400">
-                                  {engineer.department || "No region"} • {engineer.email}
+                                <p className="text-xs !text-gray-600" style={{ color: '#4b5563 !important' }}>
+                                  {engineer.role || "No region"} • {engineer.email}
                                 </p>
                               </div>
                               <Badge 
                                 variant={getEngineerBadgeVariant(engineer)}
-                                className={engineer.isActive ? 
-                                  "bg-green-600/20 text-green-300 border-green-500/30" : 
-                                  "bg-yellow-600/20 text-yellow-300 border-yellow-500/30"
+                                className={engineer.active ? 
+                                  "bg-green-100 text-green-800 border-green-300" : 
+                                  "bg-yellow-100 text-yellow-800 border-yellow-300"
                                 }
                               >
                                 {getEngineerAvailabilityStatus(engineer)}
@@ -261,11 +274,11 @@ export default function FieldEngineerAssignmentModal({
 
             {/* Selected Engineers Summary */}
             {selectedEngineers.length > 0 && (
-              <Card className="bg-purple-600/20 border-purple-500/30">
+              <Card className="bg-blue-50 border-blue-200">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-purple-400" />
-                    <span className="text-sm font-medium text-purple-300">
+                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
                       Selected Engineers ({selectedEngineers.length})
                     </span>
                   </div>
@@ -273,14 +286,14 @@ export default function FieldEngineerAssignmentModal({
                     {selectedEngineerNames.map((name, index) => (
                       <Badge 
                         key={index}
-                        className="bg-purple-600/30 text-purple-200 border-purple-500/50"
+                        className="bg-blue-100 text-blue-800 border-blue-300"
                       >
                         {name}
                       </Badge>
                     ))}
                   </div>
                   {selectedEngineers.length > 1 && (
-                    <p className="text-xs text-purple-300 mt-2">
+                    <p className="text-xs text-blue-700 mt-2">
                       Multiple tasks will be created automatically (Task_1, Task_2, etc.)
                     </p>
                   )}
@@ -295,7 +308,7 @@ export default function FieldEngineerAssignmentModal({
               <Button 
                 type="submit" 
                 disabled={assignMutation.isPending || selectedEngineers.length === 0}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {assignMutation.isPending ? "Assigning..." : `Assign to ${selectedEngineers.length} Engineer(s)`}
               </Button>

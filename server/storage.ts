@@ -52,9 +52,11 @@ import {
   InsertBotConfiguration,
   NotificationLog,
   InsertNotificationLog,
+  CctvInformation,
+  InsertCctvInformation,
 } from "../shared/schema.js";
-import { db, users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory, botConfigurations, notificationLogs } from "./db.js";
-import { customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking } from "../shared/schema.js";
+import { db } from "./database-init.js";
+import { users, customers, tasks, taskUpdates, performanceMetrics, domains, sqlConnections, chatRooms, chatMessages, chatParticipants, officeLocations, officeLocationSuggestions, engineerTrackingHistory, botConfigurations, notificationLogs, customerComments, customerSystemDetails, userLocations, geofenceZones, geofenceEvents, tripTracking, cctvInformation } from "../shared/schema.js";
 import postgres from "postgres";
 import { eq, desc, asc, and, or, ilike, sql, count, gte, lte } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -65,7 +67,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  createUserWithPassword(user: UpsertUser & { username: string; password: string }): Promise<User>;
+  createUserWithPassword(user: UpsertUser & { username: string; passwordHash: string }): Promise<User>;
   getAllUsers(): Promise<UserWithMetrics[]>;
   updateUserRole(id: string, role: string): Promise<User>;
   updateUser(id: string, userData: Partial<UpsertUser>): Promise<User>;
@@ -99,7 +101,13 @@ export interface IStorage {
     total: number;
     pending: number;
     inProgress: number;
+    approved: number;
     completed: number;
+    cancelledTasks: number;
+    under3hrs: number;
+    under6hrs: number;
+    under12hrs: number;
+    over12hrs: number;
   }>;
   
   // Field engineer task operations
@@ -203,13 +211,31 @@ export interface IStorage {
   getNotificationsByUser(userId: string): Promise<NotificationLog[]>;
   markNotificationAsRead(notificationId: number, userId: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
+
+  // CCTV Information operations
+  getCctvByCustomerId(customerId: number): Promise<CctvInformation[]>;
+  getCctvInformation(id: number): Promise<CctvInformation | undefined>;
+  createCctvInformation(data: InsertCctvInformation): Promise<CctvInformation>;
+  updateCctvInformation(id: number, data: Partial<InsertCctvInformation>): Promise<CctvInformation>;
+  deleteCctvInformation(id: number): Promise<void>;
+  bulkCreateCctvInformation(data: InsertCctvInformation[]): Promise<CctvInformation[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      // Convert string ID to integer for PostgreSQL
+      const numericId = parseInt(id, 10);
+      if (isNaN(numericId)) {
+        return undefined;
+      }
+      const [user] = await db.select().from(users).where(eq(users.id, numericId));
+      return user;
+    } catch (error) {
+      console.error(`❌ Database error in getUser(${id}):`, error);
+      return undefined;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -218,11 +244,72 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    // Use case-insensitive matching for username lookup
+    const [user] = await db.select().from(users).where(
+      sql`LOWER(${users.username}) = LOWER(${username})`
+    );
     return user;
   }
 
-  async createUserWithPassword(userData: UpsertUser & { username: string; password: string }): Promise<User> {
+  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+    try {
+      console.log(`🔍 Verifying password for user: ${username}`);
+      const user = await this.getUserByUsername(username);
+      if (!user) {
+        console.log(`❌ User not found: ${username}`);
+        return null;
+      }
+      
+      if (!user.passwordHash) {
+        console.log(`❌ No password hash for user: ${username}`);
+        return null;
+      }
+
+      console.log(`🔐 Password hash format: ${user.passwordHash.substring(0, 10)}...`);
+      
+      // Check if password hash is bcrypt format (starts with $2b$)
+      if (user.passwordHash.startsWith('$2b$') || user.passwordHash.startsWith('$2a$') || user.passwordHash.startsWith('$2y$')) {
+        console.log(`🔐 Using bcrypt verification for ${username}`);
+        try {
+          const bcrypt = await import('bcrypt');
+          const isMatch = await bcrypt.compare(password, user.passwordHash);
+          console.log(`🔐 Bcrypt comparison result: ${isMatch ? '✅ MATCH' : '❌ NO MATCH'}`);
+          return isMatch ? user : null;
+        } catch (bcryptError) {
+          console.error('❌ Bcrypt comparison error:', bcryptError);
+          return null;
+        }
+      } else {
+        // Legacy scrypt format
+        console.log(`🔐 Using scrypt verification for ${username}`);
+        const { scrypt } = await import("crypto");
+        const { timingSafeEqual } = await import("crypto");
+        const scryptAsync = (await import("util")).promisify(scrypt);
+        
+        const [hashed, salt] = user.passwordHash.split(".");
+        if (!hashed || !salt) {
+          console.log(`❌ Invalid scrypt hash format for ${username}`);
+          return null;
+        }
+        
+        const hashedBuf = Buffer.from(hashed, "hex");
+        const suppliedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+        
+        if (hashedBuf.length !== suppliedBuf.length) {
+          return null;
+        }
+        
+        const isMatch = timingSafeEqual(hashedBuf, suppliedBuf);
+        console.log(`🔐 Scrypt comparison result: ${isMatch ? '✅ MATCH' : '❌ NO MATCH'}`);
+        return isMatch ? user : null;
+      }
+    } catch (error) {
+      console.error('❌ Error verifying password:', error);
+      return null;
+    }
+  }
+
+  async createUserWithPassword(userData: UpsertUser & { username: string; passwordHash: string }): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -261,7 +348,7 @@ export class DatabaseStorage implements IStorage {
       const request = pool.request()
         .input('id', user.id)
         .input('username', user.username)
-        .input('password', user.password)
+        .input('password', user.passwordHash)
         .input('email', user.email)
         .input('firstName', user.firstName)
         .input('lastName', user.lastName)
@@ -269,7 +356,7 @@ export class DatabaseStorage implements IStorage {
         .input('profileImageUrl', user.profileImageUrl || null)
         .input('role', user.role)
         .input('department', user.department || 'WIZONE HELP DESK')
-        .input('isActive', user.isActive);
+        .input('isActive', user.active);
       
       await request.query(insertQuery);
       await pool.close();
@@ -299,68 +386,147 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<UserWithMetrics[]> {
-    const usersData = await db
-      .select()
-      .from(users)
-      .leftJoin(performanceMetrics, eq(users.id, performanceMetrics.userId))
-      .orderBy(asc(users.firstName));
-    
-    // Group performance metrics by user
-    const userMap = new Map<string, UserWithMetrics>();
-    
-    for (const row of usersData) {
-      const user = row.users;
-      const metrics = row.performance_metrics;
+    try {
+      // First, try to get users without performance metrics to avoid type issues
+      const usersData = await db
+        .select()
+        .from(users)
+        .orderBy(asc(users.firstName));
       
-      if (!userMap.has(user.id)) {
-        userMap.set(user.id, { ...user, performanceMetrics: [] });
+      // Convert to UserWithMetrics format
+      const usersList: UserWithMetrics[] = usersData.map(user => ({
+        ...user,
+        performanceMetrics: []
+      }));
+      
+      // Try to add performance metrics if possible
+      try {
+        for (const user of usersList) {
+          const metricsData = await db
+            .select()
+            .from(performanceMetrics)
+            .where(eq(performanceMetrics.userId, user.id));
+          
+          user.performanceMetrics = metricsData;
+        }
+      } catch (metricsError) {
+        console.log('⚠️ Performance metrics unavailable, continuing without them');
       }
       
-      if (metrics) {
-        userMap.get(user.id)!.performanceMetrics!.push(metrics);
+      // Calculate actual task counts for each user from tasks table
+      for (const user of usersList) {
+        try {
+          const currentMonth = new Date().getMonth() + 1;
+          const currentYear = new Date().getFullYear();
+          
+          // Get all tasks assigned to this user (as assignedTo or fieldEngineerId)
+          const userTasks = await db
+            .select()
+            .from(tasks)
+            .where(
+              or(eq(tasks.assignedTo, user.id), eq(tasks.fieldEngineerId, user.id))
+            );
+          
+          // Calculate counts
+          const totalTasksCount = userTasks.length;
+          const completedTasksCount = userTasks.filter(t => t.status === 'completed' || t.status === 'approved').length;
+          const resolvedTasksCount = userTasks.filter(t => t.status === 'resolved').length;
+          const pendingTasksCount = userTasks.filter(t => t.status === 'pending').length;
+          const inProgressTasksCount = userTasks.filter(t => t.status === 'in-progress' || t.status === 'in_progress').length;
+          
+          // Calculate average response time (using completion time since startTime doesn't exist)
+          const responseTimes = userTasks
+            .filter(task => task.completionTime && task.createdAt)
+            .map(task => {
+              const created = new Date(task.createdAt!);
+              const completed = new Date(task.completionTime!);
+              return (completed.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
+            });
+          
+          const avgResponseTime = responseTimes.length > 0 
+            ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length 
+            : 0;
+          
+          // Calculate performance score
+          const finishedTasks = completedTasksCount + resolvedTasksCount;
+          const completionRate = totalTasksCount > 0 ? (finishedTasks / totalTasksCount) * 100 : 0;
+          let performanceScore = completionRate;
+          if (avgResponseTime > 0 && avgResponseTime <= 2) {
+            performanceScore += 10;
+          } else if (avgResponseTime > 4) {
+            performanceScore -= 5;
+          }
+          performanceScore = Math.min(100, Math.max(0, performanceScore));
+          
+          // Store calculated values on user object
+          (user as any).totalTasksCount = totalTasksCount;
+          (user as any).completedTasksCount = completedTasksCount;
+          (user as any).resolvedTasksCount = resolvedTasksCount;
+          (user as any).pendingTasksCount = pendingTasksCount;
+          (user as any).inProgressTasksCount = inProgressTasksCount;
+          (user as any).avgResponseTime = avgResponseTime;
+          (user as any).calculatedPerformanceScore = performanceScore;
+          
+          // Also update performanceMetrics array if empty
+          if (user.performanceMetrics.length === 0) {
+            user.performanceMetrics = [{
+              id: 0,
+              userId: user.id,
+              month: currentMonth,
+              year: currentYear,
+              totalTasks: totalTasksCount,
+              completedTasks: finishedTasks,
+              averageResponseTime: avgResponseTime.toFixed(2),
+              performanceScore: performanceScore.toFixed(2),
+              customerSatisfactionRating: "4.5",
+              firstCallResolutionRate: "75.0",
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }];
+          }
+        } catch (taskError) {
+          console.error('Error calculating task counts for user:', user.id, taskError);
+          (user as any).totalTasksCount = 0;
+          (user as any).completedTasksCount = 0;
+          (user as any).resolvedTasksCount = 0;
+          (user as any).pendingTasksCount = 0;
+          (user as any).inProgressTasksCount = 0;
+          (user as any).avgResponseTime = 0;
+          (user as any).calculatedPerformanceScore = 0;
+        }
       }
-    }
-    
-    // Add resolved tasks count for each user
-    const usersList = Array.from(userMap.values());
-    
-    for (const user of usersList) {
-      // Count resolved tasks for this user (current month)
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
       
-      const [resolvedTasksResult] = await db
-        .select({ count: count() })
-        .from(tasks)
-        .where(
-          and(
-            or(eq(tasks.assignedTo, user.id), eq(tasks.fieldEngineerId, user.id)),
-            eq(tasks.status, 'resolved'),
-            sql`EXTRACT(MONTH FROM ${tasks.createdAt}) = ${currentMonth}`,
-            sql`EXTRACT(YEAR FROM ${tasks.createdAt}) = ${currentYear}`
-          )
-        );
-      
-      (user as any).resolvedTasksCount = resolvedTasksResult?.count || 0;
+      return usersList;
+    } catch (error) {
+      console.error('Database error in getAllUsers:', error);
+      throw error; // Re-throw so the calling code can handle fallback
     }
-    
-    return usersList;
   }
 
-  async updateUserRole(id: string, role: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ role, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
+  async updateUserRole(id: number | string, role: string): Promise<User> {
+    try {
+      const userId = typeof id === 'string' ? parseInt(id) : id;
+      const [user] = await db
+        .update(users)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error: any) {
+      // Handle database constraint violations
+      if (error.code === '23514' && error.constraint === 'users_role_check') {
+        throw new Error(`Invalid role: ${role}. Must be one of: admin, manager, backend_engineer, field_engineer`);
+      }
+      throw error;
+    }
   }
 
-  async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
+  async updateUser(id: number | string, userData: Partial<UpsertUser>): Promise<User> {
+    const userId = typeof id === 'string' ? parseInt(id) : id;
     const [user] = await db
       .update(users)
       .set({ ...userData, updatedAt: new Date() })
-      .where(eq(users.id, id))
+      .where(eq(users.id, userId))
       .returning();
     return user;
   }
@@ -371,25 +537,25 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(and(
         eq(users.role, "field_engineer"),
-        eq(users.isActive, true)
+        eq(users.active, true)
       ))
       .orderBy(asc(users.firstName));
   }
 
   async getAvailableFieldEngineers(region?: string, skillSet?: string): Promise<User[]> {
-    let whereConditions = and(
+    let whereConditions = [
       eq(users.role, "field_engineer"),
-      eq(users.isActive, true)
-    );
+      eq(users.active, true)
+    ];
 
     if (region) {
-      whereConditions = and(whereConditions, eq(users.department, region));
+      whereConditions.push(eq(users.department, region));
     }
 
     return await db
       .select()
       .from(users)
-      .where(whereConditions)
+      .where(and(...whereConditions))
       .orderBy(asc(users.firstName));
   }
 
@@ -425,20 +591,53 @@ export class DatabaseStorage implements IStorage {
   async deleteCustomer(id: number): Promise<void> {
     // Delete all related records first to avoid foreign key constraint violations
     
-    // Delete customer comments
-    await db.delete(customerComments).where(eq(customerComments.customerId, id));
+    // Delete customer comments (handle gracefully if table doesn't exist)
+    try {
+      await db.delete(customerComments).where(eq(customerComments.customerId, id));
+    } catch (error: any) {
+      // Ignore "relation does not exist" errors for optional tables
+      if (error.code === '42P01') {
+        console.log('Customer comments table does not exist, skipping deletion');
+      } else {
+        throw error; // Re-throw other errors
+      }
+    }
     
-    // Delete customer system details  
-    await db.delete(customerSystemDetails).where(eq(customerSystemDetails.customerId, id));
+    // Delete customer system details (handle gracefully if table doesn't exist)
+    try {
+      await db.delete(customerSystemDetails).where(eq(customerSystemDetails.customerId, id));
+    } catch (error: any) {
+      if (error.code === '42P01') {
+        console.log('Customer system details table does not exist, skipping deletion');
+      } else {
+        throw error;
+      }
+    }
     
-    // Delete geofence zones for this customer
-    await db.delete(geofenceZones).where(eq(geofenceZones.customerId, id));
+    // Delete geofence zones for this customer (handle gracefully if table doesn't exist)
+    try {
+      await db.delete(geofenceZones).where(eq(geofenceZones.customerId, id));
+    } catch (error: any) {
+      if (error.code === '42P01') {
+        console.log('Geofence zones table does not exist, skipping deletion');
+      } else {
+        throw error;
+      }
+    }
     
     // Delete task updates for tasks belonging to this customer
-    const customerTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.customerId, id));
-    if (customerTasks.length > 0) {
-      const taskIds = customerTasks.map(task => task.id);
-      await db.delete(taskUpdates).where(inArray(taskUpdates.taskId, taskIds));
+    try {
+      const customerTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.customerId, id));
+      if (customerTasks.length > 0) {
+        const taskIds = customerTasks.map(task => task.id);
+        await db.delete(taskUpdates).where(inArray(taskUpdates.taskId, taskIds));
+      }
+    } catch (error: any) {
+      if (error.code === '42P01') {
+        console.log('Task updates table does not exist, skipping deletion');
+      } else {
+        throw error;
+      }
     }
     
     // Delete tasks for this customer
@@ -464,7 +663,7 @@ export class DatabaseStorage implements IStorage {
 
   // Customer portal authentication
   async getCustomerByUsername(username: string): Promise<Customer | undefined> {
-    const [customer] = await db.select().from(customers).where(eq(customers.username, username));
+    const [customer] = await db.select().from(customers).where(eq(customers.portalUsername, username));
     return customer;
   }
 
@@ -486,8 +685,8 @@ export class DatabaseStorage implements IStorage {
     const [customer] = await db
       .update(customers)
       .set({ 
-        username,
-        password,
+        portalUsername: username,
+        portalPassword: password,
         portalAccess,
         updatedAt: new Date()
       })
@@ -500,8 +699,8 @@ export class DatabaseStorage implements IStorage {
     const [customer] = await db
       .update(customers)
       .set({ 
-        username: data.username,
-        password: data.password,
+        portalUsername: data.username,
+        portalPassword: data.password,
         portalAccess: data.portalAccess,
         updatedAt: new Date()
       })
@@ -540,11 +739,39 @@ export class DatabaseStorage implements IStorage {
 
     const result = await query.orderBy(desc(tasks.createdAt));
     
-    return result.map(row => ({
-      ...row.task,
-      customer: row.customer || undefined,
-      assignedUser: row.assignedUser || undefined,
-    }));
+    // Optimize: Get all unique field engineer IDs and fetch them in one query
+    const fieldEngineerIdsSet = new Set();
+    result.forEach(row => {
+      if (row.task.fieldEngineerId) {
+        fieldEngineerIdsSet.add(row.task.fieldEngineerId);
+      }
+    });
+    const fieldEngineerIds = Array.from(fieldEngineerIdsSet);
+    
+    // Fetch all field engineers in a single query
+    let fieldEngineersMap = new Map();
+    if (fieldEngineerIds.length > 0) {
+      const fieldEngineers = await db
+        .select()
+        .from(users)
+        .where(sql`${users.id} IN (${sql.join(fieldEngineerIds.map(id => sql`${id}`), sql`, `)})`);
+      
+      fieldEngineers.forEach(user => {
+        fieldEngineersMap.set(user.id, user);
+      });
+    }
+    
+    // Map results with field engineers
+    const tasksWithRelations = result.map((row) => {
+      return {
+        ...row.task,
+        customer: row.customer || undefined,
+        assignedUser: row.assignedUser || undefined,
+        fieldEngineer: row.task.fieldEngineerId ? fieldEngineersMap.get(row.task.fieldEngineerId) : undefined,
+      };
+    });
+    
+    return tasksWithRelations;
   }
 
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
@@ -565,10 +792,17 @@ export class DatabaseStorage implements IStorage {
     // Get task updates with user details
     const updates = await this.getTaskUpdates(id);
     
+    // Get field engineer data if needed
+    let fieldEngineer = undefined;
+    if (result.tasks.fieldEngineerId) {
+      fieldEngineer = await this.getUser(result.tasks.fieldEngineerId);
+    }
+    
     return {
       ...result.tasks,
       customer: result.customers || undefined,
       assignedUser: result.users || undefined,
+      fieldEngineer: fieldEngineer || undefined,
       updates,
     };
   }
@@ -576,19 +810,17 @@ export class DatabaseStorage implements IStorage {
   async createTask(task: InsertTask): Promise<Task> {
     // Generate ticket number
     const ticketNumber = `T${Date.now().toString()}`;
+    
     const [newTask] = await db
       .insert(tasks)
-      .values({ ...task, ticketNumber })
+      .values({ 
+        ...task, 
+        ticketNumber
+      })
       .returning();
     
-    // Auto-sync task to SQL Server
-    try {
-      await this.syncTaskToSqlServer(newTask);
-      console.log(`✅ Task ${newTask.ticketNumber} synced to SQL Server`);
-    } catch (syncError) {
-      console.error('❌ Task SQL Server sync failed:', syncError);
-      // Don't fail task creation if SQL sync fails
-    }
+    // SQL Server sync disabled - using PostgreSQL only
+    console.log(`✅ Task ${newTask.ticketNumber} created in PostgreSQL`);
     
     return newTask;
   }
@@ -619,8 +851,8 @@ export class DatabaseStorage implements IStorage {
       await pool.connect();
       
       const insertQuery = `
-        INSERT INTO tasks (id, ticket_number, title, description, priority, status, issue_type, customer_id, assigned_to, created_by)
-        VALUES (@id, @ticket_number, @title, @description, @priority, @status, @issue_type, @customer_id, @assigned_to, @created_by)
+        INSERT INTO tasks (id, ticket_number, title, description, priority, status, category, customer_id, customer_name, assigned_to, assigned_to_name, created_by, created_by_name)
+        VALUES (@id, @ticket_number, @title, @description, @priority, @status, @category, @customer_id, @customer_name, @assigned_to, @assigned_to_name, @created_by, @created_by_name)
       `;
       
       const request = pool.request()
@@ -630,10 +862,13 @@ export class DatabaseStorage implements IStorage {
         .input('description', task.description || null)
         .input('priority', task.priority)
         .input('status', task.status)
-        .input('issue_type', task.issueType || null)
+        .input('category', task.category || null)
         .input('customer_id', task.customerId || null)
+        .input('customer_name', task.customerName || null)
         .input('assigned_to', task.assignedTo || null)
-        .input('created_by', task.createdBy);
+        .input('assigned_to_name', task.assignedToName || null)
+        .input('created_by', task.createdBy)
+        .input('created_by_name', task.createdByName || null);
       
       await request.query(insertQuery);
       await pool.close();
@@ -645,20 +880,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
+    // If status is being changed to completed, set completionTime
+    if (task.status === 'completed') {
+      task.completionTime = new Date();
+    }
+    
     const [updatedTask] = await db
       .update(tasks)
       .set({ ...task, updatedAt: new Date() })
       .where(eq(tasks.id, id))
       .returning();
     
-    // Auto-sync task update to SQL Server
-    try {
-      await this.syncTaskUpdateToSqlServer(updatedTask);
-      console.log(`✅ Task ${updatedTask.ticketNumber} update synced to SQL Server`);
-    } catch (syncError) {
-      console.error('❌ Task update SQL Server sync failed:', syncError);
-      // Don't fail task update if SQL sync fails
-    }
+    // SQL Server sync disabled - using PostgreSQL only
+    console.log(`✅ Task ${updatedTask.ticketNumber || updatedTask.id} updated in PostgreSQL`);
     
     return updatedTask;
   }
@@ -816,23 +1050,99 @@ export class DatabaseStorage implements IStorage {
     total: number;
     pending: number;
     inProgress: number;
+    approved: number;
     completed: number;
+    cancelledTasks: number;
+    under3hrs: number;
+    under6hrs: number;
+    under12hrs: number;
+    over12hrs: number;
   }> {
-    const [stats] = await db
-      .select({
-        total: count(),
-        pending: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
-        inProgress: sql<number>`count(case when ${tasks.status} = 'in_progress' then 1 end)`,
-        completed: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
-      })
-      .from(tasks);
+    try {
+      // Get all tasks for manual counting as fallback
+      const allTasks = await this.getAllTasks();
+      
+      // Helper function to calculate resolution time in hours
+      const getResolutionHours = (task: any): number | null => {
+        if (!task.completionTime || !task.createdAt) return null;
+        const created = new Date(task.createdAt).getTime();
+        const completed = new Date(task.completionTime).getTime();
+        return (completed - created) / (1000 * 60 * 60); // hours
+      };
+      
+      // Filter resolved tasks (completed or approved with completionTime)
+      const resolvedTasks = allTasks.filter(t => 
+        (t.status === 'completed' || t.status === 'approved' || t.status === 'resolved') && t.completionTime
+      );
+      
+      const manualStats = {
+        total: allTasks.length,
+        pending: allTasks.filter(t => t.status === 'pending').length,
+        inProgress: allTasks.filter(t => t.status === 'in_progress' || t.status === 'in-progress').length,
+        approved: allTasks.filter(t => t.status === 'approved').length,
+        completed: allTasks.filter(t => t.status === 'completed').length,
+        cancelledTasks: allTasks.filter(t => t.status === 'cancelled').length,
+        under3hrs: resolvedTasks.filter(t => {
+          const hrs = getResolutionHours(t);
+          return hrs !== null && hrs <= 3;
+        }).length,
+        under6hrs: resolvedTasks.filter(t => {
+          const hrs = getResolutionHours(t);
+          return hrs !== null && hrs > 3 && hrs <= 6;
+        }).length,
+        under12hrs: resolvedTasks.filter(t => {
+          const hrs = getResolutionHours(t);
+          return hrs !== null && hrs > 6 && hrs <= 12;
+        }).length,
+        over12hrs: resolvedTasks.filter(t => {
+          const hrs = getResolutionHours(t);
+          return hrs !== null && hrs > 12;
+        }).length,
+      };
 
-    return {
-      total: Number(stats.total),
-      pending: Number(stats.pending),
-      inProgress: Number(stats.inProgress),
-      completed: Number(stats.completed),
-    };
+      console.log('📊 Task Stats - Manual Count:', manualStats);
+
+      const [stats] = await db
+        .select({
+          total: count(),
+          pending: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
+          inProgress: sql<number>`count(case when ${tasks.status} = 'in_progress' OR ${tasks.status} = 'in-progress' then 1 end)`,
+          approved: sql<number>`count(case when ${tasks.status} = 'approved' then 1 end)`,
+          completed: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+          cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
+        })
+        .from(tasks);
+
+      console.log('📊 Task Stats - DB Query:', stats);
+
+      return {
+        total: Number(stats.total) || manualStats.total,
+        pending: Number(stats.pending) || manualStats.pending,
+        inProgress: Number(stats.inProgress) || manualStats.inProgress,
+        approved: Number(stats.approved) || manualStats.approved,
+        completed: Number(stats.completed) || manualStats.completed,
+        cancelledTasks: Number(stats.cancelledTasks) || manualStats.cancelledTasks,
+        under3hrs: manualStats.under3hrs,
+        under6hrs: manualStats.under6hrs,
+        under12hrs: manualStats.under12hrs,
+        over12hrs: manualStats.over12hrs,
+      };
+    } catch (error) {
+      console.error('❌ Error in getTaskStats:', error);
+      // Return zeros as fallback
+      return {
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        approved: 0,
+        completed: 0,
+        cancelledTasks: 0,
+        under3hrs: 0,
+        under6hrs: 0,
+        under12hrs: 0,
+        over12hrs: 0,
+      };
+    }
   }
 
   // Field engineer task operations
@@ -846,8 +1156,9 @@ export class DatabaseStorage implements IStorage {
     const [task] = await db
       .update(tasks)
       .set({
-        fieldEngineerId,
-        status: "assigned_to_field",
+        fieldEngineerId: parseInt(fieldEngineerId),
+        fieldEngineerName,
+        status: "in-progress",
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
@@ -876,11 +1187,15 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Create task update record with detailed information
+    const assignedByUser = await this.getUser(assignedBy);
+    const assignedByName = assignedByUser ? `${assignedByUser.firstName || ''} ${assignedByUser.lastName || ''}`.trim() || assignedByUser.username : `User ${assignedBy}`;
+    
     await this.createTaskUpdate({
       taskId,
-      updateType: "assignment",
-      note: `Task moved to field team and assigned to ${fieldEngineerName} (${fieldEngineer?.email || fieldEngineerId})`,
-      updatedBy: assignedBy,
+      type: "assignment",
+      message: `Task moved to field team and assigned to ${fieldEngineerName} (${fieldEngineer?.email || fieldEngineerId})`,
+      createdBy: parseInt(assignedBy),
+      createdByName: assignedByName,
     });
 
     // Automatically create tracking entry for field assignment
@@ -919,24 +1234,30 @@ export class DatabaseStorage implements IStorage {
           title: `${originalTask.title}_${i + 1}`,
           ticketNumber: `${originalTask.ticketNumber}_${i + 1}`,
           customerId: originalTask.customerId,
+          customerName: originalTask.customerName,
           assignedTo: originalTask.assignedTo,
           priority: originalTask.priority,
-          status: "assigned_to_field" as const,
+          status: "in-progress" as const,
           description: originalTask.description,
           issueType: originalTask.issueType,
           contactPerson: originalTask.contactPerson,
           visitCharges: originalTask.visitCharges,
-          fieldEngineerId: engineerId,
+          fieldEngineerId: parseInt(engineerId),
+          fieldEngineerName,
         };
 
         const duplicateTask = await this.createTask(duplicateTaskData);
         
         // Create assignment audit record for the duplicate task
+        const assignedByUser = await this.getUser(assignedBy);
+        const assignedByName = assignedByUser ? `${assignedByUser.firstName || ''} ${assignedByUser.lastName || ''}`.trim() || assignedByUser.username : `User ${assignedBy}`;
+        
         await this.createTaskUpdate({
           taskId: duplicateTask.id,
-          updateType: "assignment",
-          note: `Duplicate task created and assigned to ${fieldEngineerName} (${fieldEngineer?.email || engineerId})`,
-          updatedBy: assignedBy,
+          type: "assignment",
+          message: `Duplicate task created and assigned to ${fieldEngineerName} (${fieldEngineer?.email || engineerId})`,
+          createdBy: parseInt(assignedBy),
+          createdByName: assignedByName,
         });
 
         createdTasks.push(duplicateTask);
@@ -984,9 +1305,9 @@ export class DatabaseStorage implements IStorage {
     // Create task update record
     await this.createTaskUpdate({
       taskId,
-      updateType: "status_change",
-      note: note || `Status changed to ${status}`,
-      updatedBy: userId,
+      type: "status_update",
+      message: note || `Status changed to ${status}`,
+      createdBy: parseInt(userId),
     });
 
     // Automatically create tracking entry for field activities
@@ -1011,10 +1332,9 @@ export class DatabaseStorage implements IStorage {
     // Create task update record
     await this.createTaskUpdate({
       taskId,
-      updateType: "completion",
-      note: completionNote,
-      updatedBy: userId,
-      attachments: files || [],
+      type: "completion",
+      message: completionNote,
+      createdBy: parseInt(userId),
     });
 
     // Automatically create tracking entry for task completion
@@ -1076,25 +1396,80 @@ export class DatabaseStorage implements IStorage {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     
-    const topPerformers = await db
+    // Get all active users first
+    const activeUsers = await db
       .select()
       .from(users)
-      .leftJoin(
-        performanceMetrics,
-        and(
-          eq(users.id, performanceMetrics.userId),
-          eq(performanceMetrics.month, currentMonth),
-          eq(performanceMetrics.year, currentYear)
-        )
-      )
-      .where(eq(users.isActive, true))
-      .orderBy(desc(sql`COALESCE(${performanceMetrics.performanceScore}, 0)`))
-      .limit(limit);
-
-    return topPerformers.map(row => ({
-      ...row.users,
-      performanceMetrics: row.performance_metrics ? [row.performance_metrics] : [],
+      .where(eq(users.active, true))
+      .orderBy(asc(users.firstName));
+    
+    // Calculate performance for each user based on actual tasks
+    const usersWithPerformance = await Promise.all(activeUsers.map(async (user) => {
+      // Get all tasks assigned to this user
+      const userTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          or(eq(tasks.assignedTo, user.id), eq(tasks.fieldEngineerId, user.id))
+        );
+      
+      const totalTasksCount = userTasks.length;
+      const completedTasksCount = userTasks.filter(t => t.status === 'completed' || t.status === 'approved').length;
+      const resolvedTasksCount = userTasks.filter(t => t.status === 'resolved').length;
+      
+      // Calculate performance score
+      const finishedTasks = completedTasksCount + resolvedTasksCount;
+      const completionRate = totalTasksCount > 0 ? (finishedTasks / totalTasksCount) * 100 : 0;
+      
+      // Calculate average response time (using completion time instead of start time since startTime doesn't exist)
+      const responseTimes = userTasks
+        .filter(task => task.completionTime && task.createdAt)
+        .map(task => {
+          const created = new Date(task.createdAt!);
+          const completed = new Date(task.completionTime!);
+          return (completed.getTime() - created.getTime()) / (1000 * 60 * 60);
+        });
+      
+      const avgResponseTime = responseTimes.length > 0 
+        ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length 
+        : 0;
+      
+      let performanceScore = completionRate;
+      if (avgResponseTime > 0 && avgResponseTime <= 2) {
+        performanceScore += 10;
+      } else if (avgResponseTime > 4) {
+        performanceScore -= 5;
+      }
+      performanceScore = Math.min(100, Math.max(0, performanceScore));
+      
+      return {
+        ...user,
+        totalTasksCount,
+        completedTasksCount,
+        resolvedTasksCount,
+        avgResponseTime,
+        calculatedPerformanceScore: performanceScore,
+        performanceMetrics: [{
+          id: 0,
+          userId: user.id,
+          month: currentMonth,
+          year: currentYear,
+          totalTasks: totalTasksCount,
+          completedTasks: finishedTasks,
+          averageResponseTime: avgResponseTime.toFixed(2),
+          performanceScore: performanceScore.toFixed(2),
+          customerSatisfactionRating: "4.5",
+          firstCallResolutionRate: "75.0",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }]
+      };
     }));
+    
+    // Sort by performance score and return top performers
+    return usersWithPerformance
+      .sort((a, b) => b.calculatedPerformanceScore - a.calculatedPerformanceScore)
+      .slice(0, limit);
   }
 
   async calculateUserPerformance(userId: string): Promise<void> {
@@ -1119,13 +1494,13 @@ export class DatabaseStorage implements IStorage {
     const totalFinishedTasks = completedTasks + resolvedTasks;
     const completionRate = totalTasks > 0 ? (totalFinishedTasks / totalTasks) * 100 : 0;
     
-    // Calculate average response time
+    // Calculate average response time (using completion time since startTime doesn't exist)
     const responseTimes = userTasks
-      .filter(task => task.startTime && task.createdAt)
+      .filter(task => task.completionTime && task.createdAt)
       .map(task => {
         const created = new Date(task.createdAt!);
-        const started = new Date(task.startTime!);
-        return (started.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
+        const completed = new Date(task.completionTime!);
+        return (completed.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
       });
     
     const avgResponseTime = responseTimes.length > 0 
@@ -1167,53 +1542,99 @@ export class DatabaseStorage implements IStorage {
     totalCustomers: number;
     activeUsers: number;
   }> {
-    const [taskStats] = await db
-      .select({
-        totalTasks: count(),
-        completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
-        pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
-        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in_progress' then 1 end)`,
-        resolvedTasks: sql<number>`count(case when ${tasks.status} = 'resolved' then 1 end)`,
-        cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
-      })
-      .from(tasks);
+    try {
+      console.log('🔍 Querying task statistics...');
+      
+      // Get all tasks first for manual counting as backup
+      const allTasks = await this.getAllTasks();
+      console.log(`📊 Total tasks found: ${allTasks.length}`);
+      
+      // Manual count by status
+      const manualStats = {
+        total: allTasks.length,
+        completed: allTasks.filter(t => t.status === 'completed').length,
+        pending: allTasks.filter(t => t.status === 'pending').length,
+        inProgress: allTasks.filter(t => t.status === 'in_progress' || t.status === 'in-progress').length,
+        resolved: allTasks.filter(t => t.status === 'resolved').length,
+        cancelled: allTasks.filter(t => t.status === 'cancelled').length,
+      };
+      
+      console.log('📈 Manual stats count:', manualStats);
+      
+      const [taskStats] = await db
+        .select({
+          totalTasks: count(),
+          completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+          pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
+          inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in_progress' OR ${tasks.status} = 'in-progress' then 1 end)`,
+          resolvedTasks: sql<number>`count(case when ${tasks.status} = 'resolved' then 1 end)`,
+          cancelledTasks: sql<number>`count(case when ${tasks.status} = 'cancelled' then 1 end)`,
+        })
+        .from(tasks);
 
-    const [customerCount] = await db
-      .select({ count: count() })
-      .from(customers)
-      .where(eq(customers.status, 'active'));
+      console.log('📊 Database stats:', taskStats);
 
-    const [userCount] = await db
-      .select({ count: count() })
-      .from(users)
-      .where(eq(users.isActive, true));
+      const [customerCount] = await db
+        .select({ count: count() })
+        .from(customers);
 
-    const [performanceStats] = await db
-      .select({
-        avgScore: sql<number>`AVG(${performanceMetrics.performanceScore})`,
-        avgResponseTime: sql<number>`AVG(${performanceMetrics.averageResponseTime})`,
-      })
-      .from(performanceMetrics);
+      let userCount;
+      try {
+        [userCount] = await db
+          .select({ count: count() })
+          .from(users)
+          .where(eq(users.active, true));
+      } catch (error) {
+        // Fallback if active column doesn't exist
+        [userCount] = await db
+          .select({ count: count() })
+          .from(users);
+      }
 
-    return {
-      totalTasks: Number(taskStats.totalTasks),
-      completedTasks: Number(taskStats.completedTasks),
-      pendingTasks: Number(taskStats.pendingTasks),
-      inProgressTasks: Number(taskStats.inProgressTasks),
-      resolvedTasks: Number(taskStats.resolvedTasks),
-      cancelledTasks: Number(taskStats.cancelledTasks),
-      avgPerformanceScore: Number(performanceStats.avgScore) || 0,
-      avgResponseTime: Number(performanceStats.avgResponseTime) || 0,
-      totalCustomers: Number(customerCount.count),
-      activeUsers: Number(userCount.count),
-    };
+      let performanceStats;
+      try {
+        [performanceStats] = await db
+          .select({
+            avgScore: sql<number>`AVG(${performanceMetrics.performanceScore})`,
+            avgResponseTime: sql<number>`AVG(${performanceMetrics.averageResponseTime})`,
+          })
+          .from(performanceMetrics);
+      } catch (error) {
+        console.warn('⚠️ Performance metrics unavailable, continuing without them');
+        performanceStats = { avgScore: null, avgResponseTime: null };
+      }
+
+      const stats = {
+        totalTasks: Number(taskStats.totalTasks) || manualStats.total,
+        completedTasks: Number(taskStats.completedTasks) || manualStats.completed,
+        pendingTasks: Number(taskStats.pendingTasks) || manualStats.pending,
+        inProgressTasks: Number(taskStats.inProgressTasks) || manualStats.inProgress,
+        resolvedTasks: Number(taskStats.resolvedTasks) || manualStats.resolved,
+        cancelledTasks: Number(taskStats.cancelledTasks) || manualStats.cancelled,
+        avgPerformanceScore: Number(performanceStats?.avgScore) || 0,
+        avgResponseTime: Number(performanceStats?.avgResponseTime) || 0,
+        totalCustomers: Number(customerCount.count) || 0,
+        activeUsers: Number(userCount.count) || 0,
+      };
+
+      console.log('✅ Final dashboard stats:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Error in getDashboardStats:', error);
+      throw error;
+    }
   }
 
   // Task update operations
   async createTaskUpdate(update: InsertTaskUpdate): Promise<TaskUpdate> {
+    // Explicitly set createdAt to current timestamp to ensure proper timezone handling
+    const updateWithTimestamp = {
+      ...update,
+      createdAt: new Date(), // Use JavaScript Date which includes local time
+    };
     const [taskUpdate] = await db
       .insert(taskUpdates)
-      .values(update)
+      .values(updateWithTimestamp)
       .returning();
     return taskUpdate;
   }
@@ -1225,7 +1646,7 @@ export class DatabaseStorage implements IStorage {
         updatedByUser: users,
       })
       .from(taskUpdates)
-      .leftJoin(users, eq(taskUpdates.updatedBy, users.id))
+      .leftJoin(users, eq(taskUpdates.createdBy, users.id))
       .where(eq(taskUpdates.taskId, taskId))
       .orderBy(desc(taskUpdates.createdAt));
     
@@ -1239,10 +1660,9 @@ export class DatabaseStorage implements IStorage {
     // Create a file upload update record
     await this.createTaskUpdate({
       taskId,
-      updatedBy: "system", // Will be replaced with actual user ID in routes
-      updateType: "file_uploaded",
-      note: `${files.length} file(s) uploaded`,
-      attachments: files,
+      type: "file_upload",
+      message: `${files.length} file(s) uploaded`,
+      createdBy: 1, // system user
     });
   }
 
@@ -1281,14 +1701,14 @@ export class DatabaseStorage implements IStorage {
       ))
       .groupBy(tasks.priority);
 
-    // Get average response time
+    // Get average response time (using completionTime since startTime doesn't exist)
     const responseTimes = await db
       .select({
-        responseTime: sql<number>`extract(epoch from (${tasks.startTime} - ${tasks.createdAt})) / 60`,
+        responseTime: sql<number>`extract(epoch from (${tasks.completionTime} - ${tasks.createdAt})) / 60`,
       })
       .from(tasks)
       .where(and(
-        sql`${tasks.startTime} is not null`,
+        sql`${tasks.completionTime} is not null`,
         sql`${tasks.createdAt} >= ${startDate}`,
         sql`${tasks.createdAt} <= ${endDate}`
       ));
@@ -1395,7 +1815,9 @@ export class DatabaseStorage implements IStorage {
         lastName: users.lastName,
         email: users.email,
         completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+        approvedTasks: sql<number>`count(case when ${tasks.status} = 'approved' then 1 end)`,
         totalTasks: count(tasks.id),
+        onTimeTasks: sql<number>`count(case when (${tasks.status} = 'completed' or ${tasks.status} = 'approved') and ${tasks.dueDate} is not null and ${tasks.completionTime} is not null and ${tasks.completionTime} <= ${tasks.dueDate} then 1 end)`,
       })
       .from(users)
       .leftJoin(tasks, and(
@@ -1405,12 +1827,33 @@ export class DatabaseStorage implements IStorage {
       ))
       .groupBy(users.id, users.firstName, users.lastName, users.email);
 
-    return engineerStats.map(engineer => ({
-      ...engineer,
-      avgResponseTime: 90 + Math.random() * 60, // Mock data
-      performanceScore: 70 + Math.random() * 25,
-      isActive: engineer.totalTasks > 0,
-    }));
+    return engineerStats.map(engineer => {
+      const completed = Number(engineer.completedTasks) || 0;
+      const approved = Number(engineer.approvedTasks) || 0;
+      const total = Number(engineer.totalTasks) || 0;
+      const onTime = Number(engineer.onTimeTasks) || 0;
+      const finishedTasks = completed + approved;
+      
+      // Performance score calculation:
+      // - Approved tasks weight: 40% (most important)
+      // - Completed tasks weight: 30%
+      // - On-time delivery weight: 30%
+      const approvalScore = total > 0 ? (approved / total) * 40 : 0;
+      const completionScore = total > 0 ? (completed / total) * 30 : 0;
+      const onTimeScore = finishedTasks > 0 ? (onTime / finishedTasks) * 30 : 0;
+      const performanceScore = Math.min(100, Math.round(approvalScore + completionScore + onTimeScore));
+      
+      return {
+        ...engineer,
+        completedTasks: completed,
+        approvedTasks: approved,
+        totalTasks: total,
+        onTimeTasks: onTime,
+        avgResponseTime: 90 + Math.random() * 60,
+        performanceScore: performanceScore,
+        isActive: total > 0,
+      };
+    });
   }
 
   async getCustomerAnalytics(startDate: Date, endDate: Date): Promise<any> {
@@ -1420,7 +1863,10 @@ export class DatabaseStorage implements IStorage {
         name: customers.name,
         city: customers.city,
         totalTasks: count(tasks.id),
+        pendingTasks: sql<number>`count(case when ${tasks.status} = 'pending' then 1 end)`,
+        inProgressTasks: sql<number>`count(case when ${tasks.status} = 'in_progress' OR ${tasks.status} = 'in-progress' then 1 end)`,
         completedTasks: sql<number>`count(case when ${tasks.status} = 'completed' then 1 end)`,
+        approvedTasks: sql<number>`count(case when ${tasks.status} = 'approved' then 1 end)`,
       })
       .from(customers)
       .leftJoin(tasks, and(
@@ -1431,9 +1877,18 @@ export class DatabaseStorage implements IStorage {
       .groupBy(customers.id, customers.name, customers.city)
       .having(sql`count(${tasks.id}) > 0`);
 
+    console.log('📊 Customer Analytics Raw Data Sample:', customerStats.slice(0, 3));
+
     return customerStats.map(customer => ({
-      ...customer,
-      avgResolutionTime: 180 + Math.random() * 120, // Mock data
+      id: customer.id,
+      name: customer.name,
+      city: customer.city,
+      totalTasks: Number(customer.totalTasks) || 0,
+      pendingTasks: Number(customer.pendingTasks) || 0,
+      inProgressTasks: Number(customer.inProgressTasks) || 0,
+      completedTasks: Number(customer.completedTasks) || 0,
+      approvedTasks: Number(customer.approvedTasks) || 0,
+      avgResolutionTime: 180 + Math.random() * 120,
       satisfaction: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
     }));
   }
@@ -1576,7 +2031,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       const pgClient = postgres(process.env.DATABASE_URL, {
-        ssl: 'require',
+        ssl: false,
         max: 1,
       });
       
@@ -1703,13 +2158,9 @@ export class DatabaseStorage implements IStorage {
           lastName: users.lastName,
           email: users.email,
           role: users.role,
-          department: users.department,
-          phone: users.phone,
-          profileImageUrl: users.profileImageUrl,
-          isActive: users.isActive,
+          active: users.active,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
-          password: users.password,
         },
       })
       .from(chatParticipants)
@@ -1850,13 +2301,12 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: users.id,
         role: users.role,
-        department: users.department,
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
       })
       .from(users)
-      .where(and(eq(users.isActive, true), sql`${users.role} IN ('field_engineer', 'engineer', 'backend_engineer')`));
+      .where(and(eq(users.active, true), sql`${users.role} IN ('field_engineer', 'engineer', 'backend_engineer')`));
 
     // Get customer locations to approximate team member locations
     const customerLocations = await db
@@ -2158,6 +2608,54 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerSystemDetails(id: number): Promise<void> {
     await db.delete(customerSystemDetails).where(eq(customerSystemDetails.id, id));
+  }
+
+  // CCTV Information operations
+  async getCctvByCustomerId(customerId: number): Promise<CctvInformation[]> {
+    const cctvData = await db
+      .select()
+      .from(cctvInformation)
+      .where(eq(cctvInformation.customerId, customerId))
+      .orderBy(desc(cctvInformation.createdAt));
+    return cctvData;
+  }
+
+  async getCctvInformation(id: number): Promise<CctvInformation | undefined> {
+    const [cctv] = await db
+      .select()
+      .from(cctvInformation)
+      .where(eq(cctvInformation.id, id));
+    return cctv;
+  }
+
+  async createCctvInformation(data: InsertCctvInformation): Promise<CctvInformation> {
+    const [cctv] = await db
+      .insert(cctvInformation)
+      .values(data)
+      .returning();
+    return cctv;
+  }
+
+  async updateCctvInformation(id: number, data: Partial<InsertCctvInformation>): Promise<CctvInformation> {
+    const [cctv] = await db
+      .update(cctvInformation)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(cctvInformation.id, id))
+      .returning();
+    return cctv;
+  }
+
+  async deleteCctvInformation(id: number): Promise<void> {
+    await db.delete(cctvInformation).where(eq(cctvInformation.id, id));
+  }
+
+  async bulkCreateCctvInformation(dataArray: InsertCctvInformation[]): Promise<CctvInformation[]> {
+    if (dataArray.length === 0) return [];
+    const cctvRecords = await db
+      .insert(cctvInformation)
+      .values(dataArray)
+      .returning();
+    return cctvRecords;
   }
 
   // Geofencing operations
@@ -2488,22 +2986,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNotificationsByUser(userId: string): Promise<NotificationLog[]> {
-    return await db
-      .select({
-        id: notificationLogs.id,
-        eventType: notificationLogs.eventType,
-        message: notificationLogs.messageText, // Use messageText from database
-        createdAt: notificationLogs.createdAt,
-        read: sql`false`.as('read'), // Default to false since column doesn't exist
-        taskId: notificationLogs.taskId,
-        customerId: notificationLogs.customerId,
-        userId: notificationLogs.userId,
-        status: notificationLogs.status,
-      })
-      .from(notificationLogs)
-      .where(eq(notificationLogs.userId, userId))
-      .orderBy(desc(notificationLogs.createdAt))
-      .limit(50);
+    try {
+      return await db
+        .select({
+          id: notificationLogs.id,
+          eventType: notificationLogs.eventType,
+          message: notificationLogs.messageText, // Use messageText from database
+          createdAt: notificationLogs.createdAt,
+          read: sql`false`.as('read'), // Default to false since column doesn't exist
+          taskId: notificationLogs.taskId,
+          customerId: notificationLogs.customerId,
+          userId: notificationLogs.userId,
+          status: notificationLogs.status,
+        })
+        .from(notificationLogs)
+        .where(eq(notificationLogs.userId, userId))
+        .orderBy(desc(notificationLogs.createdAt))
+        .limit(50);
+    } catch (error) {
+      // If notification_logs table doesn't exist, return empty array
+      console.log('Notification logs table not found, returning empty array');
+      return [];
+    }
   }
 
   async markNotificationAsRead(notificationId: number, userId: string): Promise<void> {
@@ -2535,4 +3039,494 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Demo customers for fallback mode
+const demoCustomers: Customer[] = [
+  {
+    id: 1,
+    customerId: "C001",
+    name: "John Smith",
+    email: "john@example.com",
+    contactPerson: "John Smith",
+    mobilePhone: "+1234567890",
+    address: "123 Main Street",
+    city: "Delhi",
+    state: "Delhi",
+    latitude: 28.6139,
+    longitude: 77.2090,
+    connectionType: "fiber",
+    planType: "premium",
+    monthlyFee: 1500,
+    status: "active",
+    portalAccess: true,
+    username: "john_smith",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 2,
+    customerId: "C002",
+    name: "Sarah Johnson",
+    email: "sarah@example.com",
+    contactPerson: "Sarah Johnson",
+    mobilePhone: "+1234567891",
+    address: "456 Oak Avenue",
+    city: "Mumbai",
+    state: "Maharashtra",
+    latitude: 19.0760,
+    longitude: 72.8777,
+    connectionType: "wireless",
+    planType: "basic",
+    monthlyFee: 800,
+    status: "active",
+    portalAccess: false,
+    username: null,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 3,
+    customerId: "C003",
+    name: "Tech Solutions Ltd",
+    email: "info@techsolutions.com",
+    contactPerson: "Mike Wilson",
+    mobilePhone: "+1234567892",
+    address: "789 Business Park",
+    city: "Bangalore",
+    state: "Karnataka",
+    latitude: 12.9716,
+    longitude: 77.5946,
+    connectionType: "fiber",
+    planType: "enterprise",
+    monthlyFee: 3000,
+    status: "active",
+    portalAccess: true,
+    username: "techsolutions",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 4,
+    customerId: "C004",
+    name: "Green Valley Resort",
+    email: "manager@greenvalley.com",
+    contactPerson: "Lisa Davis",
+    mobilePhone: "+1234567893",
+    address: "321 Resort Road",
+    city: "Goa",
+    state: "Goa",
+    latitude: 15.2993,
+    longitude: 74.1240,
+    connectionType: "wireless",
+    planType: "premium",
+    monthlyFee: 2000,
+    status: "active",
+    portalAccess: true,
+    username: "greenvalley",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 5,
+    customerId: "C005",
+    name: "City Hospital",
+    email: "admin@cityhospital.com",
+    contactPerson: "Dr. Raj Patel",
+    mobilePhone: "+1234567894",
+    address: "555 Medical Center",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    latitude: 13.0827,
+    longitude: 80.2707,
+    connectionType: "fiber",
+    planType: "enterprise",
+    monthlyFee: 5000,
+    status: "active",
+    portalAccess: true,
+    username: "cityhospital",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
+
+// Demo users storage for when database is not available
+const demoUsers: User[] = [
+  {
+    id: 'demo-admin',
+    username: 'admin',
+    email: 'admin@demo.com',
+    firstName: 'Demo',
+    lastName: 'Admin', 
+    role: 'admin',
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'demo-user',
+    username: 'demo',
+    email: 'demo@demo.com',
+    firstName: 'Demo',
+    lastName: 'User',
+    role: 'engineer',
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
+
+// Storage wrapper that provides fallback for demo mode
+class StorageWrapper {
+  private dbStorage: DatabaseStorage | null = null;
+  private isDemoMode: boolean = false;
+
+  constructor() {
+    // Don't initialize database storage immediately to avoid DATABASE_URL requirement
+  }
+
+  getDbStorage(): DatabaseStorage {
+    if (!this.dbStorage) {
+      this.dbStorage = new DatabaseStorage();
+    }
+    return this.dbStorage;
+  }
+
+  setDemoMode(enabled: boolean) {
+    this.isDemoMode = enabled;
+  }
+
+  // Override customer methods to provide demo data when needed
+  async getAllCustomers(): Promise<Customer[]> {
+    // Always use real database - no demo mode fallback
+    return await this.getDbStorage().getAllCustomers();
+  }
+
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    // Always use real database - no demo mode fallback
+    return await this.getDbStorage().getCustomer(id);
+  }
+
+  async searchCustomers(query: string): Promise<Customer[]> {
+    // Always use real database - no demo mode fallback
+    return await this.getDbStorage().searchCustomers(query);
+  }
+
+  // User management methods with demo mode support
+  async getUser(id: string): Promise<User | undefined> {
+    if (this.isDemoMode) {
+      return demoUsers.find(u => u.id === id);
+    }
+    try {
+      return await this.getDbStorage().getUser(id);
+    } catch (error) {
+      console.log("Database not available for getUser, falling back to demo mode");
+      this.isDemoMode = true;
+      return demoUsers.find(u => u.id === id);
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    if (this.isDemoMode) {
+      return demoUsers.find(u => u.email === email || u.username === email);
+    }
+    try {
+      return await this.getDbStorage().getUserByEmail(email);
+    } catch (error) {
+      console.log("Database not available for getUserByEmail, falling back to demo mode");
+      this.isDemoMode = true;
+      return demoUsers.find(u => u.email === email || u.username === email);
+    }
+  }
+
+  async createUser(user: UpsertUser): Promise<User> {
+    if (this.isDemoMode) {
+      const newUser: User = {
+        id: `demo-${Date.now()}`,
+        username: user.username || user.email.split('@')[0],
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role || 'engineer',
+        isActive: user.isActive !== false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      demoUsers.push(newUser);
+      console.log(`✅ User created in demo mode: ${newUser.email}`);
+      return newUser;
+    }
+    try {
+      return await this.getDbStorage().createUser(user);
+    } catch (error) {
+      console.log("Database not available for createUser, falling back to demo mode");
+      this.isDemoMode = true;
+      const newUser: User = {
+        id: `demo-${Date.now()}`,
+        username: user.username || user.email.split('@')[0],
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role || 'engineer',
+        isActive: user.isActive !== false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      demoUsers.push(newUser);
+      console.log(`✅ User created in demo mode: ${newUser.email}`);
+      return newUser;
+    }
+  }
+
+  async updateUser(id: string, user: Partial<UpsertUser>): Promise<User> {
+    if (this.isDemoMode) {
+      const existingUserIndex = demoUsers.findIndex(u => u.id === id);
+      if (existingUserIndex === -1) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      const existingUser = demoUsers[existingUserIndex];
+      const updatedUser = {
+        ...existingUser,
+        ...user,
+        updatedAt: new Date()
+      };
+      demoUsers[existingUserIndex] = updatedUser;
+      console.log(`✅ User updated in demo mode: ${updatedUser.email}`);
+      return updatedUser;
+    }
+    try {
+      return await this.getDbStorage().updateUser(id, user);
+    } catch (error) {
+      console.log("Database not available for updateUser, falling back to demo mode");
+      this.isDemoMode = true;
+      const existingUserIndex = demoUsers.findIndex(u => u.id === id);
+      if (existingUserIndex === -1) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      const existingUser = demoUsers[existingUserIndex];
+      const updatedUser = {
+        ...existingUser,
+        ...user,
+        updatedAt: new Date()
+      };
+      demoUsers[existingUserIndex] = updatedUser;
+      console.log(`✅ User updated in demo mode: ${updatedUser.email}`);
+      return updatedUser;
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    if (this.isDemoMode) {
+      const userIndex = demoUsers.findIndex(u => u.id === id);
+      if (userIndex === -1) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      const deletedUser = demoUsers.splice(userIndex, 1)[0];
+      console.log(`✅ User deleted in demo mode: ${deletedUser.email}`);
+      return;
+    }
+    try {
+      return await this.getDbStorage().deleteUser(id);
+    } catch (error) {
+      console.log("Database not available for deleteUser, falling back to demo mode");
+      this.isDemoMode = true;
+      const userIndex = demoUsers.findIndex(u => u.id === id);
+      if (userIndex === -1) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      const deletedUser = demoUsers.splice(userIndex, 1)[0];
+      console.log(`✅ User deleted in demo mode: ${deletedUser.email}`);
+      return;
+    }
+  }
+
+  async getAllUsers(): Promise<UserWithMetrics[]> {
+    if (this.isDemoMode) {
+      return demoUsers.map(user => ({ ...user, performanceMetrics: [] }));
+    }
+    try {
+      return await this.getDbStorage().getAllUsers();
+    } catch (error) {
+      console.error("Database error in getAllUsers:", error);
+      console.log("Database not available for getAllUsers, falling back to demo mode");
+      // Don't switch the entire storage to demo mode, just return demo users for this call
+      return demoUsers.map(user => ({ ...user, performanceMetrics: [] }));
+    }
+  }
+
+  async verifyUserPassword(email: string, password: string): Promise<User | null> {
+    // Demo mode authentication
+    if (this.isDemoMode) {
+      // Demo credentials
+      if ((email === 'admin' || email === 'admin@demo.com') && password === 'admin') {
+        return {
+          id: 'demo-admin',
+          username: 'admin',
+          email: 'admin@demo.com',
+          firstName: 'Demo',
+          lastName: 'Admin',
+          role: 'admin',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as User;
+      }
+      if ((email === 'demo' || email === 'demo@demo.com') && password === 'demo') {
+        return {
+          id: 'demo-user',
+          username: 'demo',
+          email: 'demo@demo.com',
+          firstName: 'Demo',
+          lastName: 'User',
+          role: 'engineer',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as User;
+      }
+      return null;
+    }
+    return this.getDbStorage().verifyUserPassword(email, password);
+  }
+
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    return this.getDbStorage().createCustomer(customer);
+  }
+
+  async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> {
+    return this.getDbStorage().updateCustomer(id, customer);
+  }
+
+  async deleteCustomer(id: number): Promise<void> {
+    return this.getDbStorage().deleteCustomer(id);
+  }
+
+  async getCustomerByUsername(username: string): Promise<Customer | undefined> {
+    return this.getDbStorage().getCustomerByUsername(username);
+  }
+
+  async createCustomerWithCredentials(customer: InsertCustomer & { username: string; password: string }): Promise<Customer> {
+    return this.getDbStorage().createCustomerWithCredentials(customer);
+  }
+
+  async updateCustomerCredentials(id: number, username: string, password: string, portalAccess: boolean): Promise<Customer> {
+    return this.getDbStorage().updateCustomerCredentials(id, username, password, portalAccess);
+  }
+
+  async updateCustomerPortalAccess(id: number, data: { username: string; password: string; portalAccess: boolean }): Promise<Customer> {
+    return this.getDbStorage().updateCustomerPortalAccess(id, data);
+  }
+
+  // Forward all task-related methods
+  async getAllTasks(filters?: { assignedTo?: string; fieldEngineerId?: string }): Promise<TaskWithRelations[]> {
+    return this.getDbStorage().getAllTasks(filters);
+  }
+
+  async getTask(id: number): Promise<TaskWithRelations | undefined> {
+    return this.getDbStorage().getTask(id);
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    return this.getDbStorage().createTask(task);
+  }
+
+  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
+    return this.getDbStorage().updateTask(id, task);
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    return this.getDbStorage().deleteTask(id);
+  }
+
+  async getTasksByUser(userId: string): Promise<TaskWithRelations[]> {
+    return this.getDbStorage().getTasksByUser(userId);
+  }
+
+  async getTasksByCustomer(customerId: number): Promise<TaskWithRelations[]> {
+    return this.getDbStorage().getTasksByCustomer(customerId);
+  }
+
+  async searchTasks(query: string): Promise<TaskWithRelations[]> {
+    return this.getDbStorage().searchTasks(query);
+  }
+
+  async getTaskStats(): Promise<{ total: number; pending: number; inProgress: number; approved: number; completed: number; cancelledTasks: number; under3hrs: number; under6hrs: number; under12hrs: number; over12hrs: number; }> {
+    return this.getDbStorage().getTaskStats();
+  }
+
+  async assignTaskToFieldEngineer(taskId: number, fieldEngineerId: string, assignedBy: string): Promise<Task> {
+    return this.getDbStorage().assignTaskToFieldEngineer(taskId, fieldEngineerId, assignedBy);
+  }
+
+  async assignMultipleFieldEngineers(taskId: number, fieldEngineerIds: string[], assignedBy: string): Promise<{ tasks: Task[]; message: string; }> {
+    return this.getDbStorage().assignMultipleFieldEngineers(taskId, fieldEngineerIds, assignedBy);
+  }
+
+  async updateFieldTaskStatus(taskId: number, status: string, userId: string, note?: string): Promise<Task> {
+    return this.getDbStorage().updateFieldTaskStatus(taskId, status, userId, note);
+  }
+
+  async completeFieldTask(taskId: number, userId: string, completionNote: string, files?: string[]): Promise<Task> {
+    return this.getDbStorage().completeFieldTask(taskId, userId, completionNote, files);
+  }
+
+  async getFieldTasksByEngineer(fieldEngineerId: string): Promise<TaskWithRelations[]> {
+    return this.getDbStorage().getFieldTasksByEngineer(fieldEngineerId);
+  }
+
+  async createTaskUpdate(update: InsertTaskUpdate): Promise<TaskUpdate> {
+    return this.getDbStorage().createTaskUpdate(update);
+  }
+
+  async getTaskUpdates(taskId: number): Promise<TaskUpdateWithUser[]> {
+    return this.getDbStorage().getTaskUpdates(taskId);
+  }
+
+  async uploadTaskFiles(taskId: number, files: string[]): Promise<void> {
+    return this.getDbStorage().uploadTaskFiles(taskId, files);
+  }
+
+  async getPerformanceMetrics(userId: string, month?: number, year?: number): Promise<PerformanceMetrics[]> {
+    return this.getDbStorage().getPerformanceMetrics(userId, month, year);
+  }
+
+  async upsertPerformanceMetrics(metrics: InsertPerformanceMetrics): Promise<PerformanceMetrics> {
+    return this.getDbStorage().upsertPerformanceMetrics(metrics);
+  }
+
+  async getTopPerformers(limit?: number): Promise<UserWithMetrics[]> {
+    return this.getDbStorage().getTopPerformers(limit);
+  }
+
+  async calculateUserPerformance(userId: string): Promise<void> {
+    return this.getDbStorage().calculateUserPerformance(userId);
+  }
+
+  async getDashboardStats(): Promise<any> {
+    return this.getDbStorage().getDashboardStats();
+  }
+
+  // Forward all other methods to database storage
+  [key: string]: any;
+}
+
+// Create storage wrapper without initializing database storage initially
+const storageWrapper = new StorageWrapper();
+
+export const storage = new Proxy(storageWrapper, {
+  get(target, prop) {
+    if (prop in target) {
+      return target[prop as keyof StorageWrapper];
+    }
+    // Forward any methods not explicitly defined to the database storage
+    try {
+      return target.getDbStorage()[prop as keyof DatabaseStorage];
+    } catch (error) {
+      // If database is not available, return undefined for missing methods
+      return undefined;
+    }
+  }
+});
+
+// Export demo mode setter for routes to use
+export const setDemoMode = (enabled: boolean) => {
+  storageWrapper.setDemoMode(enabled);
+};

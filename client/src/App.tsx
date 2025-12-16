@@ -23,11 +23,15 @@ import TrackingHistory from "@/pages/tracking-history";
 import OfficeManagement from "@/pages/office-management";
 import Chat from "@/pages/chat";
 import Portal from "@/pages/portal";
+import MobilePortal from "@/pages/mobile-portal";
 import CustomerPortal from "@/pages/customer-portal";
 import UnifiedLogin from "@/pages/unified-login";
 import Sidebar from "@/components/layout/sidebar";
 import NotFound from "@/pages/not-found";
 import RealTimeMonitor from "@/pages/RealTimeMonitor";
+import NetworkMonitoring from "@/pages/NetworkMonitoring";
+import EngineerReports from "@/pages/engineer-reports";
+import ComplaintManagement from "@/pages/complaint-management";
 
 function Router() {
   console.log("Router component rendering...");
@@ -50,9 +54,17 @@ function Router() {
 
   // Handle admin login
   const handleAdminLogin = (user: any) => {
-    // Admin login is handled by the existing useAuth hook
-    // The user will be redirected automatically after successful login
-    window.location.reload();
+    console.log("🔐 Admin login successful, updating auth state:", user);
+    // Set the query data directly - this will trigger a re-render
+    queryClient.setQueryData(["/api/auth/user"], user);
+    // Redirect based on role - use setTimeout to ensure state is updated
+    setTimeout(() => {
+      if (user.role === 'field_engineer') {
+        window.location.href = '/portal';
+      } else {
+        window.location.href = '/';
+      }
+    }, 100);
   };
 
   // Handle customer login  
@@ -108,10 +120,27 @@ function Router() {
 
   // Admin is authenticated, show admin dashboard
   console.log("Showing admin dashboard...");
+  
+  // Check if accessing portal route - show full-screen mobile interface
+  if (location === '/portal' || location === '/mobile') {
+    return <Portal />;
+  }
+  
   return (
-    <div className="flex min-h-screen bg-slate-900">
+    <div className="flex min-h-screen" style={{ 
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%)',
+      backgroundSize: '400% 400%',
+      animation: 'gradientShift 15s ease infinite'
+    }}>
+      <style>{`
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
       <Sidebar />
-      <div className="flex-1 ml-64">
+      <div className="flex-1 ml-72 p-6">
         <Switch>
           <Route path="/" component={(props) => {
             const { user } = useAuth();
@@ -131,12 +160,13 @@ function Router() {
           <Route path="/sql-connections" component={SqlConnections} />
           <Route path="/bot-configuration" component={BotConfiguration} />
           <Route path="/apk-download" component={APKDownload} />
-
           <Route path="/tracking-history" component={TrackingHistory} />
           <Route path="/office-management" component={OfficeManagement} />
           <Route path="/chat" component={Chat} />
-          <Route path="/portal" component={Portal} />
           <Route path="/real-time-monitor" component={RealTimeMonitor} />
+          <Route path="/network-monitoring" component={NetworkMonitoring} />
+          <Route path="/engineer-reports" component={EngineerReports} />
+          <Route path="/complaint-management" component={ComplaintManagement} />
           <Route component={NotFound} />
         </Switch>
       </div>

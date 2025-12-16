@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wizone Task Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            color: #2c5aa0;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c5aa0;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tasks-section {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .section-title {
+            color: #2c5aa0;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .task-card {
+            background: white;
+            border: 2px solid #f1f3f4;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .task-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .task-id {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .task-status {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-in-progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .task-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .task-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            border-top: 1px solid #e1e5e9;
+            display: none;
+        }
+        
+        .navigation.active {
+            display: block;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-around;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .nav-btn {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .offline-banner {
+            background: #ff6b6b;
+            color: white;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .offline-banner.show {
+            display: block;
+        }
+        
+        .profile-section {
+            display: none;
+        }
+        
+        .profile-section.active {
+            display: block;
+        }
+        
+        .profile-info {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 auto 15px;
+        }
+        
+        .profile-name {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .profile-email {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        /* Task Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .task-info {
+            margin-bottom: 20px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .task-description {
+            margin-bottom: 20px;
+        }
+        
+        .task-description p {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .task-updates textarea {
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .update-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .update-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .task-history {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .history-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #28a745;
+        }
+        
+        .history-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        #modalTaskStatus {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="offline-banner" id="offlineBanner">
+            📵 Working in offline mode - Some features may be limited
+        </div>
+        
+        <div class="header">
+            <h1>📋 Wizone Task Manager</h1>
+            <p>Professional Engineering Support</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Login Section -->
+            <div class="auth-container" id="loginSection">
+                <h3 style="color: #2c5aa0; margin-bottom: 20px; text-align: center;">👤 Engineer Login</h3>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="loginBtn">
+                        🔑 Login to Dashboard
+                    </button>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="showOfflineMode()">
+                        📱 Continue Offline
+                    </button>
+                </form>
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e1e5e9; text-align: center; color: #666; font-size: 12px;">
+                    Demo Credentials: admin / admin123
+                </div>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div class="dashboard" id="dashboardSection">
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalTasks">-</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingTasks">-</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="inProgressTasks">-</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedTasks">-</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+                
+                <div class="tasks-section">
+                    <div class="section-title">
+                        🎯 Active Tasks
+                        <button onclick="refreshTasks()" style="margin-left: auto; background: none; border: none; font-size: 16px; cursor: pointer;">🔄</button>
+                    </div>
+                    
+                    <div id="loadingTasks" class="loading">
+                        <div class="spinner"></div>
+                        <div>Loading tasks...</div>
+                    </div>
+                    
+                    <div id="tasksContainer"></div>
+                </div>
+            </div>
+            
+            <!-- Profile Section -->
+            <div class="profile-section" id="profileSection">
+                <div class="profile-info">
+                    <div class="profile-avatar" id="profileAvatar">A</div>
+                    <div class="profile-name" id="profileName">Admin User</div>
+                    <div class="profile-email" id="profileEmail">admin@wizone.com</div>
+                    
+                    <button class="btn" onclick="logout()">
+                        🚪 Logout
+                    </button>
+                </div>
+                
+                <div class="tasks-section">
+                    <div class="section-title">⚙️ Settings</div>
+                    <p style="color: #666; padding: 20px; text-align: center;">Settings and preferences will be available in the next update.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="navigation" id="navigation">
+            <div class="nav-buttons">
+                <button class="nav-btn active" onclick="showDashboard()">🏠 Dashboard</button>
+                <button class="nav-btn" onclick="showProfile()">👤 Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div class="modal" id="taskModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="taskModalTitle">Task Details</h3>
+                <button class="close-btn" onclick="closeTaskModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="task-info">
+                    <div class="info-row">
+                        <strong>Task ID:</strong> <span id="modalTaskId">-</span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Status:</strong> 
+                        <select id="modalTaskStatus" onchange="onStatusChange()">
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="info-row">
+                        <strong>Customer:</strong> <span id="modalCustomer">-</span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Priority:</strong> <span id="modalPriority">-</span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Created:</strong> <span id="modalCreated">-</span>
+                    </div>
+                </div>
+                
+                <div class="task-description">
+                    <strong>Description:</strong>
+                    <p id="modalDescription">-</p>
+                </div>
+                
+                <div class="task-updates">
+                    <strong>Add Update Note:</strong>
+                    <textarea id="taskUpdateNote" placeholder="Enter your update note here..." rows="3"></textarea>
+                    <button class="update-btn" onclick="addTaskUpdate()">Add Update</button>
+                </div>
+                
+                <div class="task-history">
+                    <strong>Update History:</strong>
+                    <div id="taskHistoryList">
+                        <p style="color: #666; font-style: italic;">No updates yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://103.122.85.61:3001/api'; // Back to production IP
+        console.log('🌐 API Base URL configured:', API_BASE_URL);
+        console.log('📱 Mobile interface loaded at:', new Date().toLocaleString());
+        
+        let currentUser = null;
+        let isOnline = navigator.onLine;
+        let offlineMode = false;
+        
+        // Mock data for offline mode
+        const mockTasks = [
+            {
+                id: 1,
+                title: 'System Maintenance',
+                description: 'Perform routine system maintenance and updates',
+                status: 'pending',
+                priority: 'high',
+                customerId: 2,
+                customerName: 'Wizone IT Network',
+                createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 2,
+                title: 'Network Configuration',
+                description: 'Setup new network infrastructure for client',
+                status: 'in-progress',
+                priority: 'medium',
+                customerId: 3,
+                customerName: 'Tech Solutions',
+                createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 3,
+                title: 'Technical Support',
+                description: 'Customer needs assistance with system configuration',
+                status: 'pending',
+                priority: 'medium',
+                customerId: 2,
+                customerName: 'Wizone IT Network',
+                createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+            }
+        ];
+        
+        const mockStats = {
+            totalTasks: 3,
+            pendingTasks: 2,
+            inProgressTasks: 1,
+            completedTasks: 0
+        };
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Wizone Task Manager Mobile App Initialized');
+            
+            // Check network status
+            updateNetworkStatus();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('wizoneUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+                loadDashboardData();
+            }
+        });
+        
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Network status
+            window.addEventListener('online', () => {
+                isOnline = true;
+                updateNetworkStatus();
+                if (currentUser && !offlineMode) {
+                    loadDashboardData();
+                }
+            });
+            
+            window.addEventListener('offline', () => {
+                isOnline = false;
+                updateNetworkStatus();
+            });
+        }
+        
+        function updateNetworkStatus() {
+            const banner = document.getElementById('offlineBanner');
+            if (!isOnline || offlineMode) {
+                banner.classList.add('show');
+            } else {
+                banner.classList.remove('show');
+            }
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('errorMessage');
+            
+            // Show loading state
+            loginBtn.innerHTML = '🔄 Logging in...';
+            loginBtn.disabled = true;
+            errorDiv.style.display = 'none';
+            
+            try {
+                if (!isOnline) {
+                    throw new Error('No internet connection');
+                }
+                
+                console.log('🔐 Starting login request...');
+                console.log('📡 API URL:', `${API_BASE_URL}/auth/login`);
+                console.log('👤 Username:', username);
+                
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                console.log('🌐 Server response received!');
+                console.log('📊 Response status:', response.status);
+                console.log('📋 Response headers:', JSON.stringify([...response.headers.entries()], null, 2));
+                
+                if (!response.ok) {
+                    console.log('❌ Response not OK, attempting to read error data...');
+                    try {
+                        const errorData = await response.json();
+                        console.log('📄 Error response data:', JSON.stringify(errorData, null, 2));
+                        throw new Error(errorData.message || 'Authentication failed');
+                    } catch (parseError) {
+                        console.log('❌ Could not parse error response:', parseError);
+                        const errorText = await response.text();
+                        console.log('📄 Raw error response:', errorText);
+                        throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+                    }
+                }
+                
+                const userData = await response.json();
+                console.log('✅ Raw Database Response:', JSON.stringify(userData, null, 2));
+                
+                // Create user object from database response
+                currentUser = {
+                    id: userData.user?.id || userData.id,
+                    username: userData.user?.username || userData.username,
+                    firstName: userData.user?.firstName || userData.user?.first_name || userData.firstName || userData.first_name,
+                    lastName: userData.user?.lastName || userData.user?.last_name || userData.lastName || userData.last_name,
+                    email: userData.user?.email || userData.email,
+                    role: userData.user?.role || userData.role,
+                    department: userData.user?.department || userData.department,
+                    isActive: userData.user?.active || userData.active,
+                    databaseAuth: true
+                };
+                
+                console.log('🔧 Created currentUser object:', JSON.stringify(currentUser, null, 2));
+                
+                // Save user session
+                localStorage.setItem('wizoneUser', JSON.stringify(currentUser));
+                
+                // Show success and redirect
+                showSuccessMessage(`Login successful! Welcome ${currentUser.firstName}!`);
+                
+                console.log('🎯 Navigating to dashboard...');
+                setTimeout(() => {
+                    console.log('🏠 Showing dashboard');
+                    showDashboard();
+                    console.log('📊 Loading dashboard data');
+                    loadDashboardData();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Database login error:', error);
+                console.error('❌ Error type:', error.constructor.name);
+                console.error('❌ Error stack:', error.stack);
+                
+                // Enhanced error reporting
+                let errorMessage = 'Failed to fetch';
+                if (error.message) {
+                    errorMessage = error.message;
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorMessage = 'Network connection failed - cannot reach server';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out';
+                }
+                
+                // NO FALLBACK AUTHENTICATION - Database only
+                showErrorMessage(`❌ Database authentication failed: ${errorMessage}. Please verify your credentials and network connection.`);
+            } finally {
+                loginBtn.innerHTML = '🔑 Login to Dashboard';
+                loginBtn.disabled = false;
+            }
+        }
+        
+        function showOfflineMode() {
+            offlineMode = true;
+            currentUser = {
+                id: 1,
+                username: 'offline',
+                firstName: 'Offline',
+                lastName: 'User',
+                email: 'offline@wizone.com',
+                role: 'engineer'
+            };
+            
+            updateNetworkStatus();
+            showDashboard();
+            loadOfflineData();
+        }
+        
+        function showDashboard() {
+            console.log('🏠 showDashboard() called');
+            
+            try {
+                // Hide login section
+                const loginSection = document.getElementById('loginSection');
+                if (loginSection) {
+                    loginSection.style.display = 'none';
+                    console.log('✅ Login section hidden');
+                } else {
+                    console.error('❌ Login section not found');
+                }
+                
+                // Show dashboard section
+                const dashboardSection = document.getElementById('dashboardSection');
+                if (dashboardSection) {
+                    dashboardSection.classList.add('active');
+                    console.log('✅ Dashboard section activated');
+                } else {
+                    console.error('❌ Dashboard section not found');
+                }
+                
+                // Hide profile section
+                const profileSection = document.getElementById('profileSection');
+                if (profileSection) {
+                    profileSection.classList.remove('active');
+                }
+                
+                // Show navigation
+                const navigation = document.getElementById('navigation');
+                if (navigation) {
+                    navigation.classList.add('active');
+                    console.log('✅ Navigation activated');
+                } else {
+                    console.error('❌ Navigation not found');
+                }
+                
+                // Update navigation
+                updateNavigation('dashboard');
+                console.log('✅ Dashboard shown successfully');
+                
+            } catch (error) {
+                console.error('❌ Error in showDashboard():', error);
+            }
+        }
+        
+        function showProfile() {
+            document.getElementById('dashboardSection').classList.remove('active');
+            document.getElementById('profileSection').classList.add('active');
+            
+            // Update profile info
+            if (currentUser) {
+                document.getElementById('profileName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+                document.getElementById('profileEmail').textContent = currentUser.email;
+                document.getElementById('profileAvatar').textContent = currentUser.firstName.charAt(0).toUpperCase();
+            }
+            
+            // Update navigation
+            updateNavigation('profile');
+        }
+        
+        function updateNavigation(active) {
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            
+            if (active === 'dashboard') {
+                navBtns[0].classList.add('active');
+            } else if (active === 'profile') {
+                navBtns[1].classList.add('active');
+            }
+        }
+        
+        async function loadDashboardData() {
+            if (offlineMode || !isOnline) {
+                loadOfflineData();
+                return;
+            }
+            
+            try {
+                console.log('📊 Loading dashboard stats...');
+                // Load stats
+                const statsResponse = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile',
+                        'Authorization': `Bearer ${currentUser?.id || 'none'}`
+                    }
+                });
+                
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    console.log('📊 Stats received:', stats);
+                    updateStatsDisplay(stats);
+                } else {
+                    console.error('❌ Stats API failed:', statsResponse.status);
+                    // Calculate stats from loaded tasks as fallback
+                    calculateStatsFromTasks();
+                }
+                
+                // Load tasks
+                await loadTasks();
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                loadOfflineData();
+            }
+        }
+        
+        function loadOfflineData() {
+            updateStatsDisplay(mockStats);
+            displayTasks(mockTasks);
+            
+            // Hide loading
+            document.getElementById('loadingTasks').style.display = 'none';
+        }
+        
+        async function loadTasks() {
+            const loadingEl = document.getElementById('loadingTasks');
+            const containerEl = document.getElementById('tasksContainer');
+            
+            loadingEl.style.display = 'block';
+            containerEl.innerHTML = '';
+            
+            try {
+                if (!isOnline || offlineMode) {
+                    throw new Error('Offline mode');
+                }
+                
+                console.log('🌐 Fetching tasks from:', `${API_BASE_URL}/tasks`);
+                console.log('👤 Current user ID for filtering:', currentUser.id);
+                
+                const response = await fetch(`${API_BASE_URL}/tasks`, {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile',
+                        'Authorization': `Bearer ${currentUser?.id || 'none'}`
+                    }
+                });
+                console.log('📡 Tasks API response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load tasks: ${response.status} ${response.statusText}`);
+                }
+                
+                const allTasks = await response.json();
+                console.log('📋 All tasks loaded:', allTasks.length);
+                console.log('📊 First 3 tasks structure:', JSON.stringify(allTasks.slice(0, 3), null, 2));
+                console.log('🔍 Current user for filtering:', JSON.stringify(currentUser, null, 2));
+                
+                // Filter tasks for current user based on database schema
+                const userTasks = allTasks.filter((task, index) => {
+                    const isAssigned = (
+                        // ID-based matching (actual database fields)
+                        task.assignedTo === currentUser.id ||
+                        task.assigned_to === currentUser.id ||
+                        task.fieldEngineerId === currentUser.id ||
+                        task.field_engineer_id === currentUser.id ||
+                        
+                        // Name-based matching (actual database fields)
+                        task.assignedToName?.toLowerCase() === currentUser.username?.toLowerCase() ||
+                        task.assigned_to_name?.toLowerCase() === currentUser.username?.toLowerCase() ||
+                        task.fieldEngineerName?.toLowerCase() === currentUser.username?.toLowerCase() ||
+                        task.field_engineer_name?.toLowerCase() === currentUser.username?.toLowerCase() ||
+                        task.assignedToName?.toLowerCase() === currentUser.firstName?.toLowerCase() ||
+                        task.assigned_to_name?.toLowerCase() === currentUser.firstName?.toLowerCase() ||
+                        task.fieldEngineerName?.toLowerCase() === currentUser.firstName?.toLowerCase() ||
+                        task.field_engineer_name?.toLowerCase() === currentUser.firstName?.toLowerCase()
+                    );
+                    
+                    // Debug first 3 tasks
+                    if (index < 3) {
+                        console.log(`🔍 Task ${index + 1} Assignment Check:`, {
+                            taskId: task.id,
+                            title: task.title,
+                            assignedTo: task.assignedTo,
+                            assigned_to: task.assigned_to,
+                            assignedToName: task.assignedToName,
+                            assigned_to_name: task.assigned_to_name,
+                            fieldEngineerId: task.fieldEngineerId,
+                            field_engineer_id: task.field_engineer_id,
+                            fieldEngineerName: task.fieldEngineerName,
+                            field_engineer_name: task.field_engineer_name,
+                            isAssigned: isAssigned,
+                            currentUserId: currentUser.id,
+                            currentUserName: currentUser.username,
+                            currentUserFirstName: currentUser.firstName
+                        });
+                    }
+                    
+                    if (isAssigned) {
+                        console.log('✅ Task assigned to user:', {
+                            taskId: task.id,
+                            title: task.title,
+                            assignedTo: task.assignedTo,
+                            assignedToName: task.assignedToName,
+                            fieldEngineerId: task.fieldEngineerId,
+                            fieldEngineerName: task.fieldEngineerName
+                        });
+                    }
+                    
+                    return isAssigned;
+                });
+                
+                console.log(`📊 Filtered tasks for ${currentUser.username}:`, userTasks.length);
+                displayTasks(userTasks);
+                
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                displayTasks(mockTasks);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+        
+        function displayTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            
+            // Store tasks globally for modal access
+            window.currentTasks = tasks;
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No tasks available</p>';
+                return;
+            }
+            
+            container.innerHTML = tasks.map(task => `
+                <div class="task-card" onclick="openTask(${task.id})" style="cursor: pointer;">
+                    <div class="task-header">
+                        <div class="task-id">#${task.id}</div>
+                        <div class="task-status status-${task.status.replace(/[^a-zA-Z0-9]/g, '-')}">${task.status}</div>
+                    </div>
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-description">${task.description}</div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #888;">
+                        📅 ${formatDate(task.createdAt)} | 🏢 ${task.customerName || 'Unknown Customer'}
+                    </div>
+                </div>
+            `).join('');
+            
+            // Update stats based on displayed tasks
+            calculateStatsFromTasks();
+        }
+        
+        let currentTaskData = null;
+        
+        async function openTask(taskId) {
+            console.log('🔍 Opening task:', taskId);
+            
+            try {
+                // Fetch task details from server
+                const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+                    headers: {
+                        'X-Mobile-App': 'WizoneFieldEngineerApp'
+                    }
+                });
+                
+                if (response.ok) {
+                    const task = await response.json();
+                    currentTaskData = task;
+                    showTaskModal(task);
+                } else {
+                    console.error('❌ Failed to load task details');
+                    // Fallback to finding task in current loaded tasks
+                    const loadedTasks = document.getElementById('tasksContainer').children;
+                    const task = findTaskById(taskId);
+                    if (task) {
+                        currentTaskData = task;
+                        showTaskModal(task);
+                    } else {
+                        alert('Could not load task details. Please try again.');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error loading task:', error);
+                alert('Could not load task details. Please try again.');
+            }
+        }
+        
+        function findTaskById(taskId) {
+            // Try to find task in mockTasks or any loaded task data
+            if (window.currentTasks) {
+                return window.currentTasks.find(t => t.id === taskId);
+            }
+            return mockTasks.find(t => t.id === taskId);
+        }
+        
+        function showTaskModal(task) {
+            // Populate modal with task data - use ticketNumber instead of internal ID
+            document.getElementById('modalTaskId').textContent = task.ticketNumber || `#${task.id}`;
+            document.getElementById('taskModalTitle').textContent = task.title || 'Task Details';
+            document.getElementById('modalTaskStatus').value = task.status || 'pending';
+            document.getElementById('modalCustomer').textContent = task.customerName || 'Unknown Customer';
+            document.getElementById('modalPriority').textContent = task.priority || 'Medium';
+            document.getElementById('modalCreated').textContent = formatDate(task.createdAt || new Date());
+            document.getElementById('modalDescription').textContent = task.description || 'No description available';
+            
+            // Load task history
+            loadTaskHistory(task.id);
+            
+            // Show modal
+            document.getElementById('taskModal').style.display = 'flex';
+        }
+        
+        function closeTaskModal() {
+            document.getElementById('taskModal').style.display = 'none';
+            currentTaskData = null;
+        }
+        
+        async function loadTaskHistory(taskId) {
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/updates`, {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile',
+                        'Authorization': `Bearer ${currentUser?.id || 'none'}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const history = await response.json();
+                    displayTaskHistory(history);
+                } else {
+                    console.error('History API error:', response.status, response.statusText);
+                    document.getElementById('taskHistoryList').innerHTML = '<p style="color: #666; font-style: italic;">No update history available</p>';
+                }
+            } catch (error) {
+                console.error('❌ Error loading task history:', error);
+                document.getElementById('taskHistoryList').innerHTML = '<p style="color: #666; font-style: italic;">Could not load history</p>';
+            }
+        }
+        
+        function displayTaskHistory(history) {
+            const historyContainer = document.getElementById('taskHistoryList');
+            if (!history || history.length === 0) {
+                historyContainer.innerHTML = '<p style="color: #666; font-style: italic;">No updates yet</p>';
+                return;
+            }
+            
+            historyContainer.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div class="history-meta">
+                        ${formatDate(item.createdAt)} - ${item.createdByName || item.updatedByUser?.username || 'System'}
+                    </div>
+                    <div>${item.message || item.notes || item.description || 'Status updated'}</div>
+                    ${item.type ? `<div style="font-size: 12px; color: #666; margin-top: 5px;">Type: ${item.type}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function onStatusChange() {
+            const newStatus = document.getElementById('modalTaskStatus').value;
+            if (!currentTaskData) return;
+            
+            const confirmation = confirm(`Are you sure you want to change the task status to "${newStatus}"?`);
+            if (!confirmation) {
+                document.getElementById('modalTaskStatus').value = currentTaskData.status;
+                return;
+            }
+            
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${API_BASE_URL}/tasks/${currentTaskData.id}`, {
+                    method: 'PUT',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile',
+                        'Authorization': `Bearer ${currentUser?.id || 'none'}`
+                    },
+                    body: JSON.stringify({ 
+                        status: newStatus
+                    })
+                });
+                
+                if (response.ok) {
+                    currentTaskData.status = newStatus;
+                    alert('Task status updated successfully!');
+                    loadTaskHistory(currentTaskData.id);
+                    refreshTasks(); // Refresh the main task list
+                } else {
+                    const errorData = await response.text();
+                    console.error('Status update failed:', response.status, errorData);
+                    throw new Error('Failed to update status');
+                }
+            } catch (error) {
+                console.error('❌ Error updating task status:', error);
+                alert('Failed to update task status. Please try again.');
+                document.getElementById('modalTaskStatus').value = currentTaskData.status;
+            }
+        }
+        
+        async function addTaskUpdate() {
+            const note = document.getElementById('taskUpdateNote').value.trim();
+            if (!note) {
+                alert('Please enter an update note.');
+                return;
+            }
+            
+            if (!currentTaskData) {
+                alert('No task selected.');
+                return;
+            }
+            
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${API_BASE_URL}/tasks/${currentTaskData.id}`, {
+                    method: 'PUT',
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'WizoneFieldEngineerApp',
+                        'X-Requested-With': 'mobile',
+                        'Authorization': `Bearer ${currentUser?.id || 'none'}`
+                    },
+                    body: JSON.stringify({
+                        notes: note
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('taskUpdateNote').value = '';
+                    alert('Update added successfully!');
+                    loadTaskHistory(currentTaskData.id);
+                    refreshTasks();
+                } else {
+                    const errorData = await response.text();
+                    console.error('Update failed:', response.status, errorData);
+                    throw new Error('Failed to add update');
+                }
+            } catch (error) {
+                console.error('❌ Error adding task update:', error);
+                alert('Failed to add update. Please try again.');
+            }
+        }
+        
+        function updateStatsDisplay(stats) {
+            console.log('📊 Updating stats display with:', stats);
+            
+            // Handle different possible field names from API
+            const totalTasks = stats.totalTasks || stats.total || 0;
+            const pendingTasks = stats.pendingTasks || stats.pending || 0;
+            const inProgressTasks = stats.inProgressTasks || stats.inProgress || stats.in_progress || 0;
+            const completedTasks = stats.completedTasks || stats.completed || 0;
+            
+            document.getElementById('totalTasks').textContent = totalTasks;
+            document.getElementById('pendingTasks').textContent = pendingTasks;
+            document.getElementById('inProgressTasks').textContent = inProgressTasks;
+            document.getElementById('completedTasks').textContent = completedTasks;
+            
+            console.log('📊 Stats updated:', { totalTasks, pendingTasks, inProgressTasks, completedTasks });
+        }
+        
+        function calculateStatsFromTasks() {
+            const tasks = window.currentTasks || [];
+            const stats = {
+                totalTasks: tasks.length,
+                pendingTasks: tasks.filter(t => t.status === 'pending').length,
+                inProgressTasks: tasks.filter(t => t.status === 'in_progress' || t.status === 'in progress').length,
+                completedTasks: tasks.filter(t => t.status === 'completed').length
+            };
+            
+            console.log('📊 Calculated stats from tasks:', stats);
+            updateStatsDisplay(stats);
+        }
+        
+        function refreshTasks() {
+            if (currentUser) {
+                loadTasks();
+            }
+        }
+        
+        function logout() {
+            currentUser = null;
+            offlineMode = false;
+            localStorage.removeItem('wizoneUser');
+            
+            // Reset UI
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboardSection').classList.remove('active');
+            document.getElementById('profileSection').classList.remove('active');
+            document.getElementById('navigation').classList.remove('active');
+            
+            // Clear form
+            document.getElementById('loginForm').reset();
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // Update network status
+            updateNetworkStatus();
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            
+            if (diffHours < 1) {
+                return 'Just now';
+            } else if (diffHours < 24) {
+                return `${diffHours}h ago`;
+            } else {
+                const diffDays = Math.floor(diffHours / 24);
+                return `${diffDays}d ago`;
+            }
+        }
+        
+        function showErrorMessage(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showSuccessMessage(message) {
+            // Create and show success message
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.parentNode.insertBefore(successDiv, errorDiv);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 3000);
+        }
+        
+        console.log('Wizone Task Manager Mobile Interface Ready');
+    </script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wizone IT Support</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .header {
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin: 4px 0 0 0;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h2 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .card p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        
+        .status-pending {
+            background-color: #FEF9C3;
+            color: #854D0E;
+        }
+        
+        .status-progress {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+        
+        .status-completed {
+            background-color: #DCFCE7;
+            color: #166534;
+        }
+        
+        .task-list {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .task-item {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #667eea;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .task-id {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .task-date {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .task-customer {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .task-description {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .version-info {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        /* Dialog styles */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .dialog-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .dialog-content {
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-cancel {
+            background: #f3f4f6;
+            color: #333;
+        }
+
+        .btn-dialog {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>Wizone IT Support</h1>
+            <p>Task Management Portal</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="card">
+                <h2>My Dashboard</h2>
+                <p>Welcome to the Wizone IT Support mobile application. This interface allows you to manage your assigned tasks.</p>
+                
+                <div style="display: flex; justify-content: space-between; margin-top: 16px;">
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 24px; font-weight: 600; color: #667eea;">12</div>
+                        <div style="font-size: 12px; color: #666;">Total Tasks</div>
+                    </div>
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 24px; font-weight: 600; color: #FFA500;">5</div>
+                        <div style="font-size: 12px; color: #666;">In Progress</div>
+                    </div>
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 24px; font-weight: 600; color: #10B981;">7</div>
+                        <div style="font-size: 12px; color: #666;">Completed</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="task-list">
+                <div class="task-item" onclick="showUpdateDialog(1)">
+                    <div class="task-header">
+                        <span class="task-id">TSK-2023-001</span>
+                        <span class="task-date">Oct 10, 2023</span>
+                    </div>
+                    <div class="task-customer">Customer: Tata Technologies Ltd</div>
+                    <div class="task-description">Network connectivity issues in conference room</div>
+                    <div class="task-footer">
+                        <span class="status-badge status-pending">Pending</span>
+                    </div>
+                </div>
+                
+                <div class="task-item" onclick="showUpdateDialog(2)">
+                    <div class="task-header">
+                        <span class="task-id">TSK-2023-002</span>
+                        <span class="task-date">Oct 9, 2023</span>
+                    </div>
+                    <div class="task-customer">Customer: Infosys Solutions</div>
+                    <div class="task-description">Printer installation for new office setup</div>
+                    <div class="task-footer">
+                        <span class="status-badge status-progress">In Progress</span>
+                    </div>
+                </div>
+                
+                <div class="task-item" onclick="showUpdateDialog(3)">
+                    <div class="task-header">
+                        <span class="task-id">TSK-2023-003</span>
+                        <span class="task-date">Oct 8, 2023</span>
+                    </div>
+                    <div class="task-customer">Customer: Reliance Digital</div>
+                    <div class="task-description">Server maintenance and security updates</div>
+                    <div class="task-footer">
+                        <span class="status-badge status-completed">Completed</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="syncTasks()">Sync Tasks</button>
+        </div>
+        
+        <div class="version-info">v1.1.5 Fixed</div>
+    </div>
+
+    <!-- Update Task Dialog -->
+    <div class="dialog-overlay" id="updateDialog">
+        <div class="dialog">
+            <div class="dialog-title">Update Task</div>
+            <div class="dialog-content">
+                <div class="form-group">
+                    <label for="taskStatus">Task Status</label>
+                    <select id="taskStatus">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskNotes">Task Notes</label>
+                    <textarea id="taskNotes" placeholder="Enter your notes here..."></textarea>
+                </div>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn-dialog btn-cancel" onclick="hideUpdateDialog()">Cancel</button>
+                <button class="btn-dialog btn-primary" onclick="updateTask()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+        
+        function showUpdateDialog(taskId) {
+            currentTaskId = taskId;
+            
+            // Set current status based on task
+            let statusValue = 'pending';
+            if (taskId === 2) statusValue = 'in_progress';
+            if (taskId === 3) statusValue = 'completed';
+            
+            document.getElementById('taskStatus').value = statusValue;
+            document.getElementById('updateDialog').style.display = 'flex';
+        }
+        
+        function hideUpdateDialog() {
+            document.getElementById('updateDialog').style.display = 'none';
+            currentTaskId = null;
+        }
+        
+        function updateTask() {
+            const status = document.getElementById('taskStatus').value;
+            const notes = document.getElementById('taskNotes').value;
+            
+            // Here would be API call in a real app
+            console.log('Updating task ' + currentTaskId + ' with status: ' + status + ' and notes: ' + notes);
+            
+            // Update UI to reflect the change
+            const taskItems = document.querySelectorAll('.task-item');
+            const statusBadge = taskItems[currentTaskId - 1].querySelector('.status-badge');
+            
+            statusBadge.className = 'status-badge';
+            if (status === 'pending') {
+                statusBadge.classList.add('status-pending');
+                statusBadge.textContent = 'Pending';
+            } else if (status === 'in_progress') {
+                statusBadge.classList.add('status-progress');
+                statusBadge.textContent = 'In Progress';
+            } else {
+                statusBadge.classList.add('status-completed');
+                statusBadge.textContent = 'Completed';
+            }
+            
+            hideUpdateDialog();
+            
+            // Show confirmation
+            alert('Task updated successfully!');
+        }
+        
+        function syncTasks() {
+            alert('Syncing tasks with server...');
+            // In a real app, this would call an API
+        }
+    </script>
+</body>
+</html>

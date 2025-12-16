@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WiZone TaskManager - Simplified v1.6</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+            font-size: 16px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .form-container {
+            padding: 24px 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-bottom: 16px;
+        }
+        
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .debug-toggle {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #6b7280;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+        
+        .debug-toggle:active {
+            background: #f3f4f6;
+        }
+        
+        .debug-panel {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            display: none;
+        }
+        
+        .debug-panel.show {
+            display: block;
+        }
+        
+        .debug-item {
+            font-size: 11px;
+            color: #6b7280;
+            background: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            border: 1px solid #e5e7eb;
+            word-break: break-all;
+        }
+        
+        .debug-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .connection-test {
+            background: #fefce8;
+            border: 1px solid #fde047;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        
+        .status-dot.success {
+            background: #22c55e;
+        }
+        
+        .status-dot.error {
+            background: #ef4444;
+        }
+        
+        .status-dot.pending {
+            background: #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 WiZone TaskManager</h1>
+            <p>Simplified v1.6 - CORS Fixed</p>
+        </div>
+        
+        <div class="form-container">
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <div class="connection-test">
+                <div class="connection-status">
+                    <div id="statusDot" class="status-dot pending"></div>
+                    <span id="connectionStatus">Testing server connection...</span>
+                </div>
+                <div id="connectionDetails" style="font-size: 11px; color: #6b7280;">Initializing...</div>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" value="test@example.com" required autocomplete="email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" value="password123" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="loginBtn" class="login-btn">🔐 Sign In</button>
+            </form>
+            
+            <div class="debug-toggle" onclick="toggleDebug()">
+                👨‍💻 Toggle Debug Info
+            </div>
+            
+            <div id="debugPanel" class="debug-panel">
+                <div id="debugLog" class="debug-item">Debug log will appear here...</div>
+                <div id="requestLog" class="debug-item">Request details will appear here...</div>
+                <div id="responseLog" class="debug-item">Response details will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://103.122.85.61:3001';
+        
+        // Elements
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const statusDiv = document.getElementById('status');
+        const statusDot = document.getElementById('statusDot');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionDetails = document.getElementById('connectionDetails');
+        const debugPanel = document.getElementById('debugPanel');
+        const debugLog = document.getElementById('debugLog');
+        const requestLog = document.getElementById('requestLog');
+        const responseLog = document.getElementById('responseLog');
+        
+        // Utility functions
+        function timestamp() {
+            return new Date().toLocaleTimeString();
+        }
+        
+        function log(message, type = 'info') {
+            const logMsg = `[${timestamp()}] ${message}`;
+            console.log(logMsg);
+            debugLog.textContent = logMsg;
+        }
+        
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+        
+        function toggleDebug() {
+            debugPanel.classList.toggle('show');
+        }
+        
+        // Test server connectivity
+        async function testConnection() {
+            log('🔄 Testing server connection...', 'info');
+            connectionStatus.textContent = 'Testing connection...';
+            connectionDetails.textContent = 'Checking server accessibility...';
+            
+            try {
+                // Simple fetch to test basic connectivity
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Mobile-App': 'true',
+                        'X-Requested-With': 'com.wizone.taskmanager'
+                    }
+                });
+                
+                if (response.ok) {
+                    statusDot.className = 'status-dot success';
+                    connectionStatus.textContent = 'Server connected ✅';
+                    connectionDetails.textContent = `Ready for login (Response: ${response.status})`;
+                    log('✅ Server connection successful', 'success');
+                } else {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                
+            } catch (error) {
+                statusDot.className = 'status-dot error';
+                connectionStatus.textContent = 'Connection failed ❌';
+                connectionDetails.textContent = `Error: ${error.message}`;
+                log(`❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Simplified login function
+        async function performLogin(email, password) {
+            log('🔑 Starting login...', 'info');
+            loginBtn.disabled = true;
+            loginBtn.textContent = '🔄 Signing in...';
+            
+            const loginData = { email, password };
+            
+            try {
+                log('📤 Sending login request...', 'info');
+                requestLog.textContent = `POST ${API_BASE}/api/auth/login`;
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Mobile-App': 'true',
+                        'X-Requested-With': 'com.wizone.taskmanager'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(loginData)
+                });
+                
+                log(`📡 Response: ${response.status}`, 'info');
+                responseLog.textContent = `Status: ${response.status} ${response.statusText}`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Login successful!', 'success');
+                    showStatus(`✅ Welcome back, ${data.user?.name || 'User'}!`, 'success');
+                    responseLog.textContent += ` | User: ${data.user?.name || 'Unknown'}`;
+                    
+                    // Could redirect to dashboard here
+                    setTimeout(() => {
+                        showStatus('✅ Login complete - Ready for app features', 'success');
+                    }, 2000);
+                    
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Login failed: ${response.status}`, 'error');
+                    showStatus(`❌ Login failed: ${errorText}`, 'error');
+                    responseLog.textContent += ` | Error: ${errorText}`;
+                }
+                
+            } catch (error) {
+                log(`💥 Login error: ${error.message}`, 'error');
+                showStatus(`💥 Login error: ${error.message}`, 'error');
+                responseLog.textContent = `Network error: ${error.message}`;
+                
+                if (error.message.includes('Failed to fetch')) {
+                    connectionDetails.textContent = 'Network error - Check connection';
+                    statusDot.className = 'status-dot error';
+                }
+                
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '🔐 Sign In';
+            }
+        }
+        
+        // Event listeners
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showStatus('❌ Please enter both email and password', 'error');
+                return;
+            }
+            
+            await performLogin(email, password);
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 App initialized - v1.6', 'success');
+            showStatus('📱 App loaded - Testing connection...', 'info');
+            
+            // Test connection after a short delay
+            setTimeout(testConnection, 500);
+        });
+    </script>
+</body>
+</html>
