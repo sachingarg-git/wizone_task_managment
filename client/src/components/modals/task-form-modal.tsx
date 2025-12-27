@@ -83,6 +83,8 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
   const [newIssueType, setNewIssueType] = useState("");
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [customerSearchValue, setCustomerSearchValue] = useState("");
+  const [issueTypeSearchOpen, setIssueTypeSearchOpen] = useState(false);
+  const [issueTypeSearchValue, setIssueTypeSearchValue] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -123,7 +125,7 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     }
   };
 
-  // Default issue types
+  // Default issue types (all under 50 characters for database)
   const defaultIssueTypes = [
     "NETWORK CONNECTIVITY",
     "SPEED ISSUES", 
@@ -133,19 +135,22 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
     "SOFTWARE ISSUE",
     "MAINTENANCE",
     "CCTV MAINTENANCE",
-    "NEW ACTION",
     "NEW INSTALLATION",
-    "PLAN ACTION",
     "MATERIAL DELIVERED",
     "MATERIAL RECEIVED",
     "AMC CUSTOMER (SERVICES)",
     "NON AMC (SERVICES)",
     "TOWER MAINTENANCE",
-    "INTERCOM ISSUE",
-    "SERVER INSTALLATION",
-    "SERVER MAINTENANCE",
+    "INTERCOM RELATED ISSUE",
     "OFFICE SUPPORT",
-    "FLAT WORK (ANY)"
+    "FLAT WORK (ANY)",
+    "PRINTER RELATED ISSUE",
+    "BIOMETRIC RELATED ISSUE",
+    "LOCAL NETWORKING ISSUE",
+    "DESKTOP/LAPTOP SUPPORT",
+    "UPS AND POWER RELATED",
+    "SOFTWARE SERVICES",
+    "NEW REQUIREMENT"
   ];
 
   // Combined issue types
@@ -201,16 +206,18 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       console.log('🚀 Task creation payload (schema-compliant):', payload);
       await apiRequest("POST", "/api/tasks", payload);
     },
-    onSuccess: () => {
-      // Invalidate all task-related queries to ensure list updates
-      queryClient.invalidateQueries({ 
+    onSuccess: async () => {
+      // Invalidate and refetch all task-related queries to ensure list updates immediately
+      await queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
           return typeof key === 'string' && key.includes('/api/tasks');
         }
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      // Force refetch tasks to update the list immediately
+      await queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success",
         description: "Task created successfully",
@@ -286,6 +293,15 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
       customer.email?.toLowerCase().includes(customerSearchValue.toLowerCase())
     );
   }, [customers, customerSearchValue]);
+
+  // Filter issue types based on search
+  const filteredIssueTypes = useMemo(() => {
+    if (!issueTypeSearchValue) return allIssueTypes;
+    
+    return allIssueTypes.filter((type) =>
+      type.toLowerCase().includes(issueTypeSearchValue.toLowerCase())
+    );
+  }, [allIssueTypes, issueTypeSearchValue]);
 
   // Get selected customer name for display and auto-populate fields
   const selectedCustomer = useMemo(() => {
@@ -665,96 +681,135 @@ export default function TaskFormModal({ isOpen, onClose, taskId }: TaskFormModal
                   control={form.control}
                   name="issueType"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Issue Type *</FormLabel>
-                      <div className="space-y-2">
-                        <Select onValueChange={field.onChange} value={field.value}>
+                      <Popover open={issueTypeSearchOpen} onOpenChange={setIssueTypeSearchOpen}>
+                        <PopoverTrigger asChild>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Issue Type" />
-                            </SelectTrigger>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={issueTypeSearchOpen}
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value || "Search and select issue type..."}
+                              <div className="flex items-center space-x-1">
+                                <Search className="h-4 w-4 opacity-50" />
+                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                              </div>
+                            </Button>
                           </FormControl>
-                          <SelectContent>
-                            {allIssueTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                            <div className="border-t pt-2 mt-2">
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput 
+                              placeholder="Search issue types..." 
+                              value={issueTypeSearchValue}
+                              onValueChange={setIssueTypeSearchValue}
+                            />
+                            <CommandEmpty>No issue type found.</CommandEmpty>
+                            <CommandGroup className="max-h-64 overflow-auto">
+                              {filteredIssueTypes.map((type) => (
+                                <CommandItem
+                                  key={type}
+                                  value={type}
+                                  onSelect={() => {
+                                    field.onChange(type);
+                                    setIssueTypeSearchOpen(false);
+                                    setIssueTypeSearchValue("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === type ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <span>{type}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                            <div className="border-t p-2">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 className="w-full justify-start text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
-                                onClick={() => setShowAddIssueType(true)}
+                                onClick={() => {
+                                  setShowAddIssueType(true);
+                                  setIssueTypeSearchOpen(false);
+                                }}
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Add Custom Issue Type
                               </Button>
                             </div>
-                          </SelectContent>
-                        </Select>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
 
-                        {/* Add Custom Issue Type Input */}
-                        {showAddIssueType && (
-                          <div className="flex gap-2 p-2 border rounded-md bg-gray-50">
-                            <Input
-                              placeholder="Enter new issue type"
-                              value={newIssueType}
-                              onChange={(e) => setNewIssueType(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddIssueType();
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={handleAddIssueType}
-                              className="bg-cyan-600 hover:bg-cyan-700"
-                            >
-                              Add
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setShowAddIssueType(false);
-                                setNewIssueType("");
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        )}
+                      {/* Add Custom Issue Type Input */}
+                      {showAddIssueType && (
+                        <div className="flex gap-2 p-2 border rounded-md bg-gray-50 mt-2">
+                          <Input
+                            placeholder="Enter new issue type"
+                            value={newIssueType}
+                            onChange={(e) => setNewIssueType(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddIssueType();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleAddIssueType}
+                            className="bg-cyan-600 hover:bg-cyan-700"
+                          >
+                            Add
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setShowAddIssueType(false);
+                              setNewIssueType("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
 
-                        {/* Display Custom Issue Types */}
-                        {customIssueTypes.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {customIssueTypes.map((type) => (
-                              <Badge
-                                key={type}
-                                variant="secondary"
-                                className="bg-cyan-100 text-cyan-700 border-cyan-200"
-                              >
-                                {type}
-                                <X
-                                  className="w-3 h-3 ml-1 cursor-pointer hover:text-cyan-900"
-                                  onClick={() => {
-                                    setCustomIssueTypes(prev => prev.filter(t => t !== type));
-                                    if (field.value === type) {
-                                      form.setValue("issueType", "");
-                                    }
-                                  }}
-                                />
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* Display Custom Issue Types */}
+                      {customIssueTypes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {customIssueTypes.map((type) => (
+                            <Badge
+                              key={type}
+                              variant="secondary"
+                              className="bg-cyan-100 text-cyan-700 border-cyan-200"
+                            >
+                              {type}
+                              <X
+                                className="w-3 h-3 ml-1 cursor-pointer hover:text-cyan-900"
+                                onClick={() => {
+                                  setCustomIssueTypes(prev => prev.filter(t => t !== type));
+                                  if (field.value === type) {
+                                    form.setValue("issueType", "");
+                                  }
+                                }}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

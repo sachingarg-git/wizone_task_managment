@@ -31,7 +31,7 @@ import { db, sql, schema, client } from "./database-init.js";
 import { sendTaskAssignmentNotification, sendTaskStatusNotification } from "./push-notifications";
 import { eq } from "drizzle-orm";
 import mobileAuthRoutes from "./routes/mobile-auth";
-import { sendDailySummaryNotification, getDailySummaryData } from "./scheduled-notifications";
+import { sendDailySummaryNotification, getDailySummaryData, send3HourTaskNotification, getPendingInProgressTasks } from "./scheduled-notifications";
 
 // PostgreSQL database helper functions
 async function getUserFromDatabase(userId: string) {
@@ -5109,6 +5109,41 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     }
   });
 
+  // Manually trigger 3-hour pending/in-progress task notification (for testing)
+  app.post("/api/test/send-3hour-notification", isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can trigger 3-hour task notifications" });
+      }
+
+      console.log("📤 Manual trigger: Sending 3-hour pending/in-progress task notification...");
+      
+      // Get the task data first to return counts
+      const tasksData = await getPendingInProgressTasks();
+      const success = await send3HourTaskNotification();
+      
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "3-hour task notification sent successfully!",
+          pendingCount: tasksData.pending.length,
+          inProgressCount: tasksData.inProgress.length,
+          totalTasks: tasksData.pending.length + tasksData.inProgress.length
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Failed to send 3-hour task notification. Check server logs." 
+        });
+      }
+    } catch (error) {
+      console.error("Error sending 3-hour task notification:", error);
+      res.status(500).json({ message: "Failed to send 3-hour task notification" });
+    }
+  });
+
   // Debug user endpoint
   app.post('/api/debug-user', async (req, res) => {
     try {
@@ -6458,12 +6493,12 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       // Admin and manager can see all reports, others only see their own
       if (userRole === 'admin' || userRole === 'manager') {
-        reports = await sql`
+        reports = await client`
           SELECT * FROM daily_reports 
           ORDER BY report_date DESC
         `;
       } else {
-        reports = await sql`
+        reports = await client`
           SELECT * FROM daily_reports 
           WHERE engineer_id = ${typeof userId === 'number' ? userId : parseInt(userId) || 0}
           ORDER BY report_date DESC
@@ -6472,7 +6507,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       res.json(reports);
     } catch (error: any) {
-      console.error('? Error fetching daily reports:', error);
+      console.error('❌ Error fetching daily reports:', error);
       res.status(500).json({ 
         message: 'Failed to fetch daily reports',
         error: error.message 
@@ -6496,8 +6531,8 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
         dateFilter = `WHERE report_date >= '${monthAgo.toISOString()}'`;
       }
       
-      // Get total stats
-      const totalStats = await sql.unsafe(`
+      // Get total stats - use client directly for raw queries
+      const totalStats = await client.unsafe(`
         SELECT 
           COUNT(*) as total_reports,
           SUM(sites_visited) as total_sites_visited,
@@ -6507,7 +6542,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       `);
       
       // Get engineer-wise counts
-      const engineerStats = await sql.unsafe(`
+      const engineerStats = await client.unsafe(`
         SELECT 
           engineer_id,
           engineer_name,
@@ -6520,7 +6555,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       `);
       
       // Get daily trend (last 7 days)
-      const dailyTrend = await sql`
+      const dailyTrend = await client`
         SELECT 
           DATE(report_date) as date,
           COUNT(*) as count
@@ -6549,7 +6584,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     try {
       const userId = req.user?.id || req.session?.user?.id;
       
-      const reports = await sql`
+      const reports = await client`
         SELECT * FROM daily_reports 
         WHERE engineer_id = ${typeof userId === 'number' ? userId : parseInt(userId) || 0}
         ORDER BY report_date DESC
@@ -6558,7 +6593,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       res.json(reports);
     } catch (error: any) {
-      console.error('? Error fetching my daily reports:', error);
+      console.error('❌ Error fetching my daily reports:', error);
       res.status(500).json({ 
         message: 'Failed to fetch your daily reports',
         error: error.message 
@@ -6576,7 +6611,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   
   // Create complaints table if not exists
   try {
-    await sql`
+    await client`
       CREATE TABLE IF NOT EXISTS complaints (
         id SERIAL PRIMARY KEY,
         complaint_id VARCHAR UNIQUE NOT NULL,
@@ -6613,7 +6648,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     
-    const result = await sql`
+    const result = await client`
       SELECT COUNT(*) as count FROM complaints 
       WHERE created_at >= ${todayStart.toISOString()}
     `;
@@ -6752,7 +6787,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       const complaintId = await generateComplaintId();
       
-      const result = await sql`
+      const result = await client`
         INSERT INTO complaints (
           complaint_id, engineer_id, engineer_name, engineer_email, 
           subject, description, category,
@@ -6792,13 +6827,13 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       // Only admin can see all complaints
       if (userRole === 'admin') {
-        complaints = await sql`
+        complaints = await client`
           SELECT * FROM complaints 
           ORDER BY created_at DESC
         `;
       } else {
         // Engineers and other roles can only see their own complaints
-        complaints = await sql`
+        complaints = await client`
           SELECT * FROM complaints 
           WHERE engineer_id = ${typeof userId === 'number' ? userId : parseInt(userId) || 0}
           ORDER BY created_at DESC
@@ -6820,7 +6855,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     try {
       const userId = req.user?.id || req.session?.user?.id;
       
-      const complaints = await sql`
+      const complaints = await client`
         SELECT * FROM complaints 
         WHERE engineer_id = ${typeof userId === 'number' ? userId : parseInt(userId) || 0}
         ORDER BY created_at DESC
@@ -6859,7 +6894,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       }
       
       // Check if complaint exists and is not locked
-      const existing = await sql`
+      const existing = await client`
         SELECT * FROM complaints WHERE id = ${complaintId}
       `;
       
@@ -6889,7 +6924,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       // Prepare update
       const isResolved = status === 'resolved';
       
-      const result = await sql`
+      const result = await client`
         UPDATE complaints SET
           status = ${status},
           status_note = ${statusNote || ''},
@@ -6928,7 +6963,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       }
       
       // Check if complaint exists and belongs to the engineer
-      const existing = await sql`
+      const existing = await client`
         SELECT * FROM complaints WHERE id = ${complaintId}
       `;
       
@@ -6957,7 +6992,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       const currentHistory = existing[0].status_history || [];
       const newHistory = [...currentHistory, historyEntry];
       
-      const result = await sql`
+      const result = await client`
         UPDATE complaints SET
           status_history = ${JSON.stringify(newHistory)},
           updated_at = NOW()

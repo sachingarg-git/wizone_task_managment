@@ -1,9 +1,10 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { domainValidationMiddleware, setupDomainCORS } from "./domain-config";
-import { initializeDailyNotificationScheduler } from "./scheduled-notifications";
+import { initializeDailyNotificationScheduler, initialize3HourTaskScheduler } from "./scheduled-notifications";
 // Database will be imported dynamically after setup is complete
 
 const app = express();
@@ -105,12 +106,20 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Initialize the daily notification scheduler (8 PM IST daily summary)
+    // Initialize the daily notification scheduler (8 PM IST daily summary) - DISABLED
     try {
       initializeDailyNotificationScheduler();
-      console.log("✅ Daily notification scheduler initialized");
+      console.log("✅ Daily notification scheduler status logged");
     } catch (error) {
-      console.error("⚠️ Failed to initialize daily notification scheduler:", error);
+      console.error("⚠️ Failed to log daily notification scheduler status:", error);
+    }
+
+    // Initialize the NEW 3-hour pending/in-progress task notification
+    try {
+      initialize3HourTaskScheduler();
+      console.log("✅ 3-hour task notification scheduler initialized");
+    } catch (error) {
+      console.error("⚠️ Failed to initialize 3-hour task scheduler:", error);
     }
   });
 })();
