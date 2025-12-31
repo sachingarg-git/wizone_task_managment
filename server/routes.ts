@@ -24,6 +24,7 @@ import {
 import { z } from "zod";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { exec } from "child_process";
 import { createTablesInExternalDatabase, seedDefaultData } from "./migrations";
 import multer from "multer";
 import { setupHealthEndpoint } from "./health";
@@ -32,6 +33,211 @@ import { sendTaskAssignmentNotification, sendTaskStatusNotification } from "./pu
 import { eq } from "drizzle-orm";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import { sendDailySummaryNotification, getDailySummaryData, send3HourTaskNotification, getPendingInProgressTasks } from "./scheduled-notifications";
+
+// Auto-ping towers every 5 minutes
+let autoPingInterval: NodeJS.Timeout | null = null;
+
+async function pingAllTowersBackground() {
+  try {
+    const execPromise = promisify(exec);
+    
+    const allTowers = await sql`
+      SELECT id, name, target_ip 
+      FROM network_towers 
+      WHERE target_ip IS NOT NULL
+    `;
+    
+    // Filter out invalid IPs at application level
+    const towers = allTowers.filter(t => {
+      const ip = t.target_ip?.trim();
+      return ip && ip.length > 0 && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
+    });
+    
+    if (towers.length === 0) {
+      console.log('⏭️  No towers with IPs to ping');
+      return;
+    }
+    
+    console.log(`\n🔄 [AUTO-PING] Starting automatic ping for ${towers.length} towers...`);
+    
+    for (const tower of towers) {
+      let status = 'offline';
+      let latency = 'timeout';
+      
+      // Get previous status before ping
+      const previousStatusResult = await sql`
+        SELECT status FROM network_towers WHERE id = ${tower.id}
+      `;
+      const previousStatus = previousStatusResult[0]?.status;
+      console.log(`🔍 [DEBUG] ${tower.name} - Previous status: ${previousStatus}`);
+      
+      try {
+        const isWindows = process.platform === 'win32';
+        const pingCmd = isWindows 
+          ? `ping -n 3 -w 2000 ${tower.target_ip}`
+          : `ping -c 3 -W 2 ${tower.target_ip}`;
+        
+        const { stdout, stderr } = await execPromise(pingCmd);
+        
+        console.log(`\n📡 [DEBUG] Pinging ${tower.name} (${tower.target_ip})`);
+        console.log(`[DEBUG] Command: ${pingCmd}`);
+        console.log(`[DEBUG] Output:\n${stdout.substring(0, 300)}`);
+        if (stderr) console.log(`[DEBUG] Error output: ${stderr}`);
+        
+        if (isWindows) {
+          // Check if we received any packets (not all lost)
+          const receivedMatch = stdout.match(/Received = (\d+)/i);
+          const lostMatch = stdout.match(/Lost = (\d+)/i);
+          const timeMatch = stdout.match(/Average = (\d+)ms/i);
+          
+          console.log(`[DEBUG] Received match: ${receivedMatch ? receivedMatch[1] : 'null'}`);
+          console.log(`[DEBUG] Lost match: ${lostMatch ? lostMatch[1] : 'null'}`);
+          console.log(`[DEBUG] Time match: ${timeMatch ? timeMatch[1] : 'null'}`);
+          
+          // Only consider online if we received at least 1 packet and Lost is not 3
+          const received = receivedMatch ? parseInt(receivedMatch[1]) : 0;
+          const lost = lostMatch ? parseInt(lostMatch[1]) : 3;
+          
+          if (received > 0 && lost < 3 && timeMatch) {
+            const avgTime = parseInt(timeMatch[1]);
+            latency = `${avgTime}ms`;
+            status = avgTime > 100 ? 'warning' : 'online';
+            console.log(`✅ [PING] ${tower.target_ip} - ${status} (${latency}, ${received}/3 packets received)`);
+          } else {
+            console.log(`❌ [PING] ${tower.target_ip} - offline (${received}/3 packets received, ${lost}/3 lost)`);
+          }
+        } else {
+          const successMatch = stdout.match(/(\d+) received/);
+          const timeMatch = stdout.match(/avg[\/=\s]+(\d+\.?\d*)/i);
+          
+          const received = successMatch ? parseInt(successMatch[1]) : 0;
+          
+          if (received > 0 && timeMatch) {
+            const avgTime = parseFloat(timeMatch[1]);
+            latency = `${Math.round(avgTime)}ms`;
+            status = avgTime > 100 ? 'warning' : 'online';
+            console.log(`✅ [PING] ${tower.target_ip} - ${status} (${latency}, ${received}/3 packets received)`);
+          } else {
+            console.log(`❌ [PING] ${tower.target_ip} - offline (${received}/3 packets received)`);
+          }
+        }
+      } catch (error) {
+        // Ping failed - keep offline
+        console.log(`❌ [PING] ${tower.target_ip} - offline (error: ${error instanceof Error ? error.message : 'unknown'})`);
+      }
+      
+      await sql`
+        UPDATE network_towers 
+        SET status = ${status}, 
+            actual_latency = ${latency},
+            last_test_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${tower.id}
+      `;
+      console.log(`💾 [DEBUG] Updated ${tower.name} - New status: ${status}, Previous: ${previousStatus}`);
+      
+      // Auto-create task if tower is offline and no open task exists
+      // Logic: Only create new task if no pending/in_progress task exists
+      // If previous task was completed but tower is still offline, create a new task
+      if (status === 'offline') {
+        console.log(`🚨 [DEBUG] Tower is offline - Checking for existing tasks: ${tower.name}`);
+        try {
+          // Check if there's already an OPEN (pending or in_progress) task for this tower
+          // Note: We search by title pattern since tower tasks have title like "Node Down - TOWER_NAME"
+          const existingOpenTask = await sql`
+            SELECT id, status, ticket_number FROM tasks 
+            WHERE title LIKE ${'%' + tower.name + '%'}
+              AND status IN ('pending', 'in_progress')
+            ORDER BY created_at DESC
+            LIMIT 1
+          `;
+          
+          if (existingOpenTask.length > 0) {
+            console.log(`⏭️  [AUTO-TASK] Skipping - Open task already exists for tower: ${tower.name} (Task: ${existingOpenTask[0].ticket_number}, Status: ${existingOpenTask[0].status})`);
+          } else {
+            // No open task found - check if we need to create a new one
+            // This handles case where previous task was completed but tower still offline
+            console.log(`📋 [AUTO-TASK] No open task found for ${tower.name} - creating new task`);
+            
+            // Generate unique ticket number
+            const ticketNumber = `AUTO-DOWN-${Date.now()}-${tower.id}`;
+            
+            // Get tower location details
+            const towerDetails = await sql`
+              SELECT name, target_ip, location, address, latitude, longitude
+              FROM network_towers 
+              WHERE id = ${tower.id}
+            `;
+            const towerInfo = towerDetails[0];
+            
+            // Create task for node down
+            await sql`
+              INSERT INTO tasks (
+                ticket_number, title, description, priority, status
+              ) VALUES (
+                ${ticketNumber},
+                ${'Node Down - ' + towerInfo.name},
+                ${'Automatic alert: Tower/Node is not reachable\n\nTower: ' + towerInfo.name + '\nIP Address: ' + towerInfo.target_ip + '\nLocation: ' + (towerInfo.location || 'N/A') + '\nAddress: ' + (towerInfo.address || 'N/A') + '\nCoordinates: ' + (towerInfo.latitude && towerInfo.longitude ? towerInfo.latitude + ', ' + towerInfo.longitude : 'N/A') + '\n\nStatus: Node Down - Device not reachable\nDetected: ' + new Date().toLocaleString()},
+                'high',
+                'pending'
+              )
+            `;
+            
+            console.log(`🚨 [AUTO-TASK] Created task ${ticketNumber} for offline tower: ${towerInfo.name}`);
+          }
+        } catch (taskError) {
+          console.error(`❌ [AUTO-TASK] Error creating task for tower ${tower.name}:`, taskError);
+        }
+      }
+    }
+    
+    const results = await sql`
+      SELECT status, COUNT(*) as count 
+      FROM network_towers 
+      GROUP BY status
+    `;
+    
+    const summary = results.reduce((acc: any, r: any) => {
+      acc[r.status] = parseInt(r.count);
+      return acc;
+    }, {});
+    
+    console.log(`✅ [AUTO-PING] Complete - Online: ${summary.online || 0}, Warning: ${summary.warning || 0}, Offline: ${summary.offline || 0}\n`);
+  } catch (error) {
+    console.error('❌ [AUTO-PING] Error:', error);
+  }
+}
+
+function startAutoPing() {
+  if (autoPingInterval) {
+    clearInterval(autoPingInterval);
+  }
+  
+  // Initial ping after 5 seconds
+  setTimeout(() => {
+    console.log('🚀 Starting initial tower ping...');
+    pingAllTowersBackground().catch((error) => {
+      console.error('❌ [AUTO-PING] Fatal error during initial ping:', error);
+    });
+  }, 5000);
+  
+  // Then ping every 5 minutes
+  autoPingInterval = setInterval(() => {
+    pingAllTowersBackground().catch((error) => {
+      console.error('❌ [AUTO-PING] Fatal error during scheduled ping:', error);
+    });
+  }, 5 * 60 * 1000); // 5 minutes
+  
+  console.log('⏰ Auto-ping scheduled: Every 5 minutes');
+}
+
+function stopAutoPing() {
+  if (autoPingInterval) {
+    clearInterval(autoPingInterval);
+    autoPingInterval = null;
+    console.log('🛑 Auto-ping stopped');
+  }
+}
 
 // PostgreSQL database helper functions
 async function getUserFromDatabase(userId: string) {
@@ -1066,12 +1272,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const origin = req.get('Origin');
       const referer = req.get('Referer') || '';
       
-      const isMobileRequest = userAgent.includes('Mobile') || 
+      // Only detect as mobile if explicit mobile indicators are present
+      // Don't use origin === null as it can be true for regular browser requests
+      const isMobileRequest = (userAgent.includes('Mobile') && userAgent.includes('Android')) || 
                              userAgent.includes('WebView') || 
                              userAgent.includes('WizoneTaskManager') || 
-                             userAgent.includes('Android') ||
                              req.get('X-Mobile-Session') === 'true' ||
-                             origin === null || 
                              origin === 'file://' || 
                              referer.includes('file://') ||
                              req.get('X-Requested-With') === 'mobile';
@@ -1944,69 +2150,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
+      const startTime = Date.now();
       const { search, priority, status, assignedTo } = req.query;
       const userId = req.user.id;
       
-      // Get current user to check role
-      let currentUser = await storage.getUser(userId);
+      // Get current user to check role - use session data first for speed
+      let currentUser = req.user ? {
+        id: req.user.id,
+        username: req.user.username || 'demo',
+        role: req.user.role || 'admin',
+        email: req.user.email || 'demo@demo.com'
+      } : await storage.getUser(userId);
       
-      // Handle demo users - if database lookup fails, use session user role
-      if (!currentUser && req.user) {
-        console.log('⚠️ Demo user detected, using session role');
-        currentUser = {
-          id: req.user.id,
-          username: req.user.username || 'demo',
-          role: req.user.role || 'admin', // Demo users are typically admin
-          email: req.user.email || 'demo@demo.com'
-        };
-      }
+      // FAST: Use direct SQL query instead of ORM for better performance
+      console.log(`📋 [TASKS API] Fetching tasks with direct SQL...`);
+      const queryStart = Date.now();
       
-      console.log(`🔍 TASKS API: User ${currentUser?.username} (ID: ${userId}, Role: ${currentUser?.role}) requesting tasks`);
+      const tasksResult = await sql`
+        SELECT 
+          t.id, t.ticket_number, t.title, t.description, t.priority, t.status,
+          t.category, t.created_at, t.updated_at, t.completion_time,
+          t.customer_id, t.assigned_to, t.field_engineer_id, t.customer_name,
+          c.name as customer_name_lookup, c.city as customer_city,
+          u.username as assigned_username, u.first_name as assigned_first_name, u.last_name as assigned_last_name,
+          fe.username as field_engineer_username, fe.first_name as field_engineer_first_name
+        FROM tasks t
+        LEFT JOIN customers c ON t.customer_id = c.id
+        LEFT JOIN users u ON t.assigned_to = u.id
+        LEFT JOIN users fe ON t.field_engineer_id = fe.id
+        ORDER BY t.created_at DESC
+      `;
       
-      let tasks;
+      console.log(`📋 [TASKS API] SQL query took ${Date.now() - queryStart}ms, got ${tasksResult.length} rows`);
+      
+      // Map to frontend format
+      let tasks = tasksResult.map(row => ({
+        id: row.id,
+        ticketNumber: row.ticket_number,
+        title: row.title,
+        description: row.description,
+        priority: row.priority,
+        status: row.status,
+        category: row.category,
+        issueType: row.category, // Use category as issue type since issue_type column doesn't exist
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        completionTime: row.completion_time,
+        customer_id: row.customer_id,
+        customerId: row.customer_id,
+        customerName: row.customer_name || row.customer_name_lookup || 'Unknown Customer',
+        customer: row.customer_id ? {
+          id: row.customer_id,
+          name: row.customer_name_lookup || row.customer_name,
+          city: row.customer_city
+        } : null,
+        assigned_to: row.assigned_to,
+        assignedTo: row.assigned_to,
+        assignedUser: row.assigned_to ? {
+          id: row.assigned_to,
+          username: row.assigned_username,
+          firstName: row.assigned_first_name || row.assigned_username,
+          lastName: row.assigned_last_name || ''
+        } : null,
+        field_engineer_id: row.field_engineer_id,
+        fieldEngineerId: row.field_engineer_id,
+        fieldEngineer: row.field_engineer_id ? {
+          id: row.field_engineer_id,
+          username: row.field_engineer_username,
+          firstName: row.field_engineer_first_name || row.field_engineer_username
+        } : null
+      }));
+      
+      // Apply search filter
       if (search) {
-        // Use getAllTasks and filter client-side since searchTasks doesn't exist
-        const allTasks = await storage.getAllTasks();
         const searchQuery = (search as string).toLowerCase();
-        tasks = allTasks.filter((task: any) => 
+        tasks = tasks.filter((task: any) => 
           (task.title && task.title.toLowerCase().includes(searchQuery)) ||
           (task.description && task.description.toLowerCase().includes(searchQuery)) ||
           (task.ticketNumber && task.ticketNumber.toLowerCase().includes(searchQuery)) ||
           (task.customerName && task.customerName.toLowerCase().includes(searchQuery))
         );
-      } else {
-        tasks = await storage.getAllTasks();
-      }
-      
-      console.log(`📊 Total tasks in database: ${tasks.length}`);
-      
-      // Debug: Check first task to see customer data
-      if (tasks.length > 0) {
-        console.log(`🔍 Sample task customer data:`, {
-          customerName: tasks[0].customerName,
-          customer_id: tasks[0].customer_id,
-          customerId: tasks[0].customerId,
-          customer: tasks[0].customer ? { id: tasks[0].customer.id, name: tasks[0].customer.name } : null
-        });
       }
       
       // Normalize role to lowercase for case-insensitive comparison
       const userRole = currentUser?.role?.toLowerCase() || '';
-      console.log(`🔐 User role (normalized): ${userRole}`);
       
-      // Filter tasks based on user role - IMPORTANT: All users should only see their assigned tasks
+      // Filter tasks based on user role
       if (userRole === 'field_engineer') {
-        // Field engineers only see tasks where they are the field engineer
         tasks = tasks.filter(task => 
           task.field_engineer_id === userId || 
           String(task.field_engineer_id) === String(userId) ||
           task.fieldEngineerId === userId || 
           String(task.fieldEngineerId) === String(userId)
         );
-        console.log(`👷‍♂️ Field engineer filtered tasks: ${tasks.length}`);
-        console.log(`🔍 Field engineer (${currentUser.username}, ID: ${userId}) task filter - looking for field_engineer_id = ${userId}`);
       } else if (userRole === 'engineer' || userRole === 'backend_engineer') {
-        // Regular engineers see tasks assigned to them
         tasks = tasks.filter(task => 
           task.assigned_to === userId || 
           String(task.assigned_to) === String(userId) ||
@@ -2017,12 +2254,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           task.fieldEngineerId === userId ||
           String(task.fieldEngineerId) === String(userId)
         );
-        console.log(`🛠️ Engineer filtered tasks: ${tasks.length}`);
       } else if (userRole === 'admin' || userRole === 'manager' || userRole === 'supervisor') {
-        // Only admin, manager, and supervisor roles see all tasks
-        console.log(`👨‍💼 Admin/Manager/Supervisor - showing all tasks: ${tasks.length}`);
+        // Admin, manager, and supervisor roles see all tasks
       } else {
-        // For any other role, filter to only their assigned tasks (safeguard)
+        // For any other role, filter to only their assigned tasks
         tasks = tasks.filter(task => 
           task.assigned_to === userId || 
           String(task.assigned_to) === String(userId) ||
@@ -2033,7 +2268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           task.fieldEngineerId === userId ||
           String(task.fieldEngineerId) === String(userId)
         );
-        console.log(`🔒 Default role filtered tasks: ${tasks.length}`);
       }
       
       // Apply other filters
@@ -2058,51 +2292,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           task.fieldEngineerId === assignedToId ||
           String(task.fieldEngineerId) === String(assignedToId)
         );
-        console.log(`👤 Filtered by assignedTo=${assignedTo}: ${tasks.length} tasks`);
       }
 
-      // Optimize response: select only essential fields to reduce payload size
-      const optimizedTasks = tasks.map(task => ({
-        id: task.id,
-        ticketNumber: task.ticketNumber,
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        status: task.status,
-        category: task.category,
-        issueType: task.issueType,
-        createdAt: task.createdAt,
-        completionTime: task.completionTime || null,
-        updatedAt: task.updatedAt || null,
-        // Customer info (use stored customerName first, handle both snake_case and camelCase)
-        customer_id: task.customer_id || task.customerId,
-        customerName: task.customerName || task.customer_name || task.customer?.name || 'Unknown Customer',
-        customer: task.customer ? {
-          id: task.customer.id,
-          name: task.customer.name,
-          city: task.customer.city
-        } : null,
-        // Assigned user info (minimal but structured for table display)
-        assigned_to: task.assigned_to,
-        assignedUser: task.assignedUser ? {
-          id: task.assignedUser.id,
-          username: task.assignedUser.username,
-          firstName: task.assignedUser.firstName || task.assignedUser.username,
-          lastName: task.assignedUser.lastName || ''
-        } : null,
-        // Field engineer info (minimal but structured for table display)
-        field_engineer_id: task.field_engineer_id,
-        fieldEngineer: task.fieldEngineer ? {
-          id: task.fieldEngineer.id,
-          username: task.fieldEngineer.username,
-          firstName: task.fieldEngineer.firstName || task.fieldEngineer.username,
-          lastName: task.fieldEngineer.lastName || ''
-        } : null,
-        // Include resolution time for metrics
-        resolutionTime: task.resolutionTime
-      }));
+      // Tasks are already formatted from the optimized SQL query above
+      console.log(`📋 [TASKS API] Total time: ${Date.now() - startTime}ms, returning ${tasks.length} tasks`);
       
-      res.json(optimizedTasks);
+      res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
@@ -2133,22 +2328,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("User ID:", userId);
       console.log("Username:", username);
       console.log("User role:", (req.user as any)?.role);
-      console.log("Full user object:", req.user);
       
       // Get ALL tasks first to debug
       const allTasks = await storage.getAllTasks();
       console.log(`Total tasks in database: ${allTasks.length}`);
       
-      if (allTasks.length > 0) {
-        console.log("Sample task structure:", JSON.stringify(allTasks[0], null, 2));
-        console.log("Assignment fields in tasks:", allTasks.map(t => ({
-          id: t.id,
-          assignedTo: t.assignedTo,
-          fieldEngineerId: t.fieldEngineerId,
-          assignedUser: t.assignedUser,
-          engineer: t.engineer,
-          engineerName: t.engineerName
-        })));
+      // Get task IDs from task_engineers junction table where this user is assigned
+      let assignedTaskIds: number[] = [];
+      try {
+        const junctionResult = await client`
+          SELECT DISTINCT task_id FROM task_engineers WHERE engineer_id = ${userId}
+        `;
+        assignedTaskIds = junctionResult.map((row: any) => row.task_id);
+        console.log(`Tasks assigned via junction table: ${assignedTaskIds.length}`, assignedTaskIds);
+      } catch (err) {
+        console.log("Note: task_engineers table may not exist yet");
       }
       
       // Filter tasks by multiple possible assignment fields
@@ -2162,7 +2356,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           String(task.assignedTo) === String(userId),
           String(task.assignedTo) === String(username),
           String(task.fieldEngineerId) === String(userId),
-          String(task.fieldEngineerId) === String(username)
+          String(task.fieldEngineerId) === String(username),
+          // Check junction table assignments
+          assignedTaskIds.includes(task.id)
         ];
         
         const isMatch = matches.some(match => match);
@@ -2177,12 +2373,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log(`Tasks filtered for user ${username}: ${userTasks.length} out of ${allTasks.length}`);
-      
-      if (userTasks.length > 0) {
-        console.log("First filtered task:", JSON.stringify(userTasks[0], null, 2));
-      } else {
-        console.log("❌ No tasks found for this user. Check task assignments in database.");
-      }
       console.log("=== MY-TASKS API END ===");
       
       res.json(userTasks);
@@ -4662,6 +4852,40 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     }
   });
 
+  // Toggle customer ISP status
+  app.patch('/api/customers/:customerId/isp-status', isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.customerId);
+      const { isIspCustomer } = req.body;
+      
+      console.log("🌐 ISP status update request:", { customerId, isIspCustomer });
+      
+      // Update ISP status using storage
+      const updatedCustomer = await storage.updateCustomer(customerId, { 
+        isIspCustomer: isIspCustomer 
+      });
+      
+      if (!updatedCustomer) {
+        console.log("❌ Customer not found:", customerId);
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      console.log("✅ ISP status updated successfully:", {
+        customerId: updatedCustomer.id,
+        name: updatedCustomer.name,
+        isIspCustomer: updatedCustomer.isIspCustomer
+      });
+      
+      res.json(updatedCustomer);
+    } catch (error) {
+      console.error("❌ Error updating customer ISP status:", error);
+      res.status(500).json({ 
+        message: "Failed to update ISP status",
+        error: error.message 
+      });
+    }
+  });
+
   // Get tasks by customer ID
   app.get('/api/customers/:customerId/tasks', isAuthenticated, async (req, res) => {
     try {
@@ -5311,78 +5535,19 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   // Get all towers from database
   app.get('/api/network/towers', isAuthenticated, async (req, res) => {
     try {
-      const result = await db.query(`
+      const towers = await sql`
         SELECT 
-          id, name, target_ip as "targetIP", location, ssid, total_devices as devices,
-          address, latitude, longitude, bandwidth, expected_latency as latency,
-          actual_latency, description, status, created_at, updated_at, last_test_at,
-          COALESCE(actual_latency, expected_latency) as uptime
+          id, name, target_ip, location, ssid, total_devices,
+          address, latitude, longitude, bandwidth, expected_latency,
+          actual_latency, description, status, created_at, updated_at, last_test_at
         FROM network_towers 
         ORDER BY created_at DESC
-      `);
-      
-      const towers = result.rows.map(tower => ({
-        ...tower,
-        alerts: Math.floor(Math.random() * 3), // Mock alerts for now
-        uptime: tower.status === 'online' ? '99.9%' : '0%'
-      }));
+      `;
       
       res.json(towers);
     } catch (error) {
       console.error('Error fetching towers:', error);
-      
-      // Fallback to mock data if database is not ready
-      const mockTowers = [
-        {
-          id: "tower-001",
-          name: "Tower-North-01",
-          location: "Delhi NCR",
-          status: "online",
-          bandwidth: "1 Gbps",
-          latency: "5ms",
-          uptime: "99.9%",
-          devices: 156,
-          alerts: 0,
-          targetIP: "192.168.1.100",
-          cpuUsage: "65%",
-          memoryUsage: "78%",
-          networkIO: "156 Mbps",
-          temperature: "42°C"
-        },
-        {
-          id: "tower-002", 
-          name: "Tower-South-01",
-          location: "Mumbai",
-          status: "warning",
-          bandwidth: "500 Mbps",
-          latency: "12ms",
-          uptime: "98.5%",
-          devices: 89,
-          alerts: 2,
-          targetIP: "192.168.2.100",
-          cpuUsage: "82%",
-          memoryUsage: "91%",
-          networkIO: "234 Mbps", 
-          temperature: "48°C"
-        },
-        {
-          id: "tower-003",
-          name: "Tower-West-01", 
-          location: "Pune",
-          status: "offline",
-          bandwidth: "0 Mbps",
-          latency: "timeout",
-          uptime: "0%",
-          devices: 0,
-          alerts: 5,
-          targetIP: "192.168.3.100",
-          cpuUsage: "0%",
-          memoryUsage: "0%",
-          networkIO: "0 Mbps",
-          temperature: "N/A"
-        }
-      ];
-      res.json(mockTowers);
+      res.status(500).json({ error: 'Failed to fetch towers', details: error.message });
     }
   });
 
@@ -5405,61 +5570,24 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       console.log('📡 Adding new tower:', req.body);
       
-      // Create tower in database
-      const insertQuery = `
+      // Create tower in database with offline status by default
+      const result = await sql`
         INSERT INTO network_towers (
           name, target_ip, location, ssid, total_devices, 
           address, latitude, longitude, bandwidth, expected_latency, 
           description, status, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
-        RETURNING *
+        ) VALUES (
+          ${name}, ${targetIP || null}, ${location || null}, ${ssid || null}, ${totalDevices || 0},
+          ${address || null}, ${latitude || null}, ${longitude || null}, 
+          ${bandwidth}, ${expectedLatency}, ${description || null}, 'offline',
+          NOW(), NOW()
+        ) RETURNING *
       `;
-      
-      const values = [
-        name, targetIP, location, ssid || null, totalDevices || 0,
-        address || null, latitude || null, longitude || null, 
-        bandwidth, expectedLatency, description, 'online',
-        new Date(), new Date()
-      ];
-      
-      const result = await db.query(insertQuery, values);
-      const tower = result.rows[0];
-      
-      // Perform real IP ping test if targetIP is provided
-      let pingResult = { success: false, latency: null, status: 'offline' };
-      if (targetIP) {
-        try {
-          const ping = require('ping');
-          const pingRes = await ping.promise.probe(targetIP, {
-            timeout: 5,
-            extra: ['-c', '3']
-          });
-          
-          pingResult = {
-            success: pingRes.alive,
-            latency: pingRes.time ? `${Math.round(pingRes.time)}ms` : 'timeout',
-            status: pingRes.alive ? 'online' : 'offline'
-          };
-          
-          // Update tower status based on ping result
-          await db.query(
-            'UPDATE network_towers SET status = $1, actual_latency = $2 WHERE id = $3',
-            [pingResult.status, pingResult.latency, tower.id]
-          );
-          
-        } catch (pingError) {
-          console.error('Ping test failed:', pingError);
-          pingResult = { success: false, latency: 'error', status: 'unknown' };
-        }
-      }
       
       res.status(201).json({
         success: true,
         message: 'Tower added successfully',
-        tower: {
-          ...tower,
-          pingTest: pingResult
-        }
+        tower: result[0]
       });
     } catch (error) {
       console.error('Error adding tower:', error);
@@ -5471,33 +5599,13 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   app.get('/api/network/towers/:id', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await db.query('SELECT * FROM network_towers WHERE id = $1', [id]);
+      const result = await sql`SELECT * FROM network_towers WHERE id = ${id}`;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return res.status(404).json({ error: 'Tower not found' });
       }
       
-      const tower = result.rows[0];
-      
-      // Perform live ping test
-      let liveTest = { success: false, latency: null };
-      if (tower.target_ip) {
-        try {
-          const ping = require('ping');
-          const pingRes = await ping.promise.probe(tower.target_ip, { timeout: 3 });
-          liveTest = {
-            success: pingRes.alive,
-            latency: pingRes.time ? `${Math.round(pingRes.time)}ms` : 'timeout'
-          };
-        } catch (error) {
-          console.error('Live ping failed:', error);
-        }
-      }
-      
-      res.json({
-        ...tower,
-        liveTest
-      });
+      res.json(result[0]);
     } catch (error) {
       console.error('Error fetching tower:', error);
       res.status(500).json({ error: 'Failed to fetch tower details' });
@@ -5508,51 +5616,38 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   app.put('/api/network/towers/:id', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const { name, targetIP, location, ssid, totalDevices, address, latitude, longitude, bandwidth, expectedLatency, description, status } = req.body;
       
-      console.log('📝 Updating tower:', id, updateData);
+      console.log('📝 Updating tower:', id, req.body);
       
-      const updateFields = [];
-      const values = [];
-      let valueIndex = 1;
-      
-      // Build dynamic update query
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] !== undefined) {
-          const dbField = key === 'targetIP' ? 'target_ip' : 
-                         key === 'totalDevices' ? 'total_devices' :
-                         key === 'expectedLatency' ? 'expected_latency' : key;
-          updateFields.push(`${dbField} = $${valueIndex}`);
-          values.push(updateData[key]);
-          valueIndex++;
-        }
-      });
-      
-      if (updateFields.length === 0) {
-        return res.status(400).json({ error: 'No fields to update' });
-      }
-      
-      updateFields.push(`updated_at = $${valueIndex}`);
-      values.push(new Date());
-      values.push(id);
-      
-      const updateQuery = `
+      const result = await sql`
         UPDATE network_towers 
-        SET ${updateFields.join(', ')} 
-        WHERE id = $${valueIndex + 1} 
+        SET 
+          name = COALESCE(${name}, name),
+          target_ip = COALESCE(${targetIP || null}, target_ip),
+          location = COALESCE(${location || null}, location),
+          ssid = COALESCE(${ssid || null}, ssid),
+          total_devices = COALESCE(${totalDevices || null}, total_devices),
+          address = COALESCE(${address || null}, address),
+          latitude = COALESCE(${latitude || null}, latitude),
+          longitude = COALESCE(${longitude || null}, longitude),
+          bandwidth = COALESCE(${bandwidth || null}, bandwidth),
+          expected_latency = COALESCE(${expectedLatency || null}, expected_latency),
+          description = COALESCE(${description || null}, description),
+          status = COALESCE(${status || null}, status),
+          updated_at = NOW()
+        WHERE id = ${id}
         RETURNING *
       `;
       
-      const result = await db.query(updateQuery, values);
-      
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return res.status(404).json({ error: 'Tower not found' });
       }
       
       res.json({
         success: true,
         message: 'Tower updated successfully',
-        tower: result.rows[0]
+        tower: result[0]
       });
     } catch (error) {
       console.error('Error updating tower:', error);
@@ -5567,19 +5662,18 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       console.log('🗑️ Deleting tower:', id);
       
-      const result = await db.query(
-        'DELETE FROM network_towers WHERE id = $1 RETURNING *',
-        [id]
-      );
+      const result = await sql`
+        DELETE FROM network_towers WHERE id = ${id} RETURNING *
+      `;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return res.status(404).json({ error: 'Tower not found' });
       }
       
       res.json({
         success: true,
         message: 'Tower deleted successfully',
-        deletedTower: result.rows[0]
+        deletedTower: result[0]
       });
     } catch (error) {
       console.error('Error deleting tower:', error);
@@ -5591,49 +5685,112 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   app.post('/api/network/towers/:id/test', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execPromise = promisify(exec);
       
       // Get tower details
-      const towerResult = await db.query('SELECT * FROM network_towers WHERE id = $1', [id]);
-      if (towerResult.rows.length === 0) {
+      const towerResult = await sql`SELECT * FROM network_towers WHERE id = ${id}`;
+      if (towerResult.length === 0) {
         return res.status(404).json({ error: 'Tower not found' });
       }
       
-      const tower = towerResult.rows[0];
+      const tower = towerResult[0];
       
       if (!tower.target_ip) {
         return res.status(400).json({ error: 'No target IP configured for this tower' });
       }
       
-      // Perform comprehensive connectivity test
-      const ping = require('ping');
+      // Perform connectivity test using native ping
       const testResults = {
         timestamp: new Date(),
         targetIP: tower.target_ip,
-        tests: {}
+        tests: {},
+        status: 'offline'
       };
       
-      // Basic ping test
       try {
-        const pingRes = await ping.promise.probe(tower.target_ip, {
-          timeout: 5,
-          extra: ['-c', '5']
-        });
+        const isWindows = process.platform === 'win32';
+        const pingCmd = isWindows 
+          ? `ping -n 4 -w 2000 ${tower.target_ip}`
+          : `ping -c 4 -W 2 ${tower.target_ip}`;
+        
+        console.log(`Testing tower ${tower.name} (${tower.target_ip})...`);
+        const { stdout } = await execPromise(pingCmd);
+        
+        let status = 'offline';
+        let latency = 'timeout';
+        let success = false;
+        
+        if (isWindows) {
+          const replyMatch = stdout.match(/Reply from|Received = (\d+)/i);
+          const lostMatch = stdout.match(/Lost = (\d+)/i);
+          const timeMatch = stdout.match(/Average = (\d+)ms/i) || stdout.match(/time[<=](\d+)ms/i);
+          
+          if (replyMatch && (!lostMatch || lostMatch[1] !== '4')) {
+            success = true;
+            const avgTime = timeMatch ? parseInt(timeMatch[1]) : 0;
+            latency = `${avgTime}ms`;
+            
+            if (avgTime > 100) {
+              status = 'warning';
+            } else if (avgTime > 0) {
+              status = 'online';
+            } else {
+              status = 'online';
+              latency = 'responding';
+            }
+          }
+        } else {
+          const successMatch = stdout.match(/(\d+) received/);
+          const timeMatch = stdout.match(/avg[\/=\s]+(\d+\.?\d*)/i);
+          
+          if (successMatch && parseInt(successMatch[1]) > 0) {
+            success = true;
+            const avgTime = timeMatch ? parseFloat(timeMatch[1]) : 0;
+            latency = `${Math.round(avgTime)}ms`;
+            
+            if (avgTime > 100) {
+              status = 'warning';
+            } else {
+              status = 'online';
+            }
+          }
+        }
         
         testResults.tests.ping = {
-          success: pingRes.alive,
-          latency: pingRes.time ? `${Math.round(pingRes.time)}ms` : 'timeout',
-          packetLoss: pingRes.packetLoss ? `${pingRes.packetLoss}%` : '0%'
+          success,
+          latency,
+          packetLoss: '0%'
         };
+        testResults.status = status;
+        
+        // Update tower status
+        await sql`
+          UPDATE network_towers 
+          SET status = ${status}, 
+              last_test_at = NOW(), 
+              actual_latency = ${latency},
+              updated_at = NOW()
+          WHERE id = ${id}
+        `;
+        
+        console.log(`✓ Test complete: ${tower.name} is ${status} (${latency})`);
+        
       } catch (error) {
+        console.error(`✗ Ping test failed for ${tower.name}:`, error.message);
         testResults.tests.ping = { success: false, error: error.message };
+        testResults.status = 'offline';
+        
+        await sql`
+          UPDATE network_towers 
+          SET status = 'offline', 
+              last_test_at = NOW(),
+              actual_latency = 'timeout',
+              updated_at = NOW()
+          WHERE id = ${id}
+        `;
       }
-      
-      // Update tower status based on test results
-      const newStatus = testResults.tests.ping.success ? 'online' : 'offline';
-      await db.query(
-        'UPDATE network_towers SET status = $1, last_test_at = $2, actual_latency = $3 WHERE id = $4',
-        [newStatus, new Date(), testResults.tests.ping.latency, id]
-      );
       
       res.json({
         success: true,
@@ -5643,6 +5800,282 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     } catch (error) {
       console.error('Error testing tower connectivity:', error);
       res.status(500).json({ error: 'Failed to test tower connectivity' });
+    }
+  });
+
+  // Reset all towers to offline status
+  app.post('/api/network/towers/reset-status', isAuthenticated, async (req, res) => {
+    try {
+      await sql`
+        UPDATE network_towers 
+        SET status = 'offline', 
+            actual_latency = 'not tested',
+            updated_at = NOW()
+      `;
+      
+      console.log('🔄 All tower statuses reset to offline');
+      
+      res.json({
+        success: true,
+        message: 'All tower statuses reset to offline'
+      });
+    } catch (error) {
+      console.error('Error resetting tower statuses:', error);
+      res.status(500).json({ error: 'Failed to reset statuses' });
+    }
+  });
+
+  // Get auto-ping status
+  app.get('/api/network/towers/auto-ping-status', isAuthenticated, async (req, res) => {
+    res.json({
+      enabled: autoPingInterval !== null,
+      interval: '5 minutes',
+      message: autoPingInterval ? 'Auto-ping is running' : 'Auto-ping is disabled'
+    });
+  });
+
+  // Start/stop auto-ping
+  app.post('/api/network/towers/auto-ping/:action', isAuthenticated, async (req, res) => {
+    const { action } = req.params;
+    
+    if (action === 'start') {
+      startAutoPing();
+      res.json({ success: true, message: 'Auto-ping started - will run every 5 minutes' });
+    } else if (action === 'stop') {
+      stopAutoPing();
+      res.json({ success: true, message: 'Auto-ping stopped' });
+    } else {
+      res.status(400).json({ error: 'Invalid action. Use start or stop' });
+    }
+  });
+
+  // Set specific tower status to online (for testing)
+  app.post('/api/network/towers/:id/set-online', isAuthenticated, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+      await sql`
+        UPDATE network_towers 
+        SET status = 'online', 
+            actual_latency = '0ms',
+            last_test_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${id}
+      `;
+      
+      const tower = await sql`SELECT name FROM network_towers WHERE id = ${id}`;
+      console.log(`✅ Manually set tower ${id} (${tower[0]?.name}) to online status`);
+      
+      res.json({ success: true, message: 'Tower status set to online for testing' });
+    } catch (error) {
+      console.error('❌ Error setting tower status:', error);
+      res.status(500).json({ error: 'Failed to set tower status' });
+    }
+  });
+
+  // Ping all towers and update statuses
+  app.post('/api/network/towers/ping-all', isAuthenticated, async (req, res) => {
+    try {
+      const execPromise = promisify(exec);
+      
+      // Get all towers with IPs
+      const allTowers = await sql`
+        SELECT id, name, target_ip 
+        FROM network_towers 
+        WHERE target_ip IS NOT NULL
+      `;
+      
+      // Filter out invalid IPs at application level
+      const towers = allTowers.filter(t => {
+        const ip = t.target_ip?.trim();
+        return ip && ip.length > 0 && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
+      });
+      
+      console.log(`🔄 Pinging ${towers.length} valid towers (filtered from ${allTowers.length} total)...`);
+      
+      const results = [];
+      
+      for (const tower of towers) {
+        let status = 'offline';
+        let latency = 'timeout';
+        let alive = false;
+        let errorMsg = null;
+        
+        // Get previous status before ping
+        const previousStatusResult = await sql`
+          SELECT status FROM network_towers WHERE id = ${tower.id}
+        `;
+        const previousStatus = previousStatusResult[0]?.status;
+        
+        try {
+          console.log(`\n📡 Testing ${tower.name} (${tower.target_ip})...`);
+          
+          // Use native ping command for more reliable results
+          const isWindows = process.platform === 'win32';
+          const pingCmd = isWindows 
+            ? `ping -n 3 -w 2000 ${tower.target_ip}`  // Windows: 3 pings, 2 sec timeout
+            : `ping -c 3 -W 2 ${tower.target_ip}`;    // Linux: 3 pings, 2 sec timeout
+          
+          const { stdout, stderr } = await execPromise(pingCmd);
+          
+          console.log(`Ping output for ${tower.name}:`, stdout.substring(0, 300));
+          
+          // Parse Windows ping output
+          if (isWindows) {
+            // Check if we received any packets (not all lost)
+            const receivedMatch = stdout.match(/Received = (\d+)/i);
+            const lostMatch = stdout.match(/Lost = (\d+)/i);
+            const timeMatch = stdout.match(/Average = (\d+)ms/i);
+            
+            // Only consider online if we received at least 1 packet and Lost is not 3
+            const received = receivedMatch ? parseInt(receivedMatch[1]) : 0;
+            const lost = lostMatch ? parseInt(lostMatch[1]) : 3;
+            
+            if (received > 0 && lost < 3 && timeMatch) {
+              // Got at least one reply with valid latency
+              alive = true;
+              const avgTime = parseInt(timeMatch[1]);
+              latency = `${avgTime}ms`;
+              
+              // Determine status based on latency
+              if (avgTime > 100) {
+                status = 'warning';
+                console.log(`⚠️ ${tower.name}: High latency ${latency} (${received}/3 packets)`);
+              } else {
+                status = 'online';
+                console.log(`✅ ${tower.name}: Online ${latency} (${received}/3 packets)`);
+              }
+            } else {
+              status = 'offline';
+              alive = false;
+              errorMsg = `${received}/3 packets received`;
+              console.log(`❌ ${tower.name}: Offline - ${errorMsg}`);
+            }
+          } else {
+            // Parse Linux/Unix ping output
+            const successMatch = stdout.match(/(\d+) received/);
+            const timeMatch = stdout.match(/avg[\/=\s]+(\d+\.?\d*)/i);
+            
+            const received = successMatch ? parseInt(successMatch[1]) : 0;
+            
+            if (received > 0 && timeMatch) {
+              alive = true;
+              const avgTime = parseFloat(timeMatch[1]);
+              latency = `${Math.round(avgTime)}ms`;
+              
+              if (avgTime > 100) {
+                status = 'warning';
+                console.log(`⚠️ ${tower.name}: High latency ${latency} (${received}/3 packets)`);
+              } else {
+                status = 'online';
+                console.log(`✅ ${tower.name}: Online ${latency} (${received}/3 packets)`);
+              }
+            } else {
+              status = 'offline';
+              alive = false;
+              errorMsg = `${received}/3 packets received`;
+              console.log(`❌ ${tower.name}: Offline - ${errorMsg}`);
+            }
+          }
+          
+        } catch (error) {
+          // Ping command failed - definitely offline
+          status = 'offline';
+          alive = false;
+          errorMsg = 'Host unreachable';
+          console.log(`❌ ${tower.name}: Offline - ${error.message}`);
+        }
+        
+        // Update tower status in database
+        try {
+          await sql`
+            UPDATE network_towers 
+            SET status = ${status}, 
+                actual_latency = ${latency},
+                last_test_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${tower.id}
+          `;
+          console.log(`💾 Updated ${tower.name} status to: ${status}`);
+          
+          // Auto-create task if tower is offline and no open task exists
+          if (status === 'offline') {
+            try {
+              // Check if there's already an open task for this tower (search by title since we can't use customer_id)
+              const existingTask = await sql`
+                SELECT id FROM tasks 
+                WHERE title = ${'Node Down - ' + tower.name}
+                  AND status IN ('pending', 'in_progress')
+                ORDER BY created_at DESC
+                LIMIT 1
+              `;
+              
+              if (existingTask.length > 0) {
+                console.log(`⏭️  [AUTO-TASK] Skipping - Open task already exists for tower: ${tower.name}`);
+              } else {
+                // Generate unique ticket number
+                const ticketNumber = `AUTO-DOWN-${Date.now()}-${tower.id}`;
+                
+                // Get tower location details
+                const towerDetails = await sql`
+                  SELECT name, target_ip, location, address, latitude, longitude
+                  FROM network_towers 
+                  WHERE id = ${tower.id}
+                `;
+                const towerInfo = towerDetails[0];
+                
+                // Create task for node down
+                await sql`
+                  INSERT INTO tasks (
+                    ticket_number, title, description, priority, status
+                  ) VALUES (
+                    ${ticketNumber},
+                    ${'Node Down - ' + towerInfo.name},
+                    ${'Automatic alert: Tower/Node is not reachable\n\nTower: ' + towerInfo.name + '\nIP Address: ' + towerInfo.target_ip + '\nLocation: ' + (towerInfo.location || 'N/A') + '\nAddress: ' + (towerInfo.address || 'N/A') + '\nCoordinates: ' + (towerInfo.latitude && towerInfo.longitude ? towerInfo.latitude + ', ' + towerInfo.longitude : 'N/A') + '\n\nStatus: Node Down - Device not reachable\nDetected: ' + new Date().toLocaleString()},
+                    'high',
+                    'pending'
+                  )
+                `;
+                
+                console.log(`🚨 [AUTO-TASK] Created task ${ticketNumber} for offline tower: ${towerInfo.name}`);
+              }
+            } catch (taskError) {
+              console.error(`❌ [AUTO-TASK] Error creating task for tower ${tower.name}:`, taskError);
+            }
+          }
+        } catch (dbError) {
+          console.error(`❌ Failed to update status for tower ${tower.id}:`, dbError);
+        }
+        
+        results.push({
+          id: tower.id,
+          name: tower.name,
+          ip: tower.target_ip,
+          status,
+          latency,
+          alive,
+          error: errorMsg
+        });
+      }
+      
+      const summary = {
+        total: results.length,
+        online: results.filter(r => r.status === 'online').length,
+        warning: results.filter(r => r.status === 'warning').length,
+        offline: results.filter(r => r.status === 'offline').length
+      };
+      
+      console.log(`\n📊 PING SUMMARY: ${summary.online} online, ${summary.warning} warning, ${summary.offline} offline\n`);
+      
+      res.json({
+        success: true,
+        message: `Pinged ${results.length} towers`,
+        summary,
+        results
+      });
+    } catch (error) {
+      console.error('❌ Error pinging towers:', error);
+      res.status(500).json({ error: 'Failed to ping towers', details: error.message });
     }
   });
 
@@ -6293,11 +6726,10 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     }
   };
   
-  // Start periodic monitoring every 30 seconds
-  setInterval(performPeriodicConnectivityCheck, 30000);
-  
-  // Run initial check after 5 seconds
-  setTimeout(performPeriodicConnectivityCheck, 5000);
+  // DISABLED: Old TCP port-based monitoring (was conflicting with ICMP ping)
+  // Now using pingAllTowersBackground() with proper ICMP ping every 5 minutes
+  // setInterval(performPeriodicConnectivityCheck, 30000);
+  // setTimeout(performPeriodicConnectivityCheck, 5000);
 
   // ===================================================
   // END NETWORK MONITORING ENDPOINTS  
@@ -7315,6 +7747,16 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   }
 
   // ===================================================
+  // FIX MISSING COLUMNS IN CUSTOMERS TABLE
+  // ===================================================
+  try {
+    await client`ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_isp_customer BOOLEAN DEFAULT false`;
+    console.log('✅ Customers table is_isp_customer column verified');
+  } catch (error) {
+    console.log('Customers is_isp_customer column may already exist');
+  }
+
+  // ===================================================
   // ENGINEER PORTAL DOCUMENTS API
   // ===================================================
   
@@ -7525,6 +7967,801 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   // ===================================================
   // END ENGINEER PORTAL DOCUMENTS API
   // ===================================================
+  
+  // ===================================================
+  // ISP MANAGEMENT API ROUTES
+  // ===================================================
+  
+  // === ISP CLIENTS (Towers) API ===
+  
+  // Get all ISP clients - only returns ISP-enabled customers from main customers table (no duplicates)
+  app.get('/api/isp/clients', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only get ISP-enabled customers from main customers table with port and IP
+      const ispCustomers = await client`
+        SELECT id, customer_id as client_id, name, mobile_phone as phone, email, port, wireless_ip
+        FROM customers 
+        WHERE is_isp_customer = true 
+        ORDER BY name ASC
+      `;
+      
+      res.json(ispCustomers);
+    } catch (error: any) {
+      console.error('Error fetching ISP clients:', error);
+      res.status(500).json({ message: 'Failed to fetch ISP clients', error: error.message });
+    }
+  });
+  
+  // Get single ISP client
+  app.get('/api/isp/clients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const result = await client`SELECT * FROM isp_clients WHERE id = ${id}`;
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'ISP client not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error fetching ISP client:', error);
+      res.status(500).json({ message: 'Failed to fetch ISP client', error: error.message });
+    }
+  });
+  
+  // Create ISP client
+  app.post('/api/isp/clients', isAuthenticated, async (req: any, res) => {
+    try {
+      const { client_id, name, email, phone, address, city, state, plan, plan_speed, monthly_fee, connection_type, installation_date, billing_cycle, due_date, status, notes } = req.body;
+      
+      // Generate client_id if not provided
+      const generatedClientId = client_id || `ISP-${Date.now().toString(36).toUpperCase()}`;
+      
+      const result = await client`
+        INSERT INTO isp_clients (client_id, name, email, phone, address, city, state, plan, plan_speed, monthly_fee, connection_type, installation_date, billing_cycle, due_date, status, notes)
+        VALUES (${generatedClientId}, ${name}, ${email || null}, ${phone || null}, ${address || null}, ${city || null}, ${state || null}, ${plan || 'Basic'}, ${plan_speed || '25 Mbps'}, ${monthly_fee || 0}, ${connection_type || 'Fiber'}, ${installation_date || null}, ${billing_cycle || 'monthly'}, ${due_date || 1}, ${status || 'active'}, ${notes || null})
+        RETURNING *
+      `;
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error('Error creating ISP client:', error);
+      res.status(500).json({ message: 'Failed to create ISP client', error: error.message });
+    }
+  });
+  
+  // Update ISP client
+  app.put('/api/isp/clients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { client_id, name, email, phone, address, city, state, plan, plan_speed, monthly_fee, connection_type, installation_date, billing_cycle, due_date, status, notes } = req.body;
+      
+      const result = await client`
+        UPDATE isp_clients SET
+          client_id = COALESCE(${client_id}, client_id),
+          name = COALESCE(${name}, name),
+          email = COALESCE(${email}, email),
+          phone = COALESCE(${phone}, phone),
+          address = COALESCE(${address}, address),
+          city = COALESCE(${city}, city),
+          state = COALESCE(${state}, state),
+          plan = COALESCE(${plan}, plan),
+          plan_speed = COALESCE(${plan_speed}, plan_speed),
+          monthly_fee = COALESCE(${monthly_fee}, monthly_fee),
+          connection_type = COALESCE(${connection_type}, connection_type),
+          installation_date = COALESCE(${installation_date}, installation_date),
+          billing_cycle = COALESCE(${billing_cycle}, billing_cycle),
+          due_date = COALESCE(${due_date}, due_date),
+          status = COALESCE(${status}, status),
+          notes = COALESCE(${notes}, notes),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'ISP client not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error updating ISP client:', error);
+      res.status(500).json({ message: 'Failed to update ISP client', error: error.message });
+    }
+  });
+  
+  // Delete ISP client
+  app.delete('/api/isp/clients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await client`DELETE FROM isp_clients WHERE id = ${id}`;
+      res.json({ success: true, message: 'ISP client deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting ISP client:', error);
+      res.status(500).json({ message: 'Failed to delete ISP client', error: error.message });
+    }
+  });
+  
+  // === NETWORK DEVICES API ===
+  
+  // Get all network devices
+  app.get('/api/isp/devices', isAuthenticated, async (req: any, res) => {
+    try {
+      const devices = await client`
+        SELECT * FROM network_devices ORDER BY created_at DESC
+      `;
+      res.json(devices);
+    } catch (error: any) {
+      console.error('Error fetching network devices:', error);
+      res.status(500).json({ message: 'Failed to fetch network devices', error: error.message });
+    }
+  });
+  
+  // Get single network device
+  app.get('/api/isp/devices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const result = await client`SELECT * FROM network_devices WHERE id = ${id}`;
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Network device not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error fetching network device:', error);
+      res.status(500).json({ message: 'Failed to fetch network device', error: error.message });
+    }
+  });
+  
+  // Create network device
+  app.post('/api/isp/devices', isAuthenticated, async (req: any, res) => {
+    try {
+      const { device_id, name, type, model, manufacturer, ip_address, mac_address, serial_number, tower_id, installation_date, warranty_expiry, firmware_version, connected_clients, max_capacity, status, notes } = req.body;
+      
+      // Generate device_id if not provided
+      const generatedDeviceId = device_id || `DEV-${Date.now().toString(36).toUpperCase()}`;
+      
+      const result = await client`
+        INSERT INTO network_devices (device_id, name, type, model, manufacturer, ip_address, mac_address, serial_number, tower_id, installation_date, warranty_expiry, firmware_version, connected_clients, max_capacity, status, notes)
+        VALUES (${generatedDeviceId}, ${name}, ${type || 'Router'}, ${model || null}, ${manufacturer || null}, ${ip_address || null}, ${mac_address || null}, ${serial_number || null}, ${tower_id || null}, ${installation_date || null}, ${warranty_expiry || null}, ${firmware_version || null}, ${connected_clients || 0}, ${max_capacity || 100}, ${status || 'active'}, ${notes || null})
+        RETURNING *
+      `;
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error('Error creating network device:', error);
+      res.status(500).json({ message: 'Failed to create network device', error: error.message });
+    }
+  });
+  
+  // Update network device
+  app.put('/api/isp/devices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { device_id, name, type, model, manufacturer, ip_address, mac_address, serial_number, tower_id, installation_date, warranty_expiry, firmware_version, connected_clients, max_capacity, status, notes } = req.body;
+      
+      const result = await client`
+        UPDATE network_devices SET
+          device_id = COALESCE(${device_id}, device_id),
+          name = COALESCE(${name}, name),
+          type = COALESCE(${type}, type),
+          model = COALESCE(${model}, model),
+          manufacturer = COALESCE(${manufacturer}, manufacturer),
+          ip_address = COALESCE(${ip_address}, ip_address),
+          mac_address = COALESCE(${mac_address}, mac_address),
+          serial_number = COALESCE(${serial_number}, serial_number),
+          tower_id = COALESCE(${tower_id}, tower_id),
+          installation_date = COALESCE(${installation_date}, installation_date),
+          warranty_expiry = COALESCE(${warranty_expiry}, warranty_expiry),
+          firmware_version = COALESCE(${firmware_version}, firmware_version),
+          connected_clients = COALESCE(${connected_clients}, connected_clients),
+          max_capacity = COALESCE(${max_capacity}, max_capacity),
+          status = COALESCE(${status}, status),
+          notes = COALESCE(${notes}, notes),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Network device not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error updating network device:', error);
+      res.status(500).json({ message: 'Failed to update network device', error: error.message });
+    }
+  });
+  
+  // Delete network device
+  app.delete('/api/isp/devices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await client`DELETE FROM network_devices WHERE id = ${id}`;
+      res.json({ success: true, message: 'Network device deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting network device:', error);
+      res.status(500).json({ message: 'Failed to delete network device', error: error.message });
+    }
+  });
+  
+  // === CLIENT ASSIGNMENTS API ===
+  
+  // Get all client assignments
+  app.get('/api/isp/assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const assignments = await client`
+        SELECT ca.*, 
+               ic.name as client_name, ic.phone as client_phone, ic.email as client_email,
+               nd.name as device_name, nd.ip_address as device_ip
+        FROM client_assignments ca
+        LEFT JOIN isp_clients ic ON ca.client_id = ic.id
+        LEFT JOIN network_devices nd ON ca.device_id = nd.id
+        ORDER BY ca.created_at DESC
+      `;
+      res.json(assignments);
+    } catch (error: any) {
+      console.error('Error fetching client assignments:', error);
+      res.status(500).json({ message: 'Failed to fetch client assignments', error: error.message });
+    }
+  });
+  
+  // Create client assignment
+  app.post('/api/isp/assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { client_id, tower_id, device_id, port, ip_assigned, mac_address, bandwidth, vlan_id, assigned_date, status, notes } = req.body;
+      
+      // Check if this is a customer from the main customers table
+      const customerCheck = await client`
+        SELECT id, customer_id, name, mobile_phone, email FROM customers WHERE id = ${client_id}
+      `;
+      
+      let actualClientId = client_id;
+      
+      // If found in customers table, ensure they exist in isp_clients table
+      if (customerCheck.length > 0) {
+        const customer = customerCheck[0];
+        
+        // Check if already exists in isp_clients
+        const existingIspClient = await client`
+          SELECT id FROM isp_clients WHERE client_id = ${customer.customer_id}
+        `;
+        
+        if (existingIspClient.length === 0) {
+          // Create entry in isp_clients for this customer
+          const newIspClient = await client`
+            INSERT INTO isp_clients (client_id, name, phone, email, status)
+            VALUES (${customer.customer_id}, ${customer.name}, ${customer.mobile_phone}, ${customer.email}, 'active')
+            RETURNING id
+          `;
+          actualClientId = newIspClient[0].id;
+        } else {
+          actualClientId = existingIspClient[0].id;
+        }
+      }
+      
+      // tower_id is optional now (made nullable in DB)
+      const finalTowerId = tower_id || null;
+
+      const result = await client`
+        INSERT INTO client_assignments (client_id, tower_id, device_id, port, ip_assigned, mac_address, bandwidth, vlan_id, assigned_date, status, notes)
+        VALUES (${actualClientId}, ${finalTowerId}, ${device_id || null}, ${port || null}, ${ip_assigned || null}, ${mac_address || null}, ${bandwidth || null}, ${vlan_id || null}, ${assigned_date || null}, ${status || 'active'}, ${notes || null})
+        RETURNING *
+      `;
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error('Error creating client assignment:', error);
+      res.status(500).json({ message: 'Failed to create client assignment', error: error.message });
+    }
+  });
+  
+  // Update client assignment
+  app.put('/api/isp/assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { client_id, tower_id, device_id, port, ip_assigned, mac_address, bandwidth, vlan_id, status, notes } = req.body;
+      
+      const result = await client`
+        UPDATE client_assignments SET
+          client_id = COALESCE(${client_id}, client_id),
+          tower_id = COALESCE(${tower_id}, tower_id),
+          device_id = COALESCE(${device_id}, device_id),
+          port = COALESCE(${port}, port),
+          ip_assigned = COALESCE(${ip_assigned}, ip_assigned),
+          mac_address = COALESCE(${mac_address}, mac_address),
+          bandwidth = COALESCE(${bandwidth}, bandwidth),
+          vlan_id = COALESCE(${vlan_id}, vlan_id),
+          status = COALESCE(${status}, status),
+          notes = COALESCE(${notes}, notes),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Client assignment not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error updating client assignment:', error);
+      res.status(500).json({ message: 'Failed to update client assignment', error: error.message });
+    }
+  });
+  
+  // Delete client assignment
+  app.delete('/api/isp/assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await client`DELETE FROM client_assignments WHERE id = ${id}`;
+      res.json({ success: true, message: 'Client assignment deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting client assignment:', error);
+      res.status(500).json({ message: 'Failed to delete client assignment', error: error.message });
+    }
+  });
+  
+  // === MAINTENANCE SCHEDULE API ===
+  
+  // Get all maintenance schedules
+  app.get('/api/isp/maintenance', isAuthenticated, async (req: any, res) => {
+    try {
+      const schedules = await client`
+        SELECT ms.*, nd.name as device_name
+        FROM maintenance_schedule ms
+        LEFT JOIN network_devices nd ON ms.device_id = nd.id
+        ORDER BY ms.scheduled_date DESC
+      `;
+      res.json(schedules);
+    } catch (error: any) {
+      console.error('Error fetching maintenance schedules:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance schedules', error: error.message });
+    }
+  });
+  
+  // Get my scheduled activities (for engineer portal)
+  app.get('/api/isp/maintenance/my-activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const username = req.user?.username;
+      
+      console.log('=== MY-ACTIVITIES API ===');
+      console.log('User ID:', userId, 'Username:', username);
+      
+      // Get all maintenance schedules
+      const allSchedules = await client`
+        SELECT ms.*, nd.name as device_name, nt.name as tower_name
+        FROM maintenance_schedule ms
+        LEFT JOIN network_devices nd ON ms.device_id = nd.id
+        LEFT JOIN network_towers nt ON ms.tower_id = nt.id
+        ORDER BY ms.scheduled_date DESC
+      `;
+      
+      // Also get task IDs from task_engineers junction table
+      let assignedTaskIds: string[] = [];
+      try {
+        const junctionResult = await client`
+          SELECT DISTINCT t.ticket_number 
+          FROM task_engineers te
+          JOIN tasks t ON te.task_id = t.id
+          WHERE te.engineer_id = ${userId}
+        `;
+        assignedTaskIds = junctionResult.map((row: any) => row.ticket_number);
+        console.log('Assigned task IDs from junction:', assignedTaskIds);
+      } catch (err) {
+        console.log('Note: task_engineers query failed:', err);
+      }
+      
+      // Filter schedules where user is assigned (check assigned_to, assigned_to_name, or junction table)
+      const mySchedules = allSchedules.filter((schedule: any) => {
+        const isDirectAssigned = 
+          schedule.assigned_to === userId ||
+          String(schedule.assigned_to) === String(userId) ||
+          (schedule.assigned_to_name && schedule.assigned_to_name.toLowerCase().includes(username?.toLowerCase() || ''));
+        
+        const isInJunction = assignedTaskIds.includes(schedule.task_id);
+        
+        const isMatch = isDirectAssigned || isInJunction;
+        
+        if (isMatch) {
+          console.log(`✅ Activity ${schedule.task_id} matched for user ${username}`);
+        }
+        
+        return isMatch;
+      });
+      
+      console.log(`Found ${mySchedules.length} activities for user ${username}`);
+      console.log('=== MY-ACTIVITIES END ===');
+      
+      res.json(mySchedules);
+    } catch (error: any) {
+      console.error('Error fetching my activities:', error);
+      res.status(500).json({ message: 'Failed to fetch my activities', error: error.message });
+    }
+  });
+  
+  // Create maintenance schedule
+  app.post('/api/isp/maintenance', isAuthenticated, async (req: any, res) => {
+    try {
+      const { task_id, title, description, tower_id, device_id, scheduled_date, scheduled_time, schedule_mode, estimated_duration, assigned_to, assigned_to_name, engineers, type, priority, status, checklist, notes } = req.body;
+      
+      // Generate task_id if not provided
+      const generatedTaskId = task_id || `MAINT-${Date.now().toString(36).toUpperCase()}`;
+      
+      // Handle engineers array - can be a list of {id, name} objects
+      const engineersList = engineers || (assigned_to ? [{ id: assigned_to, name: assigned_to_name }] : []);
+      
+      // Primary engineer for backward compatibility
+      const primaryEngineerId = engineersList.length > 0 ? engineersList[0].id : null;
+      const primaryEngineerName = engineersList.length > 0 ? engineersList[0].name : null;
+      
+      // Create multiple engineer names string for display
+      const allEngineerNames = engineersList.map((e: any) => e.name).filter(Boolean).join(', ') || 'Unassigned';
+      
+      // Create maintenance schedule entry
+      const result = await client`
+        INSERT INTO maintenance_schedule (task_id, title, description, tower_id, device_id, scheduled_date, scheduled_time, schedule_mode, estimated_duration, assigned_to, assigned_to_name, type, priority, status, checklist, notes)
+        VALUES (${generatedTaskId}, ${title}, ${description || null}, ${tower_id || null}, ${device_id || null}, ${scheduled_date}, ${scheduled_time || null}, ${schedule_mode || 'one-time'}, ${estimated_duration || null}, ${primaryEngineerId}, ${allEngineerNames}, ${type || 'routine_inspection'}, ${priority || 'medium'}, ${status || 'scheduled'}, ${checklist ? JSON.stringify(checklist) : null}, ${notes || null})
+        RETURNING *
+      `;
+      
+      // Create corresponding task in tasks table for engineer dashboard
+      try {
+        // Get tower/device name if available
+        let locationName = 'Network Maintenance';
+        if (tower_id) {
+          const towerResult = await client`SELECT name FROM network_towers WHERE id = ${tower_id}`;
+          if (towerResult.length > 0) {
+            locationName = towerResult[0].name;
+          }
+        }
+        
+        // Create task with maintenance details
+        const taskResult = await client`
+          INSERT INTO tasks (
+            ticket_number, 
+            customer_name, 
+            customer_id,
+            issue_type, 
+            description, 
+            backend_engineer, 
+            field_engineer,
+            assigned_to,
+            field_engineer_id,
+            status, 
+            priority,
+            created_at
+          ) VALUES (
+            ${generatedTaskId},
+            ${locationName},
+            ${tower_id || null},
+            ${type || 'Routine Inspection'},
+            ${`MAINTENANCE TASK: ${title}\n\nScheduled Date: ${scheduled_date}\nScheduled Time: ${scheduled_time || 'Not specified'}\nEstimated Duration: ${estimated_duration || 'Not specified'}\n\n${description || ''}`},
+            ${req.user.username},
+            ${allEngineerNames},
+            ${primaryEngineerId},
+            ${primaryEngineerId},
+            ${status || 'scheduled'},
+            ${priority || 'medium'},
+            NOW()
+          )
+          RETURNING *
+        `;
+        
+        // Add ALL engineers to task_engineers junction table
+        if (taskResult.length > 0 && engineersList.length > 0) {
+          const taskId = taskResult[0].id;
+          
+          for (const engineer of engineersList) {
+            if (engineer.id) {
+              try {
+                await client`
+                  INSERT INTO task_engineers (task_id, engineer_id, engineer_name)
+                  VALUES (${taskId}, ${engineer.id}, ${engineer.name || null})
+                  ON CONFLICT (task_id, engineer_id) DO NOTHING
+                `;
+              } catch (insertErr) {
+                console.log(`Could not add engineer ${engineer.id} to task_engineers:`, insertErr);
+              }
+            }
+          }
+          
+          console.log(`✅ Created maintenance task ${generatedTaskId} with ${engineersList.length} engineers: ${allEngineerNames}`);
+        }
+      } catch (taskError) {
+        console.error('⚠️ Warning: Could not create task entry:', taskError);
+        // Don't fail the maintenance creation if task creation fails
+      }
+      
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error('Error creating maintenance schedule:', error);
+      res.status(500).json({ message: 'Failed to create maintenance schedule', error: error.message });
+    }
+  });
+  
+  // Update maintenance schedule
+  app.put('/api/isp/maintenance/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      console.log('Received maintenance update:', { id, updates });
+      
+      // First, get the existing record
+      const existingResult = await client`SELECT * FROM maintenance_schedule WHERE id = ${id}`;
+      if (existingResult.length === 0) {
+        return res.status(404).json({ message: 'Maintenance schedule not found' });
+      }
+      
+      const existing = existingResult[0];
+      
+      // Helper function to ensure no undefined values - returns string 'null' for SQL null
+      const safeString = (val: any, fallback: any = null): string | null => {
+        if (val === undefined || val === '') return fallback;
+        if (val === null) return null;
+        return String(val);
+      };
+      
+      const safeInt = (val: any, fallback: number | null = null): number | null => {
+        if (val === undefined || val === null || val === '') return fallback;
+        const num = parseInt(val);
+        return isNaN(num) ? fallback : num;
+      };
+      
+      // Merge updates with existing values - ensure no undefined
+      const title = safeString(updates.title, existing.title) || 'Untitled';
+      const description = safeString(updates.description, existing.description);
+      const scheduled_date = safeString(updates.scheduled_date, existing.scheduled_date);
+      const scheduled_time = safeString(updates.scheduled_time, existing.scheduled_time);
+      const estimated_duration = safeString(updates.estimated_duration, existing.estimated_duration);
+      const assigned_to = safeInt(updates.assigned_to, existing.assigned_to);
+      const assigned_to_name = safeString(updates.assigned_to_name, existing.assigned_to_name);
+      const type = safeString(updates.type, existing.type) || 'routine_inspection';
+      const priority = safeString(updates.priority, existing.priority) || 'medium';
+      const status = safeString(updates.status, existing.status) || 'scheduled';
+      const notes = safeString(updates.notes, existing.notes);
+      
+      console.log('Safe merged values:', { title, description, scheduled_date, scheduled_time, estimated_duration, assigned_to, assigned_to_name, type, priority, status, notes });
+      
+      // Now update with safe values
+      const result = await client`
+        UPDATE maintenance_schedule SET
+          title = ${title},
+          description = ${description},
+          scheduled_date = ${scheduled_date},
+          scheduled_time = ${scheduled_time},
+          estimated_duration = ${estimated_duration},
+          assigned_to = ${assigned_to},
+          assigned_to_name = ${assigned_to_name},
+          type = ${type},
+          priority = ${priority},
+          status = ${status},
+          notes = ${notes},
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      // Update corresponding task in tasks table if it exists
+      try {
+        const updatedSchedule = result[0];
+        
+        // Get tower/device name if available
+        let locationName = 'Network Maintenance';
+        if (updatedSchedule.tower_id) {
+          const towerResult = await client`SELECT name FROM network_towers WHERE id = ${updatedSchedule.tower_id}`;
+          if (towerResult.length > 0) {
+            locationName = towerResult[0].name;
+          }
+        }
+        
+        // Update task with new maintenance details
+        const taskDesc = `MAINTENANCE TASK: ${updatedSchedule.title}\n\nScheduled Date: ${updatedSchedule.scheduled_date}\nScheduled Time: ${updatedSchedule.scheduled_time || 'Not specified'}\nEstimated Duration: ${updatedSchedule.estimated_duration || 'Not specified'}\n\n${updatedSchedule.description || ''}`;
+        const fieldEngineer = updatedSchedule.assigned_to_name || 'Unassigned';
+        const assignedToId = updatedSchedule.assigned_to || null;
+        const taskStatus = updatedSchedule.status || 'scheduled';
+        const taskPriority = updatedSchedule.priority || 'medium';
+        const issueType = updatedSchedule.type || 'Routine Inspection';
+        const towerId = updatedSchedule.tower_id || null;
+        
+        const taskUpdateResult = await client`
+          UPDATE tasks SET
+            customer_name = ${locationName},
+            customer_id = ${towerId},
+            issue_type = ${issueType},
+            description = ${taskDesc},
+            field_engineer = ${fieldEngineer},
+            assigned_to = ${assignedToId},
+            field_engineer_id = ${assignedToId},
+            status = ${taskStatus},
+            priority = ${taskPriority}
+          WHERE ticket_number = ${updatedSchedule.task_id}
+          RETURNING *
+        `;
+        
+        if (taskUpdateResult.length > 0) {
+          console.log(`✅ Updated corresponding task ${updatedSchedule.task_id} for engineer: ${updatedSchedule.assigned_to_name}`);
+        } else {
+          console.log(`⚠️ No corresponding task found for maintenance ${updatedSchedule.task_id}`);
+        }
+      } catch (taskError) {
+        console.error('⚠️ Warning: Could not update task entry:', taskError);
+        // Don't fail the maintenance update if task update fails
+      }
+      
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error updating maintenance schedule:', error);
+      res.status(500).json({ message: 'Failed to update maintenance schedule', error: error.message });
+    }
+  });
+  
+  // Delete maintenance schedule
+  app.delete('/api/isp/maintenance/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the task_id before deleting
+      const scheduleResult = await client`SELECT task_id FROM maintenance_schedule WHERE id = ${id}`;
+      
+      if (scheduleResult.length > 0) {
+        const taskId = scheduleResult[0].task_id;
+        
+        // Delete the maintenance schedule
+        await client`DELETE FROM maintenance_schedule WHERE id = ${id}`;
+        
+        // Delete the corresponding task
+        try {
+          const taskDeleteResult = await client`DELETE FROM tasks WHERE ticket_number = ${taskId} RETURNING *`;
+          if (taskDeleteResult.length > 0) {
+            console.log(`✅ Deleted corresponding task ${taskId}`);
+          }
+        } catch (taskError) {
+          console.error('⚠️ Warning: Could not delete task entry:', taskError);
+          // Don't fail the maintenance deletion if task deletion fails
+        }
+      } else {
+        await client`DELETE FROM maintenance_schedule WHERE id = ${id}`;
+      }
+      
+      res.json({ success: true, message: 'Maintenance schedule deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting maintenance schedule:', error);
+      res.status(500).json({ message: 'Failed to delete maintenance schedule', error: error.message });
+    }
+  });
+  
+  // === NETWORK SEGMENTS API ===
+  
+  // Get all network segments
+  app.get('/api/isp/segments', isAuthenticated, async (req: any, res) => {
+    try {
+      const segments = await client`
+        SELECT * FROM network_segments ORDER BY created_at DESC
+      `;
+      res.json(segments);
+    } catch (error: any) {
+      console.error('Error fetching network segments:', error);
+      res.status(500).json({ message: 'Failed to fetch network segments', error: error.message });
+    }
+  });
+  
+  // Create network segment
+  app.post('/api/isp/segments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { name, type, ip_range, gateway, subnet_mask, dns1, dns2, vlan_id, description, total_devices, active_devices, utilization, last_ping, status } = req.body;
+      
+      const result = await client`
+        INSERT INTO network_segments (name, type, ip_range, gateway, subnet_mask, dns1, dns2, vlan_id, description, total_devices, active_devices, utilization, last_ping, status)
+        VALUES (${name}, ${type || 'LAN'}, ${ip_range}, ${gateway}, ${subnet_mask || '255.255.255.0'}, ${dns1 || '8.8.8.8'}, ${dns2 || '8.8.4.4'}, ${vlan_id || null}, ${description || null}, ${total_devices || 0}, ${active_devices || 0}, ${utilization || 0}, ${last_ping || null}, ${status || 'active'})
+        RETURNING *
+      `;
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error('Error creating network segment:', error);
+      res.status(500).json({ message: 'Failed to create network segment', error: error.message });
+    }
+  });
+  
+  // Update network segment
+  app.put('/api/isp/segments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { name, type, ip_range, gateway, subnet_mask, dns1, dns2, vlan_id, description, total_devices, active_devices, utilization, last_ping, status } = req.body;
+      
+      const result = await client`
+        UPDATE network_segments SET
+          name = COALESCE(${name}, name),
+          type = COALESCE(${type}, type),
+          ip_range = COALESCE(${ip_range}, ip_range),
+          gateway = COALESCE(${gateway}, gateway),
+          subnet_mask = COALESCE(${subnet_mask}, subnet_mask),
+          dns1 = COALESCE(${dns1}, dns1),
+          dns2 = COALESCE(${dns2}, dns2),
+          vlan_id = COALESCE(${vlan_id}, vlan_id),
+          description = COALESCE(${description}, description),
+          total_devices = COALESCE(${total_devices}, total_devices),
+          active_devices = COALESCE(${active_devices}, active_devices),
+          utilization = COALESCE(${utilization}, utilization),
+          last_ping = COALESCE(${last_ping}, last_ping),
+          status = COALESCE(${status}, status),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Network segment not found' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error('Error updating network segment:', error);
+      res.status(500).json({ message: 'Failed to update network segment', error: error.message });
+    }
+  });
+  
+  // Delete network segment
+  app.delete('/api/isp/segments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await client`DELETE FROM network_segments WHERE id = ${id}`;
+      res.json({ success: true, message: 'Network segment deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting network segment:', error);
+      res.status(500).json({ message: 'Failed to delete network segment', error: error.message });
+    }
+  });
+  
+  // Ping network segment (update status)
+  app.post('/api/isp/segments/:id/ping', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Simulate ping with random latency for demo
+      const latency = Math.floor(Math.random() * 50) + 10;
+      const success = latency < 100;
+      const status = success ? 'active' : 'degraded';
+      
+      const result = await client`
+        UPDATE network_segments SET
+          last_ping = ${latency},
+          status = ${status},
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Network segment not found' });
+      }
+      res.json({ success, latency, segment: result[0] });
+    } catch (error: any) {
+      console.error('Error pinging network segment:', error);
+      res.status(500).json({ message: 'Failed to ping network segment', error: error.message });
+    }
+  });
+  
+  // === ISP DASHBOARD STATS ===
+  app.get('/api/isp/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const [clientStats] = await client`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active FROM isp_clients`;
+      const [deviceStats] = await client`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active FROM network_devices`;
+      const [maintenanceStats] = await client`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'scheduled') as pending FROM maintenance_schedule`;
+      const [segmentStats] = await client`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as healthy FROM network_segments`;
+      
+      res.json({
+        clients: { total: parseInt(clientStats.total), active: parseInt(clientStats.active) },
+        devices: { total: parseInt(deviceStats.total), active: parseInt(deviceStats.active) },
+        maintenance: { total: parseInt(maintenanceStats.total), pending: parseInt(maintenanceStats.pending) },
+        segments: { total: parseInt(segmentStats.total), healthy: parseInt(segmentStats.healthy) }
+      });
+    } catch (error: any) {
+      console.error('Error fetching ISP stats:', error);
+      res.status(500).json({ message: 'Failed to fetch ISP stats', error: error.message });
+    }
+  });
+  
+  // ===================================================
+  // END ISP MANAGEMENT API ROUTES
+  // ===================================================
+  
+  // Start automatic tower ping monitoring
+  console.log('🚀 Automatic tower monitoring: ENABLED - Pinging every 5 minutes');
+  startAutoPing(); // Auto-ping towers and create tasks for offline towers
   
   return httpServer;
 }

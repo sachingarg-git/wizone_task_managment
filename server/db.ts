@@ -15,7 +15,10 @@ if (!process.env.DATABASE_URL) {
 // Create the PostgreSQL connection without SSL (as per config)
 const sql = postgres(process.env.DATABASE_URL, {
   ssl: false,
-  max: 1,
+  max: 10, // Increase pool size
+  idle_timeout: 0, // Don't close idle connections
+  max_lifetime: null, // Don't expire connections
+  connect_timeout: 30, // 30 second connection timeout
 });
 
 // Create the database instance with schema

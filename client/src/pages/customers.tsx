@@ -78,6 +78,8 @@ export default function Customers() {
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   // Pagination for customer table
   const [customerEntriesPerPage, setCustomerEntriesPerPage] = useState(20);
+  // ISP filter: 'all' | 'isp' | 'non-isp'
+  const [ispFilter, setIspFilter] = useState<'all' | 'isp' | 'non-isp'>('all');
   // View detail dialogs
   const [showSystemDetailView, setShowSystemDetailView] = useState(false);
   const [selectedSystemDetail, setSelectedSystemDetail] = useState<any>(null);
@@ -252,10 +254,11 @@ export default function Customers() {
     }
   };
 
-  // Fetch on mount and when filters change
+  // Fetch on mount and when filters change (including ISP filter)
   useEffect(() => {
+    // Fetch customers when search query exists OR when ISP filter is active
     fetchCustomers();
-  }, [searchQuery, locationFilter]);
+  }, [searchQuery, locationFilter, ispFilter]);
 
   // Fetch system details for selected customer
   const { data: customerSystemDetails = [], isLoading: systemDetailsLoading } = useQuery({
@@ -358,6 +361,14 @@ export default function Customers() {
   const activeCustomers = customersArray.filter((c: any) => c.status === 'active').length || 0;
   const newThisMonth = Math.floor(totalCustomers * 0.04); // Mock calculation
 
+  // Apply ISP filter
+  const displayedCustomers = customersArray.filter((c: any) => {
+    if (ispFilter === 'all') return true;
+    if (ispFilter === 'isp') return c.is_isp_customer || c.isIspCustomer;
+    if (ispFilter === 'non-isp') return !c.is_isp_customer && !c.isIspCustomer;
+    return true;
+  });
+
   const handleViewCustomer = (customer: any) => {
     setSelectedCustomer(customer);
     setIsEditing(false);
@@ -457,6 +468,50 @@ export default function Customers() {
     },
   });
 
+  // ISP Status Toggle Mutation
+  const ispStatusMutation = useMutation({
+    mutationFn: async ({ customerId, isIspCustomer }: { customerId: number, isIspCustomer: boolean }) => {
+      console.log('🌐 Toggling ISP status:', { customerId, isIspCustomer });
+      return await apiRequest("PATCH", `/api/customers/${customerId}/isp-status`, {
+        isIspCustomer
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Success",
+        description: "Customer ISP status updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      console.error('❌ ISP status update error:', error);
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update ISP status. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleIspStatus = (customer: any) => {
+    const currentStatus = customer.is_isp_customer || customer.isIspCustomer || false;
+    ispStatusMutation.mutate({
+      customerId: customer.id,
+      isIspCustomer: !currentStatus
+    });
+  };
+
   return (
     <div className="min-h-screen">
       <Header 
@@ -478,7 +533,7 @@ export default function Customers() {
       
       <div className="p-6 space-y-8">
         {/* Customer Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -504,6 +559,46 @@ export default function Customers() {
                 </div>
                 <div className="bg-green-500 p-3 rounded-full">
                   <Wifi className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className={`bg-gradient-to-r from-cyan-50 to-cyan-100 border-cyan-200 cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${ispFilter === 'isp' ? 'ring-2 ring-cyan-500 shadow-lg' : ''}`}
+            onClick={() => setIspFilter(ispFilter === 'isp' ? 'all' : 'isp')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-cyan-700">ISP Customers</p>
+                  <p className="text-3xl font-bold text-cyan-900">
+                    {customersArray.filter((c: any) => c.is_isp_customer || c.isIspCustomer).length || 0}
+                  </p>
+                  <p className="text-xs text-cyan-600 mt-1">{ispFilter === 'isp' ? '✓ Showing ISP only' : 'Click to filter'}</p>
+                </div>
+                <div className="bg-cyan-500 p-3 rounded-full">
+                  <Wifi className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className={`bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${ispFilter === 'non-isp' ? 'ring-2 ring-gray-500 shadow-lg' : ''}`}
+            onClick={() => setIspFilter(ispFilter === 'non-isp' ? 'all' : 'non-isp')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Non-ISP Customers</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {customersArray.filter((c: any) => !c.is_isp_customer && !c.isIspCustomer).length || 0}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">{ispFilter === 'non-isp' ? '✓ Showing Non-ISP only' : 'Click to filter'}</p>
+                </div>
+                <div className="bg-gray-500 p-3 rounded-full">
+                  <Computer className="w-6 h-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -591,8 +686,8 @@ export default function Customers() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Show prompt when no search query */}
-            {!searchQuery.trim() ? (
+            {/* Show prompt when no search query AND no ISP filter */}
+            {!searchQuery.trim() && ispFilter === 'all' ? (
               <div className="text-center py-16">
                 <div className="bg-blue-50 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                   <Search className="w-10 h-10 text-blue-500" />
@@ -615,11 +710,11 @@ export default function Customers() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
-            ) : customersArray && customersArray.length > 0 ? (
+            ) : displayedCustomers && displayedCustomers.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm text-gray-600">
-                    Found: <span className="font-semibold text-primary">{customersArray.length}</span> customers matching "<span className="font-medium">{searchQuery}</span>"
+                    Found: <span className="font-semibold text-primary">{displayedCustomers.length}</span> customers{ispFilter !== 'all' ? ` (${ispFilter === 'isp' ? 'ISP' : 'Non-ISP'} only)` : ''}{searchQuery ? ` matching "${searchQuery}"` : ''}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Show:</span>
@@ -651,11 +746,12 @@ export default function Customers() {
                       <TableHead className="w-[100px]">Status</TableHead>
                       <TableHead className="w-[120px]">Portal Access</TableHead>
                       <TableHead className="w-[100px]">Support Tickets</TableHead>
+                      <TableHead className="w-[80px]">ISP</TableHead>
                       <TableHead className="w-[120px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customersArray.slice(0, customerEntriesPerPage).map((customer: any) => (
+                    {displayedCustomers.slice(0, customerEntriesPerPage).map((customer: any) => (
                       <TableRow key={customer.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium text-primary">
                           <div className="flex items-center space-x-1">
@@ -810,6 +906,23 @@ export default function Customers() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="flex items-center justify-center gap-2">
+                            <Switch
+                              checked={customer.is_isp_customer || customer.isIspCustomer || false}
+                              onCheckedChange={() => handleToggleIspStatus(customer)}
+                              disabled={ispStatusMutation.isPending}
+                              className="data-[state=checked]:bg-cyan-600"
+                            />
+                            <span className={`text-xs font-medium ${
+                              customer.is_isp_customer || customer.isIspCustomer
+                                ? 'text-cyan-600'
+                                : 'text-gray-400'
+                            }`}>
+                              {customer.is_isp_customer || customer.isIspCustomer ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex space-x-1">
                             <Button 
                               variant="ghost" 
@@ -848,7 +961,7 @@ export default function Customers() {
                 </Table>
                 </div>
                 <div className="mt-3 text-sm text-gray-500">
-                  Showing {Math.min(customerEntriesPerPage, customersArray.length)} of {customersArray.length} matching customers
+                  Showing {Math.min(customerEntriesPerPage, displayedCustomers.length)} of {displayedCustomers.length} {ispFilter !== 'all' ? `${ispFilter === 'isp' ? 'ISP' : 'Non-ISP'} ` : ''}customers
                 </div>
               </div>
             ) : (
@@ -857,8 +970,22 @@ export default function Customers() {
                   <Users className="w-8 h-8 text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-600 mb-2">No customers found</h3>
-                <p className="text-sm text-gray-400">No customers match "<span className="font-medium">{searchQuery}</span>"</p>
-                <p className="text-sm text-gray-400 mt-1">Try a different search term</p>
+                <p className="text-sm text-gray-400">
+                  {ispFilter !== 'all' 
+                    ? `No ${ispFilter === 'isp' ? 'ISP' : 'Non-ISP'} customers found${searchQuery ? ` matching "${searchQuery}"` : ''}`
+                    : `No customers match "${searchQuery}"`
+                  }
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {ispFilter !== 'all' && (
+                    <button 
+                      onClick={() => setIspFilter('all')} 
+                      className="text-cyan-600 hover:underline"
+                    >
+                      Clear ISP filter
+                    </button>
+                  )}
+                </p>
               </div>
             )}
           </CardContent>

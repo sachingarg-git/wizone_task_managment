@@ -15,7 +15,15 @@ import {
   Bot,
   Activity,
   ClipboardList,
-  MessageSquare
+  MessageSquare,
+  Network,
+  Radio,
+  Laptop,
+  Link2,
+  Wrench,
+  Globe,
+  Map,
+  FileBarChart
 } from "lucide-react";
 import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
@@ -50,9 +58,21 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Customer Management", href: "/customers", icon: Users },
       { name: "Performance", href: "/performance", icon: TrendingUp },
       { name: "Analytics", href: "/analytics", icon: BarChart3 },
+      // ISP Management Section
+      { name: "Tower Master", href: "/tower-master", icon: Radio, section: "ISP" },
+      { name: "Network Map", href: "/network-map", icon: Map, section: "ISP" },
+      // { name: "Client Master", href: "/client-master", icon: Users, section: "ISP" }, // Hidden - not deleted
+      { name: "Device Master", href: "/device-master", icon: Laptop, section: "ISP" },
+      { name: "Assign Clients", href: "/assign-clients", icon: Link2, section: "ISP" },
+      { name: "Maintenance Schedule", href: "/maintenance-schedule", icon: Wrench, section: "ISP" },
+      { name: "Network Management", href: "/network-management", icon: Globe, section: "ISP" },
+      // Management Section
       { name: "User Management", href: "/users", icon: UserCog },
       { name: "Engineer Reports", href: "/engineer-reports", icon: ClipboardList },
       { name: "Complaint Management", href: "/complaint-management", icon: MessageSquare },
+      // Reports Section
+      { name: "Reports", href: "/reports", icon: FileBarChart, section: "REPORTS" },
+      // System Section
       { name: "Bot Configuration", href: "/bot-configuration", icon: Bot },
       { name: "Tracking History", href: "/tracking-history", icon: Clock },
       { name: "Real-time Monitor", href: "/real-time-monitor", icon: Activity },
@@ -83,9 +103,19 @@ const getIconColor = (name: string, isActive: boolean) => {
     'Customer Management': isActive ? '#f59e0b' : '#d97706', // Amber/Orange
     'Performance': isActive ? '#8b5cf6' : '#7c3aed', // Violet/Purple
     'Analytics': isActive ? '#06b6d4' : '#0891b2', // Cyan/Teal
+    // ISP Section
+    'Tower Master': isActive ? '#3b82f6' : '#2563eb', // Blue
+    'Network Map': isActive ? '#10b981' : '#059669', // Green/Emerald
+    'Client Master': isActive ? '#f59e0b' : '#d97706', // Amber
+    'Device Master': isActive ? '#8b5cf6' : '#7c3aed', // Purple
+    'Assign Clients': isActive ? '#06b6d4' : '#0891b2', // Cyan
+    'Maintenance Schedule': isActive ? '#f97316' : '#ea580c', // Orange
+    'Network Management': isActive ? '#14b8a6' : '#0d9488', // Teal
+    // Management Section
     'User Management': isActive ? '#ef4444' : '#dc2626', // Red
     'Engineer Reports': isActive ? '#a855f7' : '#9333ea', // Purple
     'Complaint Management': isActive ? '#ec4899' : '#db2777', // Pink
+    'Reports': isActive ? '#7c3aed' : '#6d28d9', // Violet/Purple
     'Bot Configuration': isActive ? '#8b5cf6' : '#7c3aed', // Purple
     'Real-time Monitor': isActive ? '#06b6d4' : '#0891b2', // Cyan/Teal
     'Tracking History': isActive ? '#f97316' : '#ea580c', // Orange
@@ -239,6 +269,14 @@ export default function Sidebar() {
               'Customer Management': '#fbbf24', // Amber
               'Performance': '#a78bfa', // Purple
               'Analytics': '#22d3ee', // Cyan
+              // ISP/Network Management Section
+              'Tower Master': '#3b82f6', // Blue
+              'Client Master': '#f59e0b', // Amber
+              'Device Master': '#8b5cf6', // Purple
+              'Assign Clients': '#06b6d4', // Cyan
+              'Maintenance Schedule': '#f97316', // Orange
+              'Network Management': '#14b8a6', // Teal
+              // Management Section
               'User Management': '#f472b6', // Pink
               'Engineer Reports': '#c084fc', // Light Purple
               'Complaint Management': '#fb923c', // Orange
@@ -251,11 +289,20 @@ export default function Sidebar() {
           };
           
           // Add section dividers
+          const showNetworkSection = item.name === "Tower Master" && index > 0;
           const showManagementSection = item.name === "User Management" && index > 0;
           const showSystemSection = item.name === "Bot Configuration" && index > 0;
           
           return (
             <div key={item.name}>
+              {showNetworkSection && (
+                <div className="px-3 pt-6 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-teal-500" />
+                    <p className="text-xs font-bold text-teal-600 uppercase tracking-wider">Network Management</p>
+                  </div>
+                </div>
+              )}
               {showManagementSection && (
                 <div className="px-3 pt-6 pb-2">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Management</p>

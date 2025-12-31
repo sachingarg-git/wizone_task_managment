@@ -4,27 +4,45 @@ import * as schema from "../shared/schema.js";
 import { hashPassword } from "./auth.js";
 import { eq } from "drizzle-orm";
 
-// Database connection - FORCED to your PostgreSQL credentials
-const DATABASE_URL = "postgresql://postgres:ss123456@103.122.85.61:9095/WIZONEIT_SUPPORT";
-console.log("🔗 Using FIXED PostgreSQL database:", DATABASE_URL);
+// Database connection - Using your PostgreSQL credentials
+const DATABASE_URL = "postgresql://appuser:jksdj%24%26%5E%26*YUG*%5E%25%26THJHIO4546GHG%26j@72.61.170.243:9095/WIZONEIT_SUPPORT";
+console.log("🔗 Using PostgreSQL database: postgresql://appuser:****@72.61.170.243:9095/WIZONEIT_SUPPORT");
 
 console.log("🔗 Connecting to PostgreSQL database...");
 
-const sql = postgres(DATABASE_URL, {
-  ssl: 'prefer',
-  max: 10,
-  connect_timeout: 30,
-  prepare: false,
-});
+let sql: any;
+let db: any;
+let client: any;
 
-// Export client as alias for sql (postgres client) for raw SQL queries
-export const client = sql;
+try {
+  sql = postgres(DATABASE_URL, {
+    ssl: 'prefer',
+    max: 10,
+    connect_timeout: 5,
+    prepare: false,
+  });
 
-export const db = drizzle(sql, { schema });
+  // Export client as alias for sql (postgres client) for raw SQL queries
+  client = sql;
+
+  db = drizzle(sql, { schema });
+  console.log("✅ PostgreSQL client created (connection will be tested on first use)");
+} catch (error) {
+  console.error("❌ Failed to create database client:", error);
+  console.log("⚠️ Server will run in demo mode");
+  // Create mock database objects to prevent import errors
+  sql = {} as any;
+  db = {} as any;
+  client = {} as any;
+}
+
+export { db, client, sql };
 
 export async function initializeDatabase() {
   try {
     console.log("🗄️ Initializing database...");
+    // console.log("⚠️ Skipping database connection in demo mode...");
+    // throw new Error("Database connection skipped for demo mode");
 
     // Test connection
     await sql`SELECT 1`;
@@ -118,6 +136,7 @@ async function createTables() {
         username VARCHAR,
         password VARCHAR,
         portal_access BOOLEAN DEFAULT false,
+        is_isp_customer BOOLEAN DEFAULT false,
         latitude DECIMAL(10,8),
         longitude DECIMAL(11,8),
         location_notes TEXT,
@@ -173,6 +192,19 @@ async function createTables() {
       )
     `;
 
+    // Create task_engineers junction table for multiple engineer assignments
+    await sql`
+      CREATE TABLE IF NOT EXISTS task_engineers (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+        engineer_id INTEGER NOT NULL,
+        engineer_name VARCHAR,
+        assigned_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(task_id, engineer_id)
+      )
+    `;
+    console.log("✅ Task engineers junction table ready");
+
     // Create customer_system_details table
     await sql`
       CREATE TABLE IF NOT EXISTS customer_system_details (
@@ -223,6 +255,50 @@ async function createTables() {
     `;
     
     // await sql`CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions(expire)`; // Commented out due to column mismatch with existing database
+
+    // Create maintenance_schedule table for tower maintenance tracking
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS maintenance_schedule (
+          id SERIAL PRIMARY KEY,
+          task_id VARCHAR NOT NULL,
+          title VARCHAR NOT NULL,
+          description TEXT,
+          tower_id INTEGER,
+          device_id INTEGER,
+          scheduled_date DATE NOT NULL,
+          scheduled_time TIME,
+          schedule_mode VARCHAR DEFAULT 'one-time',
+          estimated_duration VARCHAR,
+          assigned_to INTEGER,
+          assigned_to_name VARCHAR,
+          type VARCHAR NOT NULL DEFAULT 'routine_inspection',
+          priority VARCHAR DEFAULT 'medium',
+          status VARCHAR DEFAULT 'scheduled',
+          checklist JSONB,
+          notes TEXT,
+          completed_date TIMESTAMP,
+          completed_by INTEGER,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `;
+      console.log("✅ Maintenance schedule table ready");
+    } catch (maintenanceError) {
+      console.log("ℹ️ Maintenance schedule table issue:", maintenanceError);
+      // Continue even if there's an error - table may already exist
+    }
+
+    // Add schedule_mode column if it doesn't exist (for existing tables)
+    try {
+      await sql`
+        ALTER TABLE maintenance_schedule 
+        ADD COLUMN IF NOT EXISTS schedule_mode VARCHAR DEFAULT 'one-time'
+      `;
+      console.log("✅ Maintenance schedule schema updated with schedule_mode column");
+    } catch (columnError) {
+      console.log("ℹ️ Schedule_mode column may already exist:", columnError);
+    }
 
     console.log("✅ All tables created successfully!");
 
@@ -380,4 +456,4 @@ async function seedSampleData() {
   }
 }
 
-export { sql, schema };
+export { schema };

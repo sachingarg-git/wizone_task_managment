@@ -90,11 +90,11 @@ export default function LoginPage() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      // Redirect field engineers to portal instead of dashboard
+      // Use window.location.href for proper session cookie propagation
       if (user.role === 'field_engineer') {
-        setLocation("/portal");
+        window.location.href = "/portal";
       } else {
-        setLocation("/");
+        window.location.href = "/dashboard";
       }
     },
     onError: (error: Error) => {

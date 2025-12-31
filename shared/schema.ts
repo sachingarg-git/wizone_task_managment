@@ -27,7 +27,11 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Network towers table for network monitoring
+// ============================================
+// ISP / NETWORK MANAGEMENT SECTION TABLES
+// ============================================
+
+// Network towers table for network monitoring (Tower Master)
 export const networkTowers = pgTable("network_towers", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
@@ -42,11 +46,234 @@ export const networkTowers = pgTable("network_towers", {
   expected_latency: varchar("expected_latency").default('5ms'),
   actual_latency: varchar("actual_latency"),
   description: text("description"),
-  status: varchar("status").default('offline'),
+  status: varchar("status").default('offline'), // online, offline, maintenance
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
   last_test_at: timestamp("last_test_at"),
 });
+
+// ISP Clients table (Client Master) - Different from customers, these are ISP subscribers
+export const ispClients = pgTable("isp_clients", {
+  id: serial("id").primaryKey(),
+  clientId: varchar("client_id").unique().notNull(), // e.g., ISP-001
+  name: varchar("name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  plan: varchar("plan"), // Basic 25Mbps, Standard 50Mbps, Premium 100Mbps, Business 200Mbps
+  planSpeed: varchar("plan_speed"), // 25, 50, 100, 200 Mbps
+  monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }),
+  connectionType: varchar("connection_type"), // Fiber, Wireless, Cable
+  installationDate: timestamp("installation_date"),
+  billingCycle: varchar("billing_cycle").default('monthly'), // monthly, quarterly, yearly
+  dueDate: integer("due_date").default(1), // Day of month for billing
+  status: varchar("status").default('active'), // active, suspended, terminated, pending
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Network Devices table (Device Master)
+export const networkDevices = pgTable("network_devices", {
+  id: serial("id").primaryKey(),
+  deviceId: varchar("device_id").unique(), // e.g., DEV-001
+  name: varchar("name").notNull(),
+  type: varchar("type").notNull(), // Router, Switch, OLT, ONT, Access Point, Server, Firewall
+  model: varchar("model"),
+  manufacturer: varchar("manufacturer"),
+  ipAddress: varchar("ip_address"),
+  macAddress: varchar("mac_address"),
+  serialNumber: varchar("serial_number"),
+  towerId: integer("tower_id").references(() => networkTowers.id),
+  installationDate: timestamp("installation_date"),
+  warrantyExpiry: timestamp("warranty_expiry"),
+  firmwareVersion: varchar("firmware_version"),
+  connectedClients: integer("connected_clients").default(0),
+  maxCapacity: integer("max_capacity"),
+  status: varchar("status").default('active'), // active, maintenance, inactive
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Client Assignments table (Assign Clients) - Links clients to towers/devices
+export const clientAssignments = pgTable("client_assignments", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => ispClients.id).notNull(),
+  towerId: integer("tower_id").references(() => networkTowers.id).notNull(),
+  deviceId: integer("device_id").references(() => networkDevices.id),
+  port: varchar("port"), // Port number or "Wireless"
+  ipAssigned: varchar("ip_assigned"),
+  macAddress: varchar("mac_address"),
+  bandwidth: varchar("bandwidth"), // Assigned bandwidth
+  vlanId: varchar("vlan_id"),
+  assignedDate: timestamp("assigned_date").defaultNow(),
+  status: varchar("status").default('active'), // active, pending, disconnected
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Maintenance Schedule table (Maintenance Schedule)
+export const maintenanceSchedule = pgTable("maintenance_schedule", {
+  id: serial("id").primaryKey(),
+  taskId: varchar("task_id").unique(), // e.g., MAINT-001
+  title: varchar("title").notNull(),
+  description: text("description"),
+  towerId: integer("tower_id").references(() => networkTowers.id),
+  deviceId: integer("device_id").references(() => networkDevices.id),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  scheduledTime: varchar("scheduled_time"),
+  estimatedDuration: varchar("estimated_duration"), // e.g., "2 hours"
+  assignedTo: integer("assigned_to").references(() => users.id),
+  assignedToName: varchar("assigned_to_name"),
+  type: varchar("type").default('preventive'), // preventive, corrective, emergency, inspection
+  priority: varchar("priority").default('medium'), // low, medium, high, critical
+  status: varchar("status").default('scheduled'), // scheduled, in_progress, completed, cancelled
+  checklist: json("checklist").$type<Array<{ item: string; completed: boolean }>>().default([]),
+  notes: text("notes"),
+  completedDate: timestamp("completed_date"),
+  completedBy: integer("completed_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Network Segments table (Network Management)
+export const networkSegments = pgTable("network_segments", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  type: varchar("type").notNull(), // WAN, LAN, VLAN, VPN
+  ipRange: varchar("ip_range").notNull(), // CIDR notation e.g., 192.168.1.0/24
+  gateway: varchar("gateway").notNull(),
+  subnetMask: varchar("subnet_mask").default('255.255.255.0'),
+  dns1: varchar("dns1"),
+  dns2: varchar("dns2"),
+  vlanId: integer("vlan_id"),
+  description: text("description"),
+  totalDevices: integer("total_devices").default(0),
+  activeDevices: integer("active_devices").default(0),
+  utilization: integer("utilization").default(0), // Percentage 0-100
+  lastPing: integer("last_ping"), // Latency in ms
+  status: varchar("status").default('online'), // online, offline, degraded
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============================================
+// ISP RELATIONS
+// ============================================
+
+// Network Towers relations
+export const networkTowersRelations = relations(networkTowers, ({ many }) => ({
+  devices: many(networkDevices),
+  assignments: many(clientAssignments),
+  maintenanceTasks: many(maintenanceSchedule),
+}));
+
+// ISP Clients relations
+export const ispClientsRelations = relations(ispClients, ({ many }) => ({
+  assignments: many(clientAssignments),
+}));
+
+// Network Devices relations
+export const networkDevicesRelations = relations(networkDevices, ({ one, many }) => ({
+  tower: one(networkTowers, {
+    fields: [networkDevices.towerId],
+    references: [networkTowers.id],
+  }),
+  assignments: many(clientAssignments),
+  maintenanceTasks: many(maintenanceSchedule),
+}));
+
+// Client Assignments relations
+export const clientAssignmentsRelations = relations(clientAssignments, ({ one }) => ({
+  client: one(ispClients, {
+    fields: [clientAssignments.clientId],
+    references: [ispClients.id],
+  }),
+  tower: one(networkTowers, {
+    fields: [clientAssignments.towerId],
+    references: [networkTowers.id],
+  }),
+  device: one(networkDevices, {
+    fields: [clientAssignments.deviceId],
+    references: [networkDevices.id],
+  }),
+}));
+
+// Maintenance Schedule relations
+export const maintenanceScheduleRelations = relations(maintenanceSchedule, ({ one }) => ({
+  tower: one(networkTowers, {
+    fields: [maintenanceSchedule.towerId],
+    references: [networkTowers.id],
+  }),
+  device: one(networkDevices, {
+    fields: [maintenanceSchedule.deviceId],
+    references: [networkDevices.id],
+  }),
+  assignedUser: one(users, {
+    fields: [maintenanceSchedule.assignedTo],
+    references: [users.id],
+  }),
+}));
+
+// ============================================
+// ISP INSERT SCHEMAS
+// ============================================
+
+export const insertIspClientSchema = createInsertSchema(ispClients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNetworkDeviceSchema = createInsertSchema(networkDevices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientAssignmentSchema = createInsertSchema(clientAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMaintenanceScheduleSchema = createInsertSchema(maintenanceSchedule).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNetworkSegmentSchema = createInsertSchema(networkSegments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================
+// ISP TYPES
+// ============================================
+
+export type NetworkTower = typeof networkTowers.$inferSelect;
+export type InsertNetworkTower = typeof networkTowers.$inferInsert;
+
+export type IspClient = typeof ispClients.$inferSelect;
+export type InsertIspClient = z.infer<typeof insertIspClientSchema>;
+
+export type NetworkDevice = typeof networkDevices.$inferSelect;
+export type InsertNetworkDevice = z.infer<typeof insertNetworkDeviceSchema>;
+
+export type ClientAssignment = typeof clientAssignments.$inferSelect;
+export type InsertClientAssignment = z.infer<typeof insertClientAssignmentSchema>;
+
+export type MaintenanceTask = typeof maintenanceSchedule.$inferSelect;
+export type InsertMaintenanceTask = z.infer<typeof insertMaintenanceScheduleSchema>;
+
+export type NetworkSegment = typeof networkSegments.$inferSelect;
+export type InsertNetworkSegment = z.infer<typeof insertNetworkSegmentSchema>;
 
 // User storage table
 export const users = pgTable("users", {
@@ -91,6 +318,7 @@ export const customers = pgTable("customers", {
   portalUsername: varchar("portal_username"),
   portalPassword: varchar("portal_password"),
   portalAccess: boolean("portal_access").default(false),
+  isIspCustomer: boolean("is_isp_customer").default(false),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   createdAt: timestamp("created_at").defaultNow(),

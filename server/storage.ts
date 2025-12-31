@@ -940,7 +940,7 @@ export class DatabaseStorage implements IStorage {
         .input('description', task.description || null)
         .input('priority', task.priority)
         .input('status', task.status)
-        .input('issue_type', task.issueType || null)
+        .input('category', task.category || null)
         .input('customer_id', task.customerId || null)
         .input('assigned_to', task.assignedTo || null);
       
@@ -1034,7 +1034,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         or(
           ilike(tasks.ticketNumber, `%${query}%`),
-          ilike(tasks.issueType, `%${query}%`),
+          ilike(tasks.category, `%${query}%`),
           ilike(tasks.description, `%${query}%`)
         )
       );
@@ -1239,7 +1239,7 @@ export class DatabaseStorage implements IStorage {
           priority: originalTask.priority,
           status: "in-progress" as const,
           description: originalTask.description,
-          issueType: originalTask.issueType,
+          category: originalTask.category,
           contactPerson: originalTask.contactPerson,
           visitCharges: originalTask.visitCharges,
           fieldEngineerId: parseInt(engineerId),

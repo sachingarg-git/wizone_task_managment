@@ -84,6 +84,7 @@ async function initializeTables() {
           monthly_fee DECIMAL(10, 2),
           status VARCHAR(20) DEFAULT 'active',
           portal_access BOOLEAN DEFAULT false,
+          is_isp_customer BOOLEAN DEFAULT false,
           portal_username VARCHAR(50),
           portal_password VARCHAR(255),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

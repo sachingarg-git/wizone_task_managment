@@ -32,6 +32,14 @@ import RealTimeMonitor from "@/pages/RealTimeMonitor";
 import NetworkMonitoring from "@/pages/NetworkMonitoring";
 import EngineerReports from "@/pages/engineer-reports";
 import ComplaintManagement from "@/pages/complaint-management";
+import TowerMaster from "@/pages/tower-master";
+import ClientMaster from "@/pages/client-master";
+import DeviceMaster from "@/pages/device-master";
+import NetworkMap from "@/pages/network-map";
+import AssignClients from "@/pages/assign-clients";
+import MaintenanceSchedule from "@/pages/maintenance-schedule";
+import NetworkManagement from "@/pages/network-management";
+import Reports from "@/pages/reports";
 
 function Router() {
   console.log("Router component rendering...");
@@ -42,6 +50,12 @@ function Router() {
     const [location] = useLocation();
     const [customerUser, setCustomerUser] = useState(null);
     
+    console.log("Current location:", location);
+    console.log("ISP routes check - location matches:", {
+      towerMaster: location === '/tower-master',
+      clientMaster: location === '/client-master',
+      deviceMaster: location === '/device-master'
+    });
     console.log("Auth status:", { isAuthenticated, isLoading, error: error?.message });
 
   // Check for stored customer session
@@ -167,6 +181,14 @@ function Router() {
           <Route path="/network-monitoring" component={NetworkMonitoring} />
           <Route path="/engineer-reports" component={EngineerReports} />
           <Route path="/complaint-management" component={ComplaintManagement} />
+          <Route path="/tower-master" component={TowerMaster} />
+          <Route path="/client-master" component={ClientMaster} />
+          <Route path="/device-master" component={DeviceMaster} />
+          <Route path="/network-map" component={NetworkMap} />
+          <Route path="/assign-clients" component={AssignClients} />
+          <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
+          <Route path="/network-management" component={NetworkManagement} />
+          <Route path="/reports" component={Reports} />
           <Route component={NotFound} />
         </Switch>
       </div>

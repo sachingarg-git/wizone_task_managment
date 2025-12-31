@@ -168,15 +168,14 @@ export function setupDomainCORS(app: Express) {
     
     const userAgent = req.get('user-agent') || '';
     
-    // ENHANCED MOBILE APP SUPPORT: Allow requests with no origin (mobile apps, APK)
-    const isMobileApp = !origin || 
-                       origin === 'null' || 
-                       origin === 'undefined' ||
-                       userAgent.includes('WizoneFieldEngineerApp') ||
+    // ENHANCED MOBILE APP SUPPORT: Detect mobile apps explicitly by user-agent
+    // Don't rely on missing origin as desktop browsers may also have no origin
+    const isMobileApp = userAgent.includes('WizoneFieldEngineerApp') ||
                        userAgent.includes('wv') || // Android WebView
-                       userAgent.includes('Mobile') ||
+                       (userAgent.includes('Mobile') && userAgent.includes('Android')) ||
                        req.headers['x-mobile-app'] === 'true' ||
-                       req.headers['x-mobile-app'] === 'WizoneFieldEngineerApp';
+                       req.headers['x-mobile-app'] === 'WizoneFieldEngineerApp' ||
+                       origin === 'file://'; // APK file:// protocol
                        
     if (isMobileApp) {
       // For mobile apps (especially APKs), we need to handle CORS differently

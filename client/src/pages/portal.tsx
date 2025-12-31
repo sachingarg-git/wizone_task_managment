@@ -26,6 +26,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
@@ -53,6 +59,10 @@ import {
   Trash2,
   Search,
   Download,
+  Calendar,
+  MoreVertical,
+  Play,
+  MessageSquare,
 } from "lucide-react";
 
 interface Task {
@@ -98,8 +108,8 @@ export default function MobilePortal() {
   const [updateNotes, setUpdateNotes] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
-  // Active tab for bottom navigation: 'home' | 'tasks' | 'dailyreport' | 'complaint' | 'reports' | 'profile' | 'documents'
-  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'dailyreport' | 'complaint' | 'reports' | 'profile' | 'documents'>('home');
+  // Active tab for bottom navigation: 'home' | 'tasks' | 'activity' | 'dailyreport' | 'complaint' | 'reports' | 'profile' | 'documents'
+  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'activity' | 'dailyreport' | 'complaint' | 'reports' | 'profile' | 'documents'>('home');
   
   // Sync/refresh loading state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -136,6 +146,13 @@ export default function MobilePortal() {
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [engineerNote, setEngineerNote] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
+  // Activity remarks state
+  const [activityRemarks, setActivityRemarks] = useState<{[key: number]: string}>({});
+  const [isUpdatingActivity, setIsUpdatingActivity] = useState<number | null>(null);
+  const [activityFilter, setActivityFilter] = useState<'all' | 'scheduled' | 'in_progress' | 'completed'>('all');
+  const [selectedActivityDetail, setSelectedActivityDetail] = useState<any>(null);
+  const [activityActionModal, setActivityActionModal] = useState<{activity: any; action: 'start' | 'complete' | 'remark'} | null>(null);
 
   // File upload progress states
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
@@ -209,6 +226,12 @@ export default function MobilePortal() {
   // Fetch tasks
   const { data: tasks = [], isLoading, refetch } = useQuery<Task[]>({
     queryKey: ["/api/tasks/my-tasks"],
+  });
+
+  // Fetch scheduled activities (maintenance tasks) for this engineer
+  const { data: scheduledActivities = [], isLoading: isLoadingActivities, refetch: refetchActivities } = useQuery<any[]>({
+    queryKey: ["/api/isp/maintenance/my-activities"],
+    enabled: activeTab === 'activity' || activeTab === 'home',
   });
 
   // Filtered tasks based on status filter
@@ -1106,6 +1129,55 @@ export default function MobilePortal() {
                 </div>
               </div>
             </div>
+
+            {/* Scheduled Activities Section */}
+            {scheduledActivities.length > 0 && (
+              <div className="px-5 mt-4">
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-purple-900 flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Scheduled Activities
+                    </h3>
+                    <Badge className="bg-purple-600">{scheduledActivities.length}</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {scheduledActivities.slice(0, 3).map((activity: any) => (
+                      <div 
+                        key={activity.id}
+                        onClick={() => setActiveTab('activity')}
+                        className="bg-white rounded-lg p-3 cursor-pointer hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm text-gray-900">{activity.title}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            activity.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                            activity.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                            {activity.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          📅 {new Date(activity.scheduled_date).toLocaleDateString('en-GB')}
+                          {activity.tower_name && ` • 📍 ${activity.tower_name}`}
+                        </p>
+                      </div>
+                    ))}
+                    {scheduledActivities.length > 3 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-purple-600"
+                        onClick={() => setActiveTab('activity')}
+                      >
+                        View all {scheduledActivities.length} activities →
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tasks Section */}
             <div className="px-5">
@@ -2677,6 +2749,499 @@ export default function MobilePortal() {
         </DialogContent>
       </Dialog>
 
+      {/* ACTIVITY TAB - Scheduled Maintenance Tasks */}
+      {activeTab === 'activity' && (
+        <div className="space-y-4">
+          {/* Dashboard Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                📅 My Activities
+              </h2>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => refetchActivities()}
+                disabled={isLoadingActivities}
+                className="bg-white/20 hover:bg-white/30 text-white border-0"
+              >
+                {isLoadingActivities ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              </Button>
+            </div>
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-2">
+              <div 
+                onClick={() => setActivityFilter('scheduled')}
+                className={`bg-white/10 rounded-lg p-3 text-center cursor-pointer transition-all ${activityFilter === 'scheduled' ? 'ring-2 ring-white bg-white/25' : 'hover:bg-white/15'}`}
+              >
+                <p className="text-2xl font-bold">
+                  {scheduledActivities.filter((a: any) => a.status === 'scheduled').length}
+                </p>
+                <p className="text-xs opacity-90">Scheduled</p>
+              </div>
+              <div 
+                onClick={() => setActivityFilter('in_progress')}
+                className={`bg-white/10 rounded-lg p-3 text-center cursor-pointer transition-all ${activityFilter === 'in_progress' ? 'ring-2 ring-white bg-white/25' : 'hover:bg-white/15'}`}
+              >
+                <p className="text-2xl font-bold">
+                  {scheduledActivities.filter((a: any) => a.status === 'in_progress').length}
+                </p>
+                <p className="text-xs opacity-90">In Progress</p>
+              </div>
+              <div 
+                onClick={() => setActivityFilter('completed')}
+                className={`bg-white/10 rounded-lg p-3 text-center cursor-pointer transition-all ${activityFilter === 'completed' ? 'ring-2 ring-white bg-white/25' : 'hover:bg-white/15'}`}
+              >
+                <p className="text-2xl font-bold">
+                  {scheduledActivities.filter((a: any) => a.status === 'completed').length}
+                </p>
+                <p className="text-xs opacity-90">Completed</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <button
+              onClick={() => setActivityFilter('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activityFilter === 'all' 
+                  ? 'bg-purple-600 text-white shadow-md' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All ({scheduledActivities.length})
+            </button>
+            <button
+              onClick={() => setActivityFilter('scheduled')}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activityFilter === 'scheduled' 
+                  ? 'bg-blue-600 text-white shadow-md' 
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              }`}
+            >
+              📋 Scheduled
+            </button>
+            <button
+              onClick={() => setActivityFilter('in_progress')}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activityFilter === 'in_progress' 
+                  ? 'bg-yellow-500 text-white shadow-md' 
+                  : 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+              }`}
+            >
+              🔄 In Progress
+            </button>
+            <button
+              onClick={() => setActivityFilter('completed')}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activityFilter === 'completed' 
+                  ? 'bg-green-600 text-white shadow-md' 
+                  : 'bg-green-50 text-green-600 hover:bg-green-100'
+              }`}
+            >
+              ✅ Completed
+            </button>
+          </div>
+
+          {isLoadingActivities ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            </div>
+          ) : scheduledActivities.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+              <ClipboardList className="w-16 h-16 mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500 font-medium">No activities assigned to you</p>
+              <p className="text-gray-400 text-sm mt-1">Activities will appear here when assigned</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {scheduledActivities
+                .filter((activity: any) => activityFilter === 'all' || activity.status === activityFilter)
+                .map((activity: any) => (
+                <div 
+                  key={activity.id} 
+                  className={`bg-white rounded-xl border-2 shadow-sm overflow-hidden transition-all hover:shadow-md ${
+                    activity.status === 'completed' ? 'border-green-200' :
+                    activity.status === 'in_progress' ? 'border-yellow-200' :
+                    'border-blue-200'
+                  }`}
+                >
+                  {/* Card Header with Status Bar */}
+                  <div className={`px-4 py-2 ${
+                    activity.status === 'completed' ? 'bg-green-50' :
+                    activity.status === 'in_progress' ? 'bg-yellow-50' :
+                    'bg-blue-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          activity.status === 'completed' ? 'bg-green-500' :
+                          activity.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' :
+                          'bg-blue-500'
+                        }`}></span>
+                        <span className={`text-xs font-bold uppercase tracking-wide ${
+                          activity.status === 'completed' ? 'text-green-700' :
+                          activity.status === 'in_progress' ? 'text-yellow-700' :
+                          'text-blue-700'
+                        }`}>
+                          {activity.status === 'in_progress' ? 'In Progress' : activity.status}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        activity.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                        activity.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                        activity.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {activity.priority}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-4">
+                    <h3 className="font-bold text-gray-900 text-base mb-2">{activity.title}</h3>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <span className="font-medium text-gray-500">ID:</span>
+                        <button 
+                          onClick={() => setSelectedActivityDetail(activity)}
+                          className="text-purple-600 hover:text-purple-800 font-medium hover:underline"
+                        >
+                          {activity.task_id}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <span>📅</span>
+                        <span>{new Date(activity.scheduled_date).toLocaleDateString('en-GB')}</span>
+                      </div>
+                      {activity.tower_name && (
+                        <div className="flex items-center gap-1 text-gray-600 col-span-2">
+                          <span>📍</span>
+                          <span className="font-medium">{activity.tower_name}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-gray-600 col-span-2">
+                        <span>🔧</span>
+                        <span>{activity.type?.replace(/_/g, ' ')}</span>
+                      </div>
+                    </div>
+
+                    {activity.description && (
+                      <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg mb-3">
+                        {activity.description}
+                      </p>
+                    )}
+
+                    {activity.notes && (
+                      <div className="p-2 bg-amber-50 rounded-lg border border-amber-200 mb-3">
+                        <p className="text-xs font-semibold text-amber-800 mb-1">📝 Activity Log:</p>
+                        <p className="text-xs text-amber-700 whitespace-pre-wrap">{activity.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Simple Action Buttons */}
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      {activity.status === 'scheduled' && (
+                        <Button 
+                          size="sm" 
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          disabled={isUpdatingActivity === activity.id}
+                          onClick={() => setActivityActionModal({ activity, action: 'start' })}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Start Work
+                        </Button>
+                      )}
+                      {activity.status === 'in_progress' && (
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={isUpdatingActivity === activity.id}
+                          onClick={() => setActivityActionModal({ activity, action: 'complete' })}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Complete
+                        </Button>
+                      )}
+                      {activity.status === 'completed' && (
+                        <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                          <CheckCircle className="w-4 h-4" />
+                          Done
+                        </span>
+                      )}
+                      
+                      {/* Dropdown for more actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="ml-auto">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSelectedActivityDetail(activity)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          {(activity.status === 'scheduled' || activity.status === 'in_progress') && (
+                            <DropdownMenuItem onClick={() => setActivityActionModal({ activity, action: 'remark' })}>
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Add Remark
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Empty state when filter returns no results */}
+              {scheduledActivities.filter((a: any) => activityFilter === 'all' || a.status === activityFilter).length === 0 && (
+                <div className="text-center py-8 bg-gray-50 rounded-xl">
+                  <p className="text-gray-500">No {activityFilter === 'all' ? '' : activityFilter.replace('_', ' ')} activities</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Activity Detail Modal */}
+      <Dialog open={!!selectedActivityDetail} onOpenChange={() => setSelectedActivityDetail(null)}>
+        <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              📋 Activity Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedActivityDetail && (
+            <div className="space-y-4">
+              {/* Status & Priority */}
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                  selectedActivityDetail.status === 'completed' ? 'bg-green-100 text-green-700' :
+                  selectedActivityDetail.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {selectedActivityDetail.status === 'in_progress' ? 'In Progress' : 
+                   selectedActivityDetail.status?.charAt(0).toUpperCase() + selectedActivityDetail.status?.slice(1)}
+                </span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  selectedActivityDetail.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                  selectedActivityDetail.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                  selectedActivityDetail.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {selectedActivityDetail.priority} priority
+                </span>
+              </div>
+
+              {/* Task Info Grid */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Task ID</p>
+                    <p className="font-bold text-purple-600">{selectedActivityDetail.task_id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Type</p>
+                    <p className="font-medium">{selectedActivityDetail.type?.replace(/_/g, ' ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Scheduled Date</p>
+                    <p className="font-medium">{new Date(selectedActivityDetail.scheduled_date).toLocaleDateString('en-GB')}</p>
+                  </div>
+                  {selectedActivityDetail.scheduled_time && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Time</p>
+                      <p className="font-medium">{selectedActivityDetail.scheduled_time}</p>
+                    </div>
+                  )}
+                  {selectedActivityDetail.tower_name && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-500 font-medium">Location</p>
+                      <p className="font-medium">📍 {selectedActivityDetail.tower_name}</p>
+                    </div>
+                  )}
+                  {selectedActivityDetail.estimated_duration && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Est. Duration</p>
+                      <p className="font-medium">{selectedActivityDetail.estimated_duration}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 font-medium">Title</p>
+                  <p className="font-semibold text-gray-900">{selectedActivityDetail.title}</p>
+                </div>
+                
+                {selectedActivityDetail.description && (
+                  <div className="pt-2">
+                    <p className="text-xs text-gray-500 font-medium">Description</p>
+                    <p className="text-sm text-gray-700">{selectedActivityDetail.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Activity Log */}
+              <div className="border rounded-xl p-4">
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  📝 Activity Log & Remarks
+                </h4>
+                {selectedActivityDetail.notes ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                      {selectedActivityDetail.notes}
+                    </pre>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">No activity log recorded yet</p>
+                )}
+              </div>
+
+              {/* Timeline */}
+              <div className="border rounded-xl p-4">
+                <h4 className="font-semibold text-sm mb-3">📅 Timeline</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-gray-500">Created:</span>
+                    <span>{new Date(selectedActivityDetail.created_at).toLocaleString('en-IN')}</span>
+                  </div>
+                  {selectedActivityDetail.updated_at && selectedActivityDetail.updated_at !== selectedActivityDetail.created_at && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span className="text-gray-500">Updated:</span>
+                      <span>{new Date(selectedActivityDetail.updated_at).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  {selectedActivityDetail.completed_date && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-500">Completed:</span>
+                      <span>{new Date(selectedActivityDetail.completed_date).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Button variant="outline" className="w-full" onClick={() => setSelectedActivityDetail(null)}>
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Action Modal (Start/Complete/Remark) */}
+      <Dialog open={!!activityActionModal} onOpenChange={() => setActivityActionModal(null)}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {activityActionModal?.action === 'start' && <><Play className="w-5 h-5 text-blue-600" /> Start Work</>}
+              {activityActionModal?.action === 'complete' && <><CheckCircle className="w-5 h-5 text-green-600" /> Complete Activity</>}
+              {activityActionModal?.action === 'remark' && <><MessageSquare className="w-5 h-5 text-purple-600" /> Add Remark</>}
+            </DialogTitle>
+          </DialogHeader>
+          {activityActionModal && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="font-medium text-gray-900">{activityActionModal.activity.title}</p>
+                <p className="text-xs text-gray-500 mt-1">Task ID: {activityActionModal.activity.task_id}</p>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium">Your Remarks (Optional)</Label>
+                <Textarea
+                  placeholder="Enter your observations, notes, or findings..."
+                  value={activityRemarks[activityActionModal.activity.id] || ''}
+                  onChange={(e) => setActivityRemarks(prev => ({...prev, [activityActionModal.activity.id]: e.target.value}))}
+                  className="mt-2"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setActivityActionModal(null)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className={`flex-1 ${
+                    activityActionModal.action === 'start' ? 'bg-blue-600 hover:bg-blue-700' :
+                    activityActionModal.action === 'complete' ? 'bg-green-600 hover:bg-green-700' :
+                    'bg-purple-600 hover:bg-purple-700'
+                  }`}
+                  disabled={isUpdatingActivity === activityActionModal.activity.id}
+                  onClick={async () => {
+                    const activity = activityActionModal.activity;
+                    const action = activityActionModal.action;
+                    setIsUpdatingActivity(activity.id);
+                    
+                    try {
+                      const remarks = activityRemarks[activity.id] || '';
+                      let newStatus = activity.status;
+                      let actionText = '';
+                      
+                      if (action === 'start') {
+                        newStatus = 'in_progress';
+                        actionText = '▶️ Started';
+                      } else if (action === 'complete') {
+                        newStatus = 'completed';
+                        actionText = '✅ Completed';
+                      } else {
+                        actionText = '📝 Remark added';
+                      }
+                      
+                      const newNotes = activity.notes 
+                        ? `${activity.notes}\n\n[${new Date().toLocaleString('en-IN')}] ${actionText} by ${user?.username}${remarks ? `\nRemarks: ${remarks}` : ''}`
+                        : `[${new Date().toLocaleString('en-IN')}] ${actionText} by ${user?.username}${remarks ? `\nRemarks: ${remarks}` : ''}`;
+                      
+                      await apiRequest('PUT', `/api/isp/maintenance/${activity.id}`, {
+                        status: newStatus,
+                        notes: newNotes
+                      });
+                      
+                      toast({ 
+                        title: action === 'start' ? '🚀 Work Started!' : 
+                               action === 'complete' ? '🎉 Activity Completed!' : 
+                               '📝 Remark Added!',
+                        description: action === 'start' ? 'Status updated to In Progress' :
+                                     action === 'complete' ? 'Great work!' :
+                                     'Your remark has been saved'
+                      });
+                      
+                      setActivityRemarks(prev => ({...prev, [activity.id]: ''}));
+                      setActivityActionModal(null);
+                      refetchActivities();
+                    } catch (err) {
+                      toast({ title: 'Error', description: 'Failed to update activity', variant: 'destructive' });
+                    } finally {
+                      setIsUpdatingActivity(null);
+                    }
+                  }}
+                >
+                  {isUpdatingActivity === activityActionModal.activity.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  ) : null}
+                  {activityActionModal.action === 'start' ? 'Start Work' :
+                   activityActionModal.action === 'complete' ? 'Mark Complete' : 
+                   'Save Remark'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-40">
         <div className="flex justify-around py-2">
@@ -2695,11 +3260,11 @@ export default function MobilePortal() {
             <span className="text-[8px] font-medium">Tasks</span>
           </button>
           <button 
-            onClick={() => setActiveTab('documents')}
-            className={`flex flex-col items-center gap-1 py-2 px-1 ${activeTab === 'documents' ? 'text-teal-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('activity')}
+            className={`flex flex-col items-center gap-1 py-2 px-1 ${activeTab === 'activity' ? 'text-purple-600' : 'text-gray-600'}`}
           >
-            <FolderOpen className="w-5 h-5" />
-            <span className="text-[8px] font-medium">Docs</span>
+            <Calendar className="w-5 h-5" />
+            <span className="text-[8px] font-medium">Activity</span>
           </button>
           <button 
             onClick={() => setActiveTab('complaint')}

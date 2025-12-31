@@ -528,6 +528,10 @@ export function initialize3HourTaskScheduler() {
   // Send first notification immediately, then every 3 hours
   send3HourTaskNotification().then(() => {
     schedule3HourNotification();
+  }).catch((error) => {
+    console.error('❌ Error in 3-hour task scheduler initialization:', error);
+    // Still try to schedule future notifications
+    schedule3HourNotification();
   });
 }
 

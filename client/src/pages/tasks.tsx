@@ -1182,7 +1182,7 @@ export default function Tasks() {
                                 <TableHead>Task ID</TableHead>
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Issue Type</TableHead>
-                                <TableHead>Priority</TableHead>
+                                <TableHead>Description</TableHead>
                                 <TableHead>Assigned To</TableHead>
                                 <TableHead>Field Engineer</TableHead>
                                 <TableHead>Status</TableHead>
@@ -1221,9 +1221,9 @@ export default function Tasks() {
                                   </TableCell>
                                   <TableCell>{task.category}</TableCell>
                                   <TableCell>
-                                    <Badge className={getPriorityColor(task.priority)}>
-                                      {task.priority}
-                                    </Badge>
+                                    <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                      {task.description || '-'}
+                                    </span>
                                   </TableCell>
                                   <TableCell>
                                     {task.assignedUser ? (
@@ -1326,7 +1326,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -1364,9 +1364,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -1481,7 +1481,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -1519,9 +1519,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -1636,7 +1636,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -1674,9 +1674,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -1793,7 +1793,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -1831,9 +1831,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -1945,7 +1945,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -1983,9 +1983,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -2089,7 +2089,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -2126,9 +2126,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.issueType}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div className="text-sm">
@@ -2247,7 +2247,7 @@ export default function Tasks() {
                               <TableHead>Task ID</TableHead>
                               <TableHead>Customer</TableHead>
                               <TableHead>Issue Type</TableHead>
-                              <TableHead>Priority</TableHead>
+                              <TableHead>Description</TableHead>
                               <TableHead>Assigned To</TableHead>
                               <TableHead>Field Engineer</TableHead>
                               <TableHead>Status</TableHead>
@@ -2280,9 +2280,9 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>{task.category}</TableCell>
                                 <TableCell>
-                                  <Badge className={getPriorityColor(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
+                                  <span className="text-sm text-gray-600 line-clamp-2" title={task.description || 'No description'}>
+                                    {task.description || '-'}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <div>

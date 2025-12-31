@@ -133,6 +133,7 @@ export function setupAuth(app: Express) {
           { username: 'admin', password: 'password', role: 'admin', name: 'Admin User' },
           { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User' },
           { username: 'admin', password: 'admin', role: 'admin', name: 'Admin User' },
+          { username: 'sachin', password: 'admin123', role: 'admin', name: 'Sachin Garg' },
           { username: 'user', password: 'user123', role: 'technician', name: 'Tech User' },
           { username: 'test', password: 'test', role: 'admin', name: 'Test User' },
           { username: 'demo', password: 'demo', role: 'admin', name: 'Demo User' }
@@ -208,6 +209,7 @@ export function setupAuth(app: Express) {
         const demoCredentials = [
           { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User' },
           { username: 'admin', password: 'admin', role: 'admin', name: 'Admin User' },
+          { username: 'sachin', password: 'admin123', role: 'admin', name: 'Sachin Garg' },
           { username: 'user', password: 'user123', role: 'technician', name: 'Tech User' },
           { username: 'test', password: 'test', role: 'admin', name: 'Test User' },
           { username: 'demo', password: 'demo', role: 'admin', name: 'Demo User' }
