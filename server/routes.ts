@@ -34,6 +34,100 @@ import { eq } from "drizzle-orm";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import { sendDailySummaryNotification, getDailySummaryData, send3HourTaskNotification, getPendingInProgressTasks } from "./scheduled-notifications";
 
+// Tower Alert Telegram Bot Configuration (WIZONE_NOT ALERT channel)
+const TOWER_ALERT_BOT_TOKEN = '8578190154:AAGnmtF4CNK3_jrnmoS6IMJYFXAK3L8YZp8';
+const TOWER_ALERT_CHAT_ID = '-1003601332003';
+
+// Function to send tower alert to Telegram
+async function sendTowerAlertToTelegram(tower: any, status: 'offline' | 'warning', previousStatus: string, forceAlert: boolean = false) {
+  try {
+    // Only send alert if status changed OR forceAlert is true (for new towers)
+    // Skip if previousStatus is same as current status AND not a forced alert
+    if (previousStatus === status && !forceAlert) {
+      console.log(`⏭️ [TOWER-ALERT] Skipping duplicate alert for ${tower.name} (status unchanged: ${status})`);
+      return; // No change, don't spam
+    }
+    
+    const emoji = status === 'offline' ? '🔴' : '⚠️';
+    const statusText = status === 'offline' ? 'OFFLINE - NOT REACHABLE' : 'WARNING - HIGH LATENCY';
+    const currentTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    
+    const message = `${emoji} <b>TOWER ALERT</b> ${emoji}
+
+<b>Tower:</b> ${tower.name}
+<b>IP Address:</b> ${tower.target_ip}
+<b>Status:</b> ${statusText}
+<b>Previous Status:</b> ${previousStatus || 'unknown'}
+<b>Time:</b> ${currentTime}
+
+${status === 'offline' ? '❌ Device is not responding to ping requests.' : '⚠️ High latency detected (>100ms).'}
+
+<i>Automatic alert from Wizone Tower Monitoring</i>`;
+
+    const response = await fetch(`https://api.telegram.org/bot${TOWER_ALERT_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TOWER_ALERT_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+    
+    const result = await response.json();
+    if (result.ok) {
+      console.log(`📱 [TOWER-ALERT] Telegram notification sent for ${tower.name} - ${status}`);
+    } else {
+      console.error(`❌ [TOWER-ALERT] Failed to send Telegram notification:`, result);
+    }
+  } catch (error) {
+    console.error(`❌ [TOWER-ALERT] Error sending Telegram notification:`, error);
+  }
+}
+
+// Function to send recovery alert when tower comes back online
+async function sendTowerRecoveryToTelegram(tower: any, previousStatus: string) {
+  try {
+    // Only send if it was offline or warning before
+    if (previousStatus !== 'offline' && previousStatus !== 'warning') {
+      return;
+    }
+    
+    const currentTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    
+    const message = `✅ <b>TOWER RECOVERED</b> ✅
+
+<b>Tower:</b> ${tower.name}
+<b>IP Address:</b> ${tower.target_ip}
+<b>Status:</b> ONLINE
+<b>Previous Status:</b> ${previousStatus}
+<b>Time:</b> ${currentTime}
+
+✅ Device is now responding normally.
+
+<i>Automatic alert from Wizone Tower Monitoring</i>`;
+
+    const response = await fetch(`https://api.telegram.org/bot${TOWER_ALERT_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TOWER_ALERT_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+    
+    const result = await response.json();
+    if (result.ok) {
+      console.log(`📱 [TOWER-ALERT] Recovery notification sent for ${tower.name}`);
+    } else {
+      console.error(`❌ [TOWER-ALERT] Failed to send recovery notification:`, result);
+    }
+  } catch (error) {
+    console.error(`❌ [TOWER-ALERT] Error sending recovery notification:`, error);
+  }
+}
+
 // Auto-ping towers every 5 minutes
 let autoPingInterval: NodeJS.Timeout | null = null;
 
@@ -135,6 +229,19 @@ async function pingAllTowersBackground() {
         WHERE id = ${tower.id}
       `;
       console.log(`💾 [DEBUG] Updated ${tower.name} - New status: ${status}, Previous: ${previousStatus}`);
+      
+      // Send Telegram alert for Tower Master if status changed
+      // Also send alert for new towers (previousStatus is null, undefined, or 'unknown')
+      const isNewTower = !previousStatus || previousStatus === 'unknown' || previousStatus === 'online';
+      const forceAlert = isNewTower && (status === 'offline' || status === 'warning');
+      
+      if (status === 'offline' || status === 'warning') {
+        // Send alert when tower goes offline or warning
+        await sendTowerAlertToTelegram(tower, status, previousStatus || 'unknown', forceAlert);
+      } else if (status === 'online' && (previousStatus === 'offline' || previousStatus === 'warning')) {
+        // Send recovery alert when tower comes back online
+        await sendTowerRecoveryToTelegram(tower, previousStatus);
+      }
       
       // Auto-create task if tower is offline and no open task exists
       // Logic: Only create new task if no pending/in_progress task exists
@@ -503,6 +610,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   
   console.log('✅ Database configured and initialized - serving main application');
+  
+  // TEMPORARY: Debug endpoint to reset tower status for testing Telegram alerts
+  app.post('/api/debug/reset-tower-status', async (req, res) => {
+    try {
+      const { towerId, towerName, status } = req.body;
+      
+      let result;
+      if (towerId) {
+        result = await sql`UPDATE network_towers SET status = ${status || 'unknown'} WHERE id = ${towerId} RETURNING id, name, status`;
+      } else if (towerName) {
+        result = await sql`UPDATE network_towers SET status = ${status || 'unknown'} WHERE name ILIKE ${`%${towerName}%`} RETURNING id, name, status`;
+      } else {
+        return res.status(400).json({ error: 'Please provide towerId or towerName' });
+      }
+      
+      console.log(`🔧 [DEBUG] Reset tower status:`, result);
+      res.json({ success: true, updated: result });
+    } catch (error: any) {
+      console.error('Error resetting tower:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Configure multer for file uploads
   const upload = multer({
     dest: 'uploads/',
@@ -5570,7 +5700,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
       
       console.log('📡 Adding new tower:', req.body);
       
-      // Create tower in database with offline status by default
+      // Create tower in database with unknown status by default (so first ping triggers alert)
       const result = await sql`
         INSERT INTO network_towers (
           name, target_ip, location, ssid, total_devices, 
@@ -5579,7 +5709,7 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
         ) VALUES (
           ${name}, ${targetIP || null}, ${location || null}, ${ssid || null}, ${totalDevices || 0},
           ${address || null}, ${latitude || null}, ${longitude || null}, 
-          ${bandwidth}, ${expectedLatency}, ${description || null}, 'offline',
+          ${bandwidth}, ${expectedLatency}, ${description || null}, 'unknown',
           NOW(), NOW()
         ) RETURNING *
       `;
@@ -5685,8 +5815,6 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
   app.post('/api/network/towers/:id/test', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
       const execPromise = promisify(exec);
       
       // Get tower details
@@ -5800,6 +5928,147 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     } catch (error) {
       console.error('Error testing tower connectivity:', error);
       res.status(500).json({ error: 'Failed to test tower connectivity' });
+    }
+  });
+
+  // Test connection for auto-generated tower down tasks and optionally resolve if online
+  app.post('/api/tasks/:id/test-tower-connection', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { autoResolve } = req.body;
+      const execPromise = promisify(exec);
+      
+      // Get task details
+      const taskResult = await sql`SELECT * FROM tasks WHERE id = ${id}`;
+      if (taskResult.length === 0) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      
+      const task = taskResult[0];
+      
+      // Check if this is an AUTO-DOWN task
+      if (!task.ticket_number?.startsWith('AUTO-DOWN')) {
+        return res.status(400).json({ error: 'This feature is only available for auto-generated tower down tasks' });
+      }
+      
+      // Extract IP from description (format: IP Address: xxx.xxx.xxx.xxx)
+      const ipMatch = task.description?.match(/IP Address:\s*([\d.]+)/);
+      if (!ipMatch) {
+        return res.status(400).json({ error: 'Could not find IP address in task description' });
+      }
+      
+      const targetIP = ipMatch[1];
+      console.log(`🔌 [TEST-CONNECTION] Testing tower connection for task ${task.ticket_number}, IP: ${targetIP}`);
+      
+      // Perform ping test
+      let status = 'offline';
+      let latency = 'timeout';
+      let success = false;
+      
+      try {
+        const isWindows = process.platform === 'win32';
+        const pingCmd = isWindows 
+          ? `ping -n 3 -w 2000 ${targetIP}`
+          : `ping -c 3 -W 2 ${targetIP}`;
+        
+        const { stdout } = await execPromise(pingCmd);
+        
+        if (isWindows) {
+          // Check for actual replies (not just TTL expired)
+          const replyMatch = stdout.match(/Reply from [\d.]+: bytes=/i);
+          const timeMatch = stdout.match(/Average = (\d+)ms/i) || stdout.match(/time[<=](\d+)ms/i);
+          
+          if (replyMatch) {
+            success = true;
+            const avgTime = timeMatch ? parseInt(timeMatch[1]) : 0;
+            latency = avgTime > 0 ? `${avgTime}ms` : 'responding';
+            status = avgTime > 100 ? 'warning' : 'online';
+          }
+        } else {
+          const successMatch = stdout.match(/(\d+) received/);
+          const timeMatch = stdout.match(/avg[\/=\s]+(\d+\.?\d*)/i);
+          
+          if (successMatch && parseInt(successMatch[1]) > 0) {
+            success = true;
+            const avgTime = timeMatch ? parseFloat(timeMatch[1]) : 0;
+            latency = `${Math.round(avgTime)}ms`;
+            status = avgTime > 100 ? 'warning' : 'online';
+          }
+        }
+      } catch (error: any) {
+        console.log(`❌ [TEST-CONNECTION] Ping failed for ${targetIP}:`, error.message);
+        success = false;
+        status = 'offline';
+      }
+      
+      console.log(`📊 [TEST-CONNECTION] Result for ${targetIP}: ${status} (${latency})`);
+      
+      // If tower is online and autoResolve is requested, resolve the task
+      if (success && (status === 'online' || status === 'warning') && autoResolve) {
+        const user = req.user as any;
+        const resolutionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const resolutionNote = 'Tower connection restored. Ping test successful - ' + status + ' (' + latency + '). Auto-resolved via test connection at ' + resolutionTime;
+        
+        // Only update status - avoid columns that may not exist
+        await sql`
+          UPDATE tasks 
+          SET status = 'completed',
+              updated_at = NOW()
+          WHERE id = ${id}
+        `;
+        
+        // Add a task update entry for the resolution note
+        try {
+          await sql`
+            INSERT INTO task_updates (task_id, updated_by, update_type, new_value, note, created_at)
+            VALUES (${id}, ${user?.id || '7'}, 'status_change', 'completed', ${resolutionNote}, NOW())
+          `;
+        } catch (updateErr) {
+          console.log('Could not add task update:', updateErr);
+        }
+        
+        // Also update the tower status in network_towers
+        const towerNameMatch = task.title?.replace('Node Down - ', '');
+        if (towerNameMatch) {
+          await sql`
+            UPDATE network_towers 
+            SET status = ${status}, 
+                actual_latency = ${latency},
+                last_test_at = NOW(),
+                updated_at = NOW()
+            WHERE name = ${towerNameMatch}
+          `;
+        }
+        
+        console.log(`✅ [TEST-CONNECTION] Task ${task.ticket_number} auto-resolved - tower is ${status}`);
+        
+        // Send recovery notification to Telegram
+        try {
+          await sendTowerRecoveryToTelegram({ name: towerNameMatch, target_ip: targetIP }, 'online');
+        } catch (telegramError) {
+          console.log('Telegram recovery notification failed:', telegramError);
+        }
+        
+        return res.json({
+          success: true,
+          status,
+          latency,
+          taskResolved: true,
+          message: `Tower is ${status}! Task has been resolved.`
+        });
+      }
+      
+      res.json({
+        success,
+        status,
+        latency,
+        taskResolved: false,
+        message: success ? `Tower is ${status} (${latency})` : 'Tower is still offline'
+      });
+      
+    } catch (error: any) {
+      console.error('Error testing tower connection:', error);
+      res.status(500).json({ error: error.message || 'Failed to test tower connection' });
     }
   });
 
@@ -8090,6 +8359,42 @@ C002,Another Customer,Jane Smith,jane@example.com,9876543211,456 Park Avenue,Del
     } catch (error: any) {
       console.error('Error fetching network devices:', error);
       res.status(500).json({ message: 'Failed to fetch network devices', error: error.message });
+    }
+  });
+
+  // Get all devices with tower names (for Client Assignments dropdown)
+  app.get('/api/isp/devices/with-tower', isAuthenticated, async (req: any, res) => {
+    try {
+      const devices = await client`
+        SELECT nd.id, nd.device_id, nd.name, nd.type, nd.ip_address, nd.model, nd.status, nd.tower_id,
+               nt.name as tower_name
+        FROM network_devices nd
+        LEFT JOIN network_towers nt ON nd.tower_id = nt.id
+        ORDER BY nt.name ASC, nd.name ASC
+      `;
+      res.json(devices);
+    } catch (error: any) {
+      console.error('Error fetching devices with tower:', error);
+      res.status(500).json({ message: 'Failed to fetch devices', error: error.message });
+    }
+  });
+
+  // Get devices by tower ID (for Client Assignments) - MUST be before :id route
+  app.get('/api/isp/devices/by-tower/:towerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { towerId } = req.params;
+      console.log('[DEBUG] Fetching devices for tower ID:', towerId);
+      const devices = await client`
+        SELECT id, device_id, name, type, ip_address, model, status 
+        FROM network_devices 
+        WHERE tower_id = ${parseInt(towerId)}
+        ORDER BY name ASC
+      `;
+      console.log('[DEBUG] Found devices:', devices.length);
+      res.json(devices);
+    } catch (error: any) {
+      console.error('Error fetching devices by tower:', error);
+      res.status(500).json({ message: 'Failed to fetch devices', error: error.message });
     }
   });
   

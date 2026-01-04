@@ -45,7 +45,9 @@ import {
   LayoutList,
   Timer,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import {
   Dialog,
@@ -78,6 +80,12 @@ export default function Tasks() {
   const [showFieldWorkflow, setShowFieldWorkflow] = useState(false);
   const [selectedTaskForField, setSelectedTaskForField] = useState<any>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  
+  // Test Connection state for AUTO-DOWN tasks
+  const [testingConnectionTaskId, setTestingConnectionTaskId] = useState<number | null>(null);
+  const [showTestConnectionDialog, setShowTestConnectionDialog] = useState(false);
+  const [testConnectionResult, setTestConnectionResult] = useState<any>(null);
+  const [selectedTaskForTest, setSelectedTaskForTest] = useState<any>(null);
   
   // Pagination states for each table
   const [pendingEntriesPerPage, setPendingEntriesPerPage] = useState(10);
@@ -551,6 +559,61 @@ export default function Tasks() {
       });
     },
   });
+
+  // Test tower connection for AUTO-DOWN tasks
+  const testTowerConnectionMutation = useMutation({
+    mutationFn: async ({ taskId, autoResolve }: { taskId: number; autoResolve: boolean }) => {
+      const response = await fetch(`/api/tasks/${taskId}/test-tower-connection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ autoResolve })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to test connection');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setTestConnectionResult(data);
+      if (data.taskResolved) {
+        refetchTasks();
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/network/towers"] });
+        toast({
+          title: "Tower Online!",
+          description: data.message,
+        });
+      } else if (data.success) {
+        toast({
+          title: "Connection Test Complete",
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: "Tower Offline",
+          description: "Tower is still not responding",
+          variant: "destructive",
+        });
+      }
+      setTestingConnectionTaskId(null);
+    },
+    onError: (error: Error) => {
+      setTestingConnectionTaskId(null);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to test connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTestConnection = (task: any, autoResolve: boolean = false) => {
+    setTestingConnectionTaskId(task.id);
+    setSelectedTaskForTest(task);
+    testTowerConnectionMutation.mutate({ taskId: task.id, autoResolve });
+  };
 
   // Query for task updates/history
   const { data: taskUpdates } = useQuery<any[]>({
@@ -1305,7 +1368,7 @@ export default function Tasks() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">Show:</span>
                           <Select value={String(pendingEntriesPerPage)} onValueChange={(v) => setPendingEntriesPerPage(Number(v))}>
-                            <SelectTrigger className="w-20 h-8">
+                            <SelectTrigger className="w-24 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1314,6 +1377,11 @@ export default function Tasks() {
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
                               <SelectItem value="200">200</SelectItem>
+                              <SelectItem value="500">500</SelectItem>
+                              <SelectItem value="1000">1000</SelectItem>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="5000">5000</SelectItem>
+                              <SelectItem value="100000">All</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-sm text-gray-600">entries</span>
@@ -1413,6 +1481,23 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex space-x-2">
+                                    {/* Test Connection button for AUTO-DOWN tasks */}
+                                    {task.ticketNumber?.startsWith('AUTO-DOWN') && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleTestConnection(task, true)}
+                                        disabled={testingConnectionTaskId === task.id}
+                                        title="Test Connection & Resolve if Online"
+                                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                                      >
+                                        {testingConnectionTaskId === task.id ? (
+                                          <Loader className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Wifi className="w-4 h-4" />
+                                        )}
+                                      </Button>
+                                    )}
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
@@ -1460,7 +1545,7 @@ export default function Tasks() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">Show:</span>
                           <Select value={String(inProgressEntriesPerPage)} onValueChange={(v) => setInProgressEntriesPerPage(Number(v))}>
-                            <SelectTrigger className="w-20 h-8">
+                            <SelectTrigger className="w-24 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1469,6 +1554,11 @@ export default function Tasks() {
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
                               <SelectItem value="200">200</SelectItem>
+                              <SelectItem value="500">500</SelectItem>
+                              <SelectItem value="1000">1000</SelectItem>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="5000">5000</SelectItem>
+                              <SelectItem value="100000">All</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-sm text-gray-600">entries</span>
@@ -1568,6 +1658,23 @@ export default function Tasks() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex space-x-2">
+                                    {/* Test Connection button for AUTO-DOWN tasks */}
+                                    {task.ticketNumber?.startsWith('AUTO-DOWN') && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleTestConnection(task, true)}
+                                        disabled={testingConnectionTaskId === task.id}
+                                        title="Test Connection & Resolve if Online"
+                                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                                      >
+                                        {testingConnectionTaskId === task.id ? (
+                                          <Loader className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Wifi className="w-4 h-4" />
+                                        )}
+                                      </Button>
+                                    )}
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
@@ -1615,7 +1722,7 @@ export default function Tasks() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">Show:</span>
                           <Select value={String(completedEntriesPerPage)} onValueChange={(v) => setCompletedEntriesPerPage(Number(v))}>
-                            <SelectTrigger className="w-20 h-8">
+                            <SelectTrigger className="w-24 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1624,6 +1731,11 @@ export default function Tasks() {
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
                               <SelectItem value="200">200</SelectItem>
+                              <SelectItem value="500">500</SelectItem>
+                              <SelectItem value="1000">1000</SelectItem>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="5000">5000</SelectItem>
+                              <SelectItem value="100000">All</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-sm text-gray-600">entries</span>
@@ -1924,7 +2036,7 @@ export default function Tasks() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">Show:</span>
                           <Select value={String(approvedEntriesPerPage)} onValueChange={(v) => setApprovedEntriesPerPage(Number(v))}>
-                            <SelectTrigger className="w-20 h-8">
+                            <SelectTrigger className="w-24 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1933,6 +2045,11 @@ export default function Tasks() {
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
                               <SelectItem value="200">200</SelectItem>
+                              <SelectItem value="500">500</SelectItem>
+                              <SelectItem value="1000">1000</SelectItem>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="5000">5000</SelectItem>
+                              <SelectItem value="100000">All</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-sm text-gray-600">entries</span>
@@ -2226,7 +2343,7 @@ export default function Tasks() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">Show:</span>
                           <Select value={String(cancelledEntriesPerPage)} onValueChange={(v) => setCancelledEntriesPerPage(Number(v))}>
-                            <SelectTrigger className="w-20 h-8">
+                            <SelectTrigger className="w-24 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -2235,6 +2352,11 @@ export default function Tasks() {
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
                               <SelectItem value="200">200</SelectItem>
+                              <SelectItem value="500">500</SelectItem>
+                              <SelectItem value="1000">1000</SelectItem>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="5000">5000</SelectItem>
+                              <SelectItem value="100000">All</SelectItem>
                             </SelectContent>
                           </Select>
                           <span className="text-sm text-gray-600">entries</span>
@@ -2731,12 +2853,6 @@ export default function Tasks() {
                                 <div className="flex items-center gap-2">
                                   <Loader className="w-4 h-4 text-blue-500" />
                                   In Progress
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="resolved">
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                  Resolved
                                 </div>
                               </SelectItem>
                               <SelectItem value="completed">

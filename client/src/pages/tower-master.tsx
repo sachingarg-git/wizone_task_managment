@@ -406,28 +406,6 @@ export default function TowerMaster() {
                   <Input id="location" name="location" placeholder="e.g., Raipur" />
                 </div>
                 <div>
-                  <Label htmlFor="ssid">SSID</Label>
-                  <Input id="ssid" name="ssid" placeholder="e.g., WIZONE-TOWER-01" />
-                </div>
-                <div>
-                  <Label htmlFor="total_devices">Total Devices</Label>
-                  <Input id="total_devices" name="total_devices" type="number" placeholder="0" />
-                </div>
-                <div>
-                  <Label htmlFor="bandwidth">Bandwidth</Label>
-                  <Select name="bandwidth" defaultValue="1 Gbps">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="100 Mbps">100 Mbps</SelectItem>
-                      <SelectItem value="500 Mbps">500 Mbps</SelectItem>
-                      <SelectItem value="1 Gbps">1 Gbps</SelectItem>
-                      <SelectItem value="10 Gbps">10 Gbps</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
                   <Label htmlFor="expected_latency">Expected Latency</Label>
                   <Select name="expected_latency" defaultValue="5ms">
                     <SelectTrigger>

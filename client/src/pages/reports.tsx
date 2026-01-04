@@ -307,6 +307,9 @@ export default function Reports() {
       const completedTasks = engineerTasks.filter((t: any) => 
         t.status === 'completed' || t.status === 'resolved'
       );
+      const approvedTasks = engineerTasks.filter((t: any) => 
+        t.status === 'approved'
+      );
       const pendingTasks = engineerTasks.filter((t: any) => 
         t.status === 'pending' || t.status === 'open'
       );
@@ -346,6 +349,11 @@ export default function Reports() {
         ? Math.round((completedTasks.length / engineerTasks.length) * 100) 
         : 0;
 
+      // Calculate approved rate (%)
+      const approvedRate = engineerTasks.length > 0 
+        ? Math.round((approvedTasks.length / engineerTasks.length) * 100) 
+        : 0;
+
       // Calculate SLA compliance (tasks completed within 24 hours = 100%, within 48h = 75%, else 50%)
       let slaCompliance = 0;
       if (resolvedTasks.length > 0) {
@@ -369,9 +377,9 @@ export default function Reports() {
         speedScore = 100; // If completed same day
       }
 
-      // Performance Score = (Completion % × 0.5) + (SLA Compliance × 0.3) + (Speed Score × 0.2)
+      // Performance Score = (Approved % × 0.5) + (SLA Compliance × 0.3) + (Speed Score × 0.2)
       const performanceScore = Math.round(
-        (completionRate * 0.5) + 
+        (approvedRate * 0.5) + 
         (slaCompliance * 0.3) + 
         (speedScore * 0.2)
       );
@@ -385,6 +393,8 @@ export default function Reports() {
         tasksByIssueType,
         avgResolutionTime,
         completionRate,
+        approvedRate,
+        approvedTasks: approvedTasks.length,
         slaCompliance,
         speedScore,
         performanceScore,
@@ -649,13 +659,13 @@ export default function Reports() {
               </div>
               <p className="text-sm text-muted-foreground">
                 <span className="font-mono bg-purple-100 px-2 py-1 rounded">
-                  Score = (Completion % × 0.5) + (SLA Compliance × 0.3) + (Speed Score × 0.2)
+                  Score = (Approved % × 0.5) + (SLA Compliance × 0.3) + (Speed Score × 0.2)
                 </span>
               </p>
               <div className="grid grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3 text-green-500" />
-                  <span>Completion %: Tasks completed vs assigned (50% weight)</span>
+                  <span>Approved %: Tasks approved vs assigned (50% weight)</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-3 w-3 text-blue-500" />

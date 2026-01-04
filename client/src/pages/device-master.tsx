@@ -40,6 +40,7 @@ import {
   Radio,
   X,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -86,7 +87,7 @@ export default function DeviceMaster() {
   const queryClient = useQueryClient();
 
   // Fetch devices
-  const { data: devices = [], isLoading, error } = useQuery<NetworkDevice[]>({
+  const { data: devices = [], isLoading, error, refetch: refetchDevices, isFetching } = useQuery<NetworkDevice[]>({
     queryKey: ["/api/isp/devices"],
   });
 
@@ -285,13 +286,23 @@ export default function DeviceMaster() {
           <h1 className="text-3xl font-bold">Device Master</h1>
           <p className="text-muted-foreground">Manage network devices and equipment</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Device
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => refetchDevices()}
+            disabled={isFetching}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            {isFetching ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Device
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
@@ -442,6 +453,7 @@ export default function DeviceMaster() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}

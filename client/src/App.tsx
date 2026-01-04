@@ -40,6 +40,7 @@ import AssignClients from "@/pages/assign-clients";
 import MaintenanceSchedule from "@/pages/maintenance-schedule";
 import NetworkManagement from "@/pages/network-management";
 import Reports from "@/pages/reports";
+import FeasibilityTool from "@/pages/feasibility-tool";
 
 function Router() {
   console.log("Router component rendering...");
@@ -189,6 +190,7 @@ function Router() {
           <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
           <Route path="/network-management" component={NetworkManagement} />
           <Route path="/reports" component={Reports} />
+          <Route path="/feasibility-tool" component={FeasibilityTool} />
           <Route component={NotFound} />
         </Switch>
       </div>

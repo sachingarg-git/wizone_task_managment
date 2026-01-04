@@ -23,7 +23,8 @@ import {
   Wrench,
   Globe,
   Map,
-  FileBarChart
+  FileBarChart,
+  Target
 } from "lucide-react";
 import wizoneLogoPath from "@/assets/wizone-logo.jpg";
 
@@ -65,10 +66,11 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Device Master", href: "/device-master", icon: Laptop, section: "ISP" },
       { name: "Assign Clients", href: "/assign-clients", icon: Link2, section: "ISP" },
       { name: "Maintenance Schedule", href: "/maintenance-schedule", icon: Wrench, section: "ISP" },
-      { name: "Network Management", href: "/network-management", icon: Globe, section: "ISP" },
+      { name: "Feasibility Tool", href: "/feasibility-tool", icon: Target, section: "ISP" },
+      // { name: "Network Management", href: "/network-management", icon: Globe, section: "ISP" }, // Hidden - not deleted
       // Management Section
       { name: "User Management", href: "/users", icon: UserCog },
-      { name: "Engineer Reports", href: "/engineer-reports", icon: ClipboardList },
+      // { name: "Engineer Reports", href: "/engineer-reports", icon: ClipboardList }, // Hidden
       { name: "Complaint Management", href: "/complaint-management", icon: MessageSquare },
       // Reports Section
       { name: "Reports", href: "/reports", icon: FileBarChart, section: "REPORTS" },
@@ -87,7 +89,7 @@ const getNavigationForUser = (userRole: string) => {
       { name: "Performance", href: "/performance", icon: TrendingUp },
       { name: "Analytics", href: "/analytics", icon: BarChart3 },
       { name: "User Management", href: "/users", icon: UserCog },
-      { name: "Engineer Reports", href: "/engineer-reports", icon: ClipboardList },
+      // { name: "Engineer Reports", href: "/engineer-reports", icon: ClipboardList }, // Hidden
       { name: "Tracking History", href: "/tracking-history", icon: Clock },
       { name: "Real-time Monitor", href: "/real-time-monitor", icon: Activity },
       { name: "My Portal", href: "/portal", icon: User },
@@ -224,9 +226,9 @@ export default function Sidebar() {
   const navigation = getNavigationForUser(user?.role || 'engineer');
 
   return (
-    <div className="fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white shadow-xl border-r border-gray-200">
-      {/* Logo Section */}
-      <div className="p-6 text-center border-b border-gray-200">
+    <div className="fixed left-0 top-0 h-full w-72 z-50 bg-white shadow-xl border-r border-gray-200 flex flex-col">
+      {/* Logo Section - Fixed at top */}
+      <div className="p-6 text-center border-b border-gray-200 flex-shrink-0">
         <div className="flex flex-col items-center cursor-pointer">
           <img 
             src={wizoneLogoPath} 
@@ -237,109 +239,112 @@ export default function Sidebar() {
         </div>
       </div>
       
-      {/* Section Title */}
-      <div className="px-6 pt-6 pb-2">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Main Menu</p>
-      </div>
-      
-      {/* Navigation */}
-      <nav className="px-3 space-y-1">
-        {navigation.map((item, index) => {
-          const isActive = location === item.href;
-          
-          // Get count for specific navigation items
-          let itemCount = 0;
-          if (item.name === "Task Management") {
-            itemCount = taskCount;
-          } else if (item.name === "Customer Management") {
-            itemCount = customerCount;
-          } else if (item.name === "Engineer Reports") {
-            itemCount = reportCount;
-          } else if (item.name === "Complaint Management") {
-            itemCount = complaintCount;
-          } else if (item.name === "Tracking History") {
-            itemCount = trackingCount;
-          }
-          
-          // Icon colors for each navigation item
-          const getIconColor = (name: string) => {
-            const colors: { [key: string]: string } = {
-              'Dashboard': '#60a5fa', // Blue
-              'Task Management': '#4ade80', // Green
-              'Customer Management': '#fbbf24', // Amber
-              'Performance': '#a78bfa', // Purple
-              'Analytics': '#22d3ee', // Cyan
-              // ISP/Network Management Section
-              'Tower Master': '#3b82f6', // Blue
-              'Client Master': '#f59e0b', // Amber
-              'Device Master': '#8b5cf6', // Purple
-              'Assign Clients': '#06b6d4', // Cyan
-              'Maintenance Schedule': '#f97316', // Orange
-              'Network Management': '#14b8a6', // Teal
-              // Management Section
-              'User Management': '#f472b6', // Pink
-              'Engineer Reports': '#c084fc', // Light Purple
-              'Complaint Management': '#fb923c', // Orange
-              'Bot Configuration': '#a78bfa', // Purple
-              'Tracking History': '#38bdf8', // Sky Blue
-              'Real-time Monitor': '#34d399', // Emerald
-              'My Portal': '#67e8f9', // Cyan
+      {/* Scrollable Navigation Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Section Title */}
+        <div className="px-6 pt-6 pb-2">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Main Menu</p>
+        </div>
+        
+        {/* Navigation */}
+        <nav className="px-3 space-y-1 pb-4">
+          {navigation.map((item, index) => {
+            const isActive = location === item.href;
+            
+            // Get count for specific navigation items
+            let itemCount = 0;
+            if (item.name === "Task Management") {
+              itemCount = taskCount;
+            } else if (item.name === "Customer Management") {
+              itemCount = customerCount;
+            } else if (item.name === "Engineer Reports") {
+              itemCount = reportCount;
+            } else if (item.name === "Complaint Management") {
+              itemCount = complaintCount;
+            } else if (item.name === "Tracking History") {
+              itemCount = trackingCount;
+            }
+            
+            // Icon colors for each navigation item
+            const getIconColor = (name: string) => {
+              const colors: { [key: string]: string } = {
+                'Dashboard': '#60a5fa', // Blue
+                'Task Management': '#4ade80', // Green
+                'Customer Management': '#fbbf24', // Amber
+                'Performance': '#a78bfa', // Purple
+                'Analytics': '#22d3ee', // Cyan
+                // ISP/Network Management Section
+                'Tower Master': '#3b82f6', // Blue
+                'Client Master': '#f59e0b', // Amber
+                'Device Master': '#8b5cf6', // Purple
+                'Assign Clients': '#06b6d4', // Cyan
+                'Maintenance Schedule': '#f97316', // Orange
+                'Network Management': '#14b8a6', // Teal
+                // Management Section
+                'User Management': '#f472b6', // Pink
+                'Engineer Reports': '#c084fc', // Light Purple
+                'Complaint Management': '#fb923c', // Orange
+                'Bot Configuration': '#a78bfa', // Purple
+                'Tracking History': '#38bdf8', // Sky Blue
+                'Real-time Monitor': '#34d399', // Emerald
+                'My Portal': '#67e8f9', // Cyan
+              };
+              return colors[name] || '#60a5fa';
             };
-            return colors[name] || '#60a5fa';
-          };
-          
-          // Add section dividers
-          const showNetworkSection = item.name === "Tower Master" && index > 0;
-          const showManagementSection = item.name === "User Management" && index > 0;
-          const showSystemSection = item.name === "Bot Configuration" && index > 0;
-          
-          return (
-            <div key={item.name}>
-              {showNetworkSection && (
-                <div className="px-3 pt-6 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-teal-500" />
-                    <p className="text-xs font-bold text-teal-600 uppercase tracking-wider">Network Management</p>
+            
+            // Add section dividers
+            const showNetworkSection = item.name === "Tower Master" && index > 0;
+            const showManagementSection = item.name === "User Management" && index > 0;
+            const showSystemSection = item.name === "Bot Configuration" && index > 0;
+            
+            return (
+              <div key={item.name}>
+                {showNetworkSection && (
+                  <div className="px-3 pt-6 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-teal-500" />
+                      <p className="text-xs font-bold text-teal-600 uppercase tracking-wider">Network Management</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {showManagementSection && (
-                <div className="px-3 pt-6 pb-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Management</p>
-                </div>
-              )}
-              {showSystemSection && (
-                <div className="px-3 pt-6 pb-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">System</p>
-                </div>
-              )}
-              <button
-                className={`w-full flex items-center px-4 py-3 mx-2 rounded-xl transition-all duration-300 text-left ${
-                  isActive
-                    ? "bg-indigo-100 text-indigo-700 font-bold"
-                    : "hover:bg-gray-100 hover:translate-x-1 font-semibold"
-                }`}
-                onClick={() => setLocation(item.href)}
-              >
-                <item.icon className="w-5 h-5 mr-3 flex-shrink-0" style={{ color: isActive ? '#4f46e5' : getIconColor(item.name) }} />
-                <span className="flex-1 text-sm font-semibold" style={{ color: isActive ? '#4338ca' : '#374151' }}>{item.name}</span>
-                {itemCount > 0 && (
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full min-w-[24px] text-center ${
-                    isActive 
-                      ? "bg-white/30 text-white" 
-                      : "bg-gray-200 text-gray-700"
-                  }`}>
-                    {itemCount}
-                  </span>
                 )}
-              </button>
-            </div>
-          );
-        })}
-      </nav>
+                {showManagementSection && (
+                  <div className="px-3 pt-6 pb-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Management</p>
+                  </div>
+                )}
+                {showSystemSection && (
+                  <div className="px-3 pt-6 pb-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">System</p>
+                  </div>
+                )}
+                <button
+                  className={`w-full flex items-center px-4 py-3 mx-2 rounded-xl transition-all duration-300 text-left ${
+                    isActive
+                      ? "bg-indigo-100 text-indigo-700 font-bold"
+                      : "hover:bg-gray-100 hover:translate-x-1 font-semibold"
+                  }`}
+                  onClick={() => setLocation(item.href)}
+                >
+                  <item.icon className="w-5 h-5 mr-3 flex-shrink-0" style={{ color: isActive ? '#4f46e5' : getIconColor(item.name) }} />
+                  <span className="flex-1 text-sm font-semibold" style={{ color: isActive ? '#4338ca' : '#374151' }}>{item.name}</span>
+                  {itemCount > 0 && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full min-w-[24px] text-center ${
+                      isActive 
+                        ? "bg-white/30 text-white" 
+                        : "bg-gray-200 text-gray-700"
+                    }`}>
+                      {itemCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </nav>
+      </div>
 
-      {/* User Profile Section */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+      {/* User Profile Section - Fixed at bottom */}
+      <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300">
           <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
             <span className="text-sm font-medium text-white">
